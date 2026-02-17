@@ -1,0 +1,821 @@
+{
+  "info": {
+    "name": "VetClinic API",
+    "description": "Multi-tenant veterinary clinic management system.\n\n**Setup:**\n1. Run \"Login\" first to get a token\n2. Token is auto-saved to {{accessToken}} variable\n3. All other requests use it automatically\n\n**Variables:**\n- baseUrl: http://localhost:8080\n- clinicId: your clinic UUID\n- accessToken: auto-set after login",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8080" },
+    { "key": "clinicId", "value": "b5434818-265f-4386-8ed5-e568a238a451" },
+    { "key": "accessToken", "value": "" },
+    { "key": "refreshToken", "value": "" },
+    { "key": "ownerId", "value": "" },
+    { "key": "petId", "value": "" },
+    { "key": "speciesId", "value": "" },
+    { "key": "breedId", "value": "" },
+    { "key": "appointmentId", "value": "" },
+    { "key": "medicalRecordId", "value": "" },
+    { "key": "treatmentId", "value": "" },
+    { "key": "vaccinationId", "value": "" },
+    { "key": "prescriptionId", "value": "" },
+    { "key": "serviceId", "value": "" },
+    { "key": "invoiceId", "value": "" },
+    { "key": "invoiceItemId", "value": "" },
+    { "key": "paymentId", "value": "" },
+    { "key": "locationId", "value": "" },
+    { "key": "roleId", "value": "" },
+    { "key": "userId", "value": "" },
+    { "key": "userLocationId", "value": "" },
+    { "key": "inventoryItemId", "value": "" },
+    { "key": "inventoryTransactionId", "value": "" },
+    { "key": "documentId", "value": "" },
+    { "key": "notificationId", "value": "" }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+  },
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    var json = pm.response.json();",
+                  "    pm.collectionVariables.set('accessToken', json.accessToken);",
+                  "    pm.collectionVariables.set('refreshToken', json.refreshToken);",
+                  "    pm.collectionVariables.set('userId', json.user.id);",
+                  "    pm.collectionVariables.set('roleId', json.user.roleId);",
+                  "    pm.test('Login successful', function() {",
+                  "        pm.expect(json.accessToken).to.be.a('string');",
+                  "    });",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"clinicId\": \"{{clinicId}}\",\n    \"email\": \"admin@test.com\",\n    \"password\": \"admin123\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/auth/login", "host": ["{{baseUrl}}"], "path": ["api", "auth", "login"] }
+          }
+        },
+        {
+          "name": "Refresh Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    var json = pm.response.json();",
+                  "    pm.collectionVariables.set('accessToken', json.accessToken);",
+                  "    pm.collectionVariables.set('refreshToken', json.refreshToken);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"refreshToken\": \"{{refreshToken}}\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/api/auth/refresh", "host": ["{{baseUrl}}"], "path": ["api", "auth", "refresh"] }
+          }
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/auth/logout", "host": ["{{baseUrl}}"], "path": ["api", "auth", "logout"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/health", "host": ["{{baseUrl}}"], "path": ["api", "health"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Species",
+      "item": [
+        {
+          "name": "Create Species",
+          "event": [{ "listen": "test", "script": { "exec": ["if(pm.response.code===201){pm.collectionVariables.set('speciesId',pm.response.json().id);}"], "type": "text/javascript" }}],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "X-Clinic-Id", "value": "{{clinicId}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n    \"name\": \"Dog\",\n    \"active\": true\n}" },
+            "url": { "raw": "{{baseUrl}}/api/species", "host": ["{{baseUrl}}"], "path": ["api", "species"] }
+          }
+        },
+        {
+          "name": "Get All Species",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "X-Clinic-Id", "value": "{{clinicId}}" }],
+            "url": { "raw": "{{baseUrl}}/api/species", "host": ["{{baseUrl}}"], "path": ["api", "species"] }
+          }
+        },
+        {
+          "name": "Get Species by ID",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "X-Clinic-Id", "value": "{{clinicId}}" }],
+            "url": { "raw": "{{baseUrl}}/api/species/{{speciesId}}", "host": ["{{baseUrl}}"], "path": ["api", "species", "{{speciesId}}"] }
+          }
+        },
+        {
+          "name": "Update Species",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "X-Clinic-Id", "value": "{{clinicId}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n    \"name\": \"Dog (updated)\",\n    \"active\": true\n}" },
+            "url": { "raw": "{{baseUrl}}/api/species/{{speciesId}}", "host": ["{{baseUrl}}"], "path": ["api", "species", "{{speciesId}}"] }
+          }
+        },
+        {
+          "name": "Delete Species",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "X-Clinic-Id", "value": "{{clinicId}}" }],
+            "url": { "raw": "{{baseUrl}}/api/species/{{speciesId}}", "host": ["{{baseUrl}}"], "path": ["api", "species", "{{speciesId}}"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Breeds",
+      "item": [
+        {
+          "name": "Create Breed",
+          "event": [{ "listen": "test", "script": { "exec": ["if(pm.response.code===201){pm.collectionVariables.set('breedId',pm.response.json().id);}"], "type": "text/javascript" }}],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "X-Clinic-Id", "value": "{{clinicId}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n    \"speciesId\": \"{{speciesId}}\",\n    \"name\": \"Labrador Retriever\"\n}" },
+            "url": { "raw": "{{baseUrl}}/api/breeds", "host": ["{{baseUrl}}"], "path": ["api", "breeds"] }
+          }
+        },
+        {
+          "name": "Get All Breeds",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "X-Clinic-Id", "value": "{{clinicId}}" }],
+            "url": { "raw": "{{baseUrl}}/api/breeds", "host": ["{{baseUrl}}"], "path": ["api", "breeds"] }
+          }
+        },
+        {
+          "name": "Get Breeds by Species",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "X-Clinic-Id", "value": "{{clinicId}}" }],
+            "url": { "raw": "{{baseUrl}}/api/breeds/by-species/{{speciesId}}", "host": ["{{baseUrl}}"], "path": ["api", "breeds", "by-species", "{{speciesId}}"] }
+          }
+        },
+        {
+          "name": "Update Breed",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "X-Clinic-Id", "value": "{{clinicId}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n    \"speciesId\": \"{{speciesId}}\",\n    \"name\": \"Golden Retriever\"\n}" },
+            "url": { "raw": "{{baseUrl}}/api/breeds/{{breedId}}", "host": ["{{baseUrl}}"], "path": ["api", "breeds", "{{breedId}}"] }
+          }
+        },
+        {
+          "name": "Delete Breed",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "X-Clinic-Id", "value": "{{clinicId}}" }],
+            "url": { "raw": "{{baseUrl}}/api/breeds/{{breedId}}", "host": ["{{baseUrl}}"], "path": ["api", "breeds", "{{breedId}}"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Owners",
+      "item": [
+        {
+          "name": "Create Owner",
+          "event": [{ "listen": "test", "script": { "exec": ["if(pm.response.code===201){pm.collectionVariables.set('ownerId',pm.response.json().id);}"], "type": "text/javascript" }}],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "X-Clinic-Id", "value": "{{clinicId}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n    \"firstName\": \"Petar\",\n    \"lastName\": \"Petrovic\",\n    \"email\": \"petar@example.com\",\n    \"phone\": \"+381641234567\",\n    \"address\": \"Knez Mihailova 5\",\n    \"city\": \"Beograd\"\n}" },
+            "url": { "raw": "{{baseUrl}}/api/owners", "host": ["{{baseUrl}}"], "path": ["api", "owners"] }
+          }
+        },
+        {
+          "name": "Get All Owners",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "X-Clinic-Id", "value": "{{clinicId}}" }],
+            "url": { "raw": "{{baseUrl}}/api/owners", "host": ["{{baseUrl}}"], "path": ["api", "owners"] }
+          }
+        },
+        {
+          "name": "Get Owner by ID",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "X-Clinic-Id", "value": "{{clinicId}}" }],
+            "url": { "raw": "{{baseUrl}}/api/owners/{{ownerId}}", "host": ["{{baseUrl}}"], "path": ["api", "owners", "{{ownerId}}"] }
+          }
+        },
+        {
+          "name": "Search Owners by Last Name",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "X-Clinic-Id", "value": "{{clinicId}}" }],
+            "url": { "raw": "{{baseUrl}}/api/owners/search/by-last-name?lastName=Petrovic", "host": ["{{baseUrl}}"], "path": ["api", "owners", "search", "by-last-name"], "query": [{ "key": "lastName", "value": "Petrovic" }] }
+          }
+        },
+        {
+          "name": "Search Owners by Phone",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "X-Clinic-Id", "value": "{{clinicId}}" }],
+            "url": { "raw": "{{baseUrl}}/api/owners/search/by-phone?phone=0641234567", "host": ["{{baseUrl}}"], "path": ["api", "owners", "search", "by-phone"], "query": [{ "key": "phone", "value": "0641234567" }] }
+          }
+        },
+        {
+          "name": "Update Owner",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "X-Clinic-Id", "value": "{{clinicId}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n    \"firstName\": \"Petar\",\n    \"lastName\": \"Petrovic\",\n    \"email\": \"petar.updated@example.com\",\n    \"phone\": \"+381641234567\",\n    \"address\": \"Knez Mihailova 10\",\n    \"city\": \"Beograd\"\n}" },
+            "url": { "raw": "{{baseUrl}}/api/owners/{{ownerId}}", "host": ["{{baseUrl}}"], "path": ["api", "owners", "{{ownerId}}"] }
+          }
+        },
+        {
+          "name": "Delete Owner",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "X-Clinic-Id", "value": "{{clinicId}}" }],
+            "url": { "raw": "{{baseUrl}}/api/owners/{{ownerId}}", "host": ["{{baseUrl}}"], "path": ["api", "owners", "{{ownerId}}"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Pets",
+      "item": [
+        {
+          "name": "Create Pet",
+          "event": [{ "listen": "test", "script": { "exec": ["if(pm.response.code===201){pm.collectionVariables.set('petId',pm.response.json().id);}"], "type": "text/javascript" }}],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "X-Clinic-Id", "value": "{{clinicId}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n    \"ownerId\": \"{{ownerId}}\",\n    \"speciesId\": \"{{speciesId}}\",\n    \"breedId\": \"{{breedId}}\",\n    \"name\": \"Rex\",\n    \"dateOfBirth\": \"2022-03-15\",\n    \"gender\": \"MALE\",\n    \"color\": \"Golden\",\n    \"weightKg\": 28.5,\n    \"isNeutered\": false,\n    \"isDeceased\": false\n}" },
+            "url": { "raw": "{{baseUrl}}/api/pets", "host": ["{{baseUrl}}"], "path": ["api", "pets"] }
+          }
+        },
+        {
+          "name": "Get All Pets",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "X-Clinic-Id", "value": "{{clinicId}}" }],
+            "url": { "raw": "{{baseUrl}}/api/pets", "host": ["{{baseUrl}}"], "path": ["api", "pets"] }
+          }
+        },
+        {
+          "name": "Get Pets by Owner",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "X-Clinic-Id", "value": "{{clinicId}}" }],
+            "url": { "raw": "{{baseUrl}}/api/pets/by-owner/{{ownerId}}", "host": ["{{baseUrl}}"], "path": ["api", "pets", "by-owner", "{{ownerId}}"] }
+          }
+        },
+        {
+          "name": "Update Pet",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "X-Clinic-Id", "value": "{{clinicId}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n    \"ownerId\": \"{{ownerId}}\",\n    \"name\": \"Rex (updated)\",\n    \"weightKg\": 30.0\n}" },
+            "url": { "raw": "{{baseUrl}}/api/pets/{{petId}}", "host": ["{{baseUrl}}"], "path": ["api", "pets", "{{petId}}"] }
+          }
+        },
+        {
+          "name": "Delete Pet",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "X-Clinic-Id", "value": "{{clinicId}}" }],
+            "url": { "raw": "{{baseUrl}}/api/pets/{{petId}}", "host": ["{{baseUrl}}"], "path": ["api", "pets", "{{petId}}"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Clinic Locations",
+      "item": [
+        {
+          "name": "Create Location",
+          "event": [{ "listen": "test", "script": { "exec": ["if(pm.response.code===201){pm.collectionVariables.set('locationId',pm.response.json().id);}"], "type": "text/javascript" }}],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "X-Clinic-Id", "value": "{{clinicId}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n    \"name\": \"Main Clinic\",\n    \"address\": \"Bulevar Oslobodjenja 100\",\n    \"city\": \"Novi Sad\",\n    \"phone\": \"+381211234567\",\n    \"email\": \"main@vetclinic.rs\",\n    \"isMain\": true,\n    \"active\": true,\n    \"workingHours\": \"{\\\"mon\\\":\\\"08:00-20:00\\\",\\\"tue\\\":\\\"08:00-20:00\\\"}\"\n}" },
+            "url": { "raw": "{{baseUrl}}/api/clinic-locations", "host": ["{{baseUrl}}"], "path": ["api", "clinic-locations"] }
+          }
+        },
+        {
+          "name": "Get All Locations",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "X-Clinic-Id", "value": "{{clinicId}}" }],
+            "url": { "raw": "{{baseUrl}}/api/clinic-locations", "host": ["{{baseUrl}}"], "path": ["api", "clinic-locations"] }
+          }
+        },
+        {
+          "name": "Get Active Locations",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "X-Clinic-Id", "value": "{{clinicId}}" }],
+            "url": { "raw": "{{baseUrl}}/api/clinic-locations/active", "host": ["{{baseUrl}}"], "path": ["api", "clinic-locations", "active"] }
+          }
+        },
+        {
+          "name": "Delete Location",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "X-Clinic-Id", "value": "{{clinicId}}" }],
+            "url": { "raw": "{{baseUrl}}/api/clinic-locations/{{locationId}}", "host": ["{{baseUrl}}"], "path": ["api", "clinic-locations", "{{locationId}}"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Appointments",
+      "item": [
+        {
+          "name": "Create Appointment",
+          "event": [{ "listen": "test", "script": { "exec": ["if(pm.response.code===201){pm.collectionVariables.set('appointmentId',pm.response.json().id);}"], "type": "text/javascript" }}],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "X-Clinic-Id", "value": "{{clinicId}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n    \"locationId\": \"{{locationId}}\",\n    \"petId\": \"{{petId}}\",\n    \"ownerId\": \"{{ownerId}}\",\n    \"vetId\": \"{{userId}}\",\n    \"startTime\": \"2026-02-10T09:00:00+01:00\",\n    \"endTime\": \"2026-02-10T09:30:00+01:00\",\n    \"status\": \"SCHEDULED\",\n    \"type\": \"CHECKUP\",\n    \"reason\": \"Annual checkup\"\n}" },
+            "url": { "raw": "{{baseUrl}}/api/appointments", "host": ["{{baseUrl}}"], "path": ["api", "appointments"] }
+          }
+        },
+        {
+          "name": "Get All Appointments",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "X-Clinic-Id", "value": "{{clinicId}}" }],
+            "url": { "raw": "{{baseUrl}}/api/appointments", "host": ["{{baseUrl}}"], "path": ["api", "appointments"] }
+          }
+        },
+        {
+          "name": "Get Appointments by Date Range",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "X-Clinic-Id", "value": "{{clinicId}}" }],
+            "url": { "raw": "{{baseUrl}}/api/appointments/date-range?from=2026-02-01T00:00:00+01:00&to=2026-02-28T23:59:59+01:00", "host": ["{{baseUrl}}"], "path": ["api", "appointments", "date-range"], "query": [{ "key": "from", "value": "2026-02-01T00:00:00+01:00" }, { "key": "to", "value": "2026-02-28T23:59:59+01:00" }] }
+          }
+        },
+        {
+          "name": "Get Appointments by Vet",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "X-Clinic-Id", "value": "{{clinicId}}" }],
+            "url": { "raw": "{{baseUrl}}/api/appointments/by-vet/{{userId}}?from=2026-02-01T00:00:00+01:00&to=2026-02-28T23:59:59+01:00", "host": ["{{baseUrl}}"], "path": ["api", "appointments", "by-vet", "{{userId}}"], "query": [{ "key": "from", "value": "2026-02-01T00:00:00+01:00" }, { "key": "to", "value": "2026-02-28T23:59:59+01:00" }] }
+          }
+        },
+        {
+          "name": "Delete Appointment",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "X-Clinic-Id", "value": "{{clinicId}}" }],
+            "url": { "raw": "{{baseUrl}}/api/appointments/{{appointmentId}}", "host": ["{{baseUrl}}"], "path": ["api", "appointments", "{{appointmentId}}"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Medical Records",
+      "item": [
+        {
+          "name": "Create Medical Record",
+          "event": [{ "listen": "test", "script": { "exec": ["if(pm.response.code===201){pm.collectionVariables.set('medicalRecordId',pm.response.json().id);}"], "type": "text/javascript" }}],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "X-Clinic-Id", "value": "{{clinicId}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n    \"appointmentId\": \"{{appointmentId}}\",\n    \"petId\": \"{{petId}}\",\n    \"vetId\": \"{{userId}}\",\n    \"symptoms\": \"Lethargy, loss of appetite\",\n    \"diagnosis\": \"Mild gastritis\",\n    \"examinationNotes\": \"Abdomen tender on palpation\",\n    \"weightKg\": 28.5,\n    \"temperatureC\": 39.2,\n    \"heartRate\": 90,\n    \"followUpRecommended\": true,\n    \"followUpDate\": \"2026-02-17\"\n}" },
+            "url": { "raw": "{{baseUrl}}/api/medical-records", "host": ["{{baseUrl}}"], "path": ["api", "medical-records"] }
+          }
+        },
+        {
+          "name": "Get All Medical Records",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "X-Clinic-Id", "value": "{{clinicId}}" }],
+            "url": { "raw": "{{baseUrl}}/api/medical-records", "host": ["{{baseUrl}}"], "path": ["api", "medical-records"] }
+          }
+        },
+        {
+          "name": "Get Medical Records by Pet",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "X-Clinic-Id", "value": "{{clinicId}}" }],
+            "url": { "raw": "{{baseUrl}}/api/medical-records/by-pet/{{petId}}", "host": ["{{baseUrl}}"], "path": ["api", "medical-records", "by-pet", "{{petId}}"] }
+          }
+        },
+        {
+          "name": "Get Medical Record by Appointment",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "X-Clinic-Id", "value": "{{clinicId}}" }],
+            "url": { "raw": "{{baseUrl}}/api/medical-records/by-appointment/{{appointmentId}}", "host": ["{{baseUrl}}"], "path": ["api", "medical-records", "by-appointment", "{{appointmentId}}"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Treatments",
+      "item": [
+        {
+          "name": "Create Treatment",
+          "event": [{ "listen": "test", "script": { "exec": ["if(pm.response.code===201){pm.collectionVariables.set('treatmentId',pm.response.json().id);}"], "type": "text/javascript" }}],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "X-Clinic-Id", "value": "{{clinicId}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n    \"medicalRecordId\": \"{{medicalRecordId}}\",\n    \"vetId\": \"{{userId}}\",\n    \"name\": \"Fluid therapy\",\n    \"description\": \"IV fluid administration for dehydration\",\n    \"result\": \"Patient responded well\"\n}" },
+            "url": { "raw": "{{baseUrl}}/api/treatments", "host": ["{{baseUrl}}"], "path": ["api", "treatments"] }
+          }
+        },
+        {
+          "name": "Get Treatments by Medical Record",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "X-Clinic-Id", "value": "{{clinicId}}" }],
+            "url": { "raw": "{{baseUrl}}/api/treatments/by-medical-record/{{medicalRecordId}}", "host": ["{{baseUrl}}"], "path": ["api", "treatments", "by-medical-record", "{{medicalRecordId}}"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Vaccinations",
+      "item": [
+        {
+          "name": "Create Vaccination",
+          "event": [{ "listen": "test", "script": { "exec": ["if(pm.response.code===201){pm.collectionVariables.set('vaccinationId',pm.response.json().id);}"], "type": "text/javascript" }}],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "X-Clinic-Id", "value": "{{clinicId}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n    \"petId\": \"{{petId}}\",\n    \"vetId\": \"{{userId}}\",\n    \"vaccineName\": \"Rabies\",\n    \"batchNumber\": \"RAB-2026-001\",\n    \"manufacturer\": \"Nobivac\",\n    \"administeredAt\": \"2026-02-08T10:00:00+01:00\",\n    \"validUntil\": \"2027-02-08\",\n    \"nextDueDate\": \"2027-02-08\"\n}" },
+            "url": { "raw": "{{baseUrl}}/api/vaccinations", "host": ["{{baseUrl}}"], "path": ["api", "vaccinations"] }
+          }
+        },
+        {
+          "name": "Get Vaccinations by Pet",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "X-Clinic-Id", "value": "{{clinicId}}" }],
+            "url": { "raw": "{{baseUrl}}/api/vaccinations/by-pet/{{petId}}", "host": ["{{baseUrl}}"], "path": ["api", "vaccinations", "by-pet", "{{petId}}"] }
+          }
+        },
+        {
+          "name": "Get Due Vaccinations",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "X-Clinic-Id", "value": "{{clinicId}}" }],
+            "url": { "raw": "{{baseUrl}}/api/vaccinations/due?before=2026-03-01", "host": ["{{baseUrl}}"], "path": ["api", "vaccinations", "due"], "query": [{ "key": "before", "value": "2026-03-01" }] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Prescriptions",
+      "item": [
+        {
+          "name": "Create Prescription",
+          "event": [{ "listen": "test", "script": { "exec": ["if(pm.response.code===201){pm.collectionVariables.set('prescriptionId',pm.response.json().id);}"], "type": "text/javascript" }}],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "X-Clinic-Id", "value": "{{clinicId}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n    \"medicalRecordId\": \"{{medicalRecordId}}\",\n    \"petId\": \"{{petId}}\",\n    \"vetId\": \"{{userId}}\",\n    \"medicationName\": \"Omeprazole\",\n    \"dosage\": \"1mg/kg\",\n    \"frequency\": \"Once daily\",\n    \"durationDays\": 7,\n    \"startDate\": \"2026-02-08\",\n    \"endDate\": \"2026-02-15\",\n    \"instructions\": \"Give with food in the morning\"\n}" },
+            "url": { "raw": "{{baseUrl}}/api/prescriptions", "host": ["{{baseUrl}}"], "path": ["api", "prescriptions"] }
+          }
+        },
+        {
+          "name": "Get Prescriptions by Pet",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "X-Clinic-Id", "value": "{{clinicId}}" }],
+            "url": { "raw": "{{baseUrl}}/api/prescriptions/by-pet/{{petId}}", "host": ["{{baseUrl}}"], "path": ["api", "prescriptions", "by-pet", "{{petId}}"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Services",
+      "item": [
+        {
+          "name": "Create Service",
+          "event": [{ "listen": "test", "script": { "exec": ["if(pm.response.code===201){pm.collectionVariables.set('serviceId',pm.response.json().id);}"], "type": "text/javascript" }}],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "X-Clinic-Id", "value": "{{clinicId}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n    \"category\": \"EXAMINATION\",\n    \"name\": \"General Checkup\",\n    \"description\": \"Complete physical examination\",\n    \"price\": 3500.00,\n    \"taxRate\": 20.00,\n    \"durationMinutes\": 30,\n    \"active\": true\n}" },
+            "url": { "raw": "{{baseUrl}}/api/services", "host": ["{{baseUrl}}"], "path": ["api", "services"] }
+          }
+        },
+        {
+          "name": "Get All Services",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "X-Clinic-Id", "value": "{{clinicId}}" }],
+            "url": { "raw": "{{baseUrl}}/api/services", "host": ["{{baseUrl}}"], "path": ["api", "services"] }
+          }
+        },
+        {
+          "name": "Get Services by Category",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "X-Clinic-Id", "value": "{{clinicId}}" }],
+            "url": { "raw": "{{baseUrl}}/api/services/by-category/EXAMINATION", "host": ["{{baseUrl}}"], "path": ["api", "services", "by-category", "EXAMINATION"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Invoices",
+      "item": [
+        {
+          "name": "Create Invoice",
+          "event": [{ "listen": "test", "script": { "exec": ["if(pm.response.code===201){pm.collectionVariables.set('invoiceId',pm.response.json().id);}"], "type": "text/javascript" }}],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "X-Clinic-Id", "value": "{{clinicId}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n    \"ownerId\": \"{{ownerId}}\",\n    \"locationId\": \"{{locationId}}\",\n    \"appointmentId\": \"{{appointmentId}}\",\n    \"status\": \"DRAFT\",\n    \"subtotal\": 3500.00,\n    \"taxAmount\": 700.00,\n    \"discountAmount\": 0,\n    \"total\": 4200.00,\n    \"currency\": \"RSD\"\n}" },
+            "url": { "raw": "{{baseUrl}}/api/invoices", "host": ["{{baseUrl}}"], "path": ["api", "invoices"] }
+          }
+        },
+        {
+          "name": "Get Invoices by Owner",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "X-Clinic-Id", "value": "{{clinicId}}" }],
+            "url": { "raw": "{{baseUrl}}/api/invoices/by-owner/{{ownerId}}", "host": ["{{baseUrl}}"], "path": ["api", "invoices", "by-owner", "{{ownerId}}"] }
+          }
+        },
+        {
+          "name": "Get Invoices by Status",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "X-Clinic-Id", "value": "{{clinicId}}" }],
+            "url": { "raw": "{{baseUrl}}/api/invoices/by-status/DRAFT", "host": ["{{baseUrl}}"], "path": ["api", "invoices", "by-status", "DRAFT"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Invoice Items",
+      "item": [
+        {
+          "name": "Create Invoice Item",
+          "event": [{ "listen": "test", "script": { "exec": ["if(pm.response.code===201){pm.collectionVariables.set('invoiceItemId',pm.response.json().id);}"], "type": "text/javascript" }}],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "X-Clinic-Id", "value": "{{clinicId}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n    \"invoiceId\": \"{{invoiceId}}\",\n    \"serviceId\": \"{{serviceId}}\",\n    \"description\": \"General Checkup\",\n    \"quantity\": 1,\n    \"unitPrice\": 3500.00,\n    \"taxRate\": 20.00,\n    \"discountPercent\": 0,\n    \"lineTotal\": 4200.00,\n    \"sortOrder\": 1\n}" },
+            "url": { "raw": "{{baseUrl}}/api/invoice-items", "host": ["{{baseUrl}}"], "path": ["api", "invoice-items"] }
+          }
+        },
+        {
+          "name": "Get Invoice Items by Invoice",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "X-Clinic-Id", "value": "{{clinicId}}" }],
+            "url": { "raw": "{{baseUrl}}/api/invoice-items/by-invoice/{{invoiceId}}", "host": ["{{baseUrl}}"], "path": ["api", "invoice-items", "by-invoice", "{{invoiceId}}"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Payments",
+      "item": [
+        {
+          "name": "Create Payment",
+          "event": [{ "listen": "test", "script": { "exec": ["if(pm.response.code===201){pm.collectionVariables.set('paymentId',pm.response.json().id);}"], "type": "text/javascript" }}],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "X-Clinic-Id", "value": "{{clinicId}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n    \"invoiceId\": \"{{invoiceId}}\",\n    \"amount\": 4200.00,\n    \"method\": \"CASH\",\n    \"paidAt\": \"2026-02-08T12:00:00+01:00\",\n    \"note\": \"Full payment\"\n}" },
+            "url": { "raw": "{{baseUrl}}/api/payments", "host": ["{{baseUrl}}"], "path": ["api", "payments"] }
+          }
+        },
+        {
+          "name": "Get Payments by Invoice",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "X-Clinic-Id", "value": "{{clinicId}}" }],
+            "url": { "raw": "{{baseUrl}}/api/payments/by-invoice/{{invoiceId}}", "host": ["{{baseUrl}}"], "path": ["api", "payments", "by-invoice", "{{invoiceId}}"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Users",
+      "item": [
+        {
+          "name": "Get All Users",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "X-Clinic-Id", "value": "{{clinicId}}" }],
+            "url": { "raw": "{{baseUrl}}/api/users", "host": ["{{baseUrl}}"], "path": ["api", "users"] }
+          }
+        },
+        {
+          "name": "Create User",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "X-Clinic-Id", "value": "{{clinicId}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n    \"roleId\": \"{{roleId}}\",\n    \"firstName\": \"Dr. Ana\",\n    \"lastName\": \"Jovic\",\n    \"email\": \"ana@vetclinic.rs\",\n    \"password\": \"vet12345\",\n    \"phone\": \"+381641112233\",\n    \"licenseNumber\": \"VET-001\",\n    \"specialization\": \"Surgery\",\n    \"active\": true\n}" },
+            "url": { "raw": "{{baseUrl}}/api/users", "host": ["{{baseUrl}}"], "path": ["api", "users"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Roles",
+      "item": [
+        {
+          "name": "Get All Roles",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "X-Clinic-Id", "value": "{{clinicId}}" }],
+            "url": { "raw": "{{baseUrl}}/api/roles", "host": ["{{baseUrl}}"], "path": ["api", "roles"] }
+          }
+        },
+        {
+          "name": "Create Role",
+          "event": [{ "listen": "test", "script": { "exec": ["if(pm.response.code===201){pm.collectionVariables.set('roleId',pm.response.json().id);}"], "type": "text/javascript" }}],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "X-Clinic-Id", "value": "{{clinicId}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n    \"name\": \"VET\",\n    \"permissions\": \"[\\\"appointments:*\\\", \\\"medical-records:*\\\", \\\"pets:read\\\"]\"\n}" },
+            "url": { "raw": "{{baseUrl}}/api/roles", "host": ["{{baseUrl}}"], "path": ["api", "roles"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Inventory",
+      "item": [
+        {
+          "name": "Create Inventory Item",
+          "event": [{ "listen": "test", "script": { "exec": ["if(pm.response.code===201){pm.collectionVariables.set('inventoryItemId',pm.response.json().id);}"], "type": "text/javascript" }}],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "X-Clinic-Id", "value": "{{clinicId}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n    \"locationId\": \"{{locationId}}\",\n    \"name\": \"Amoxicillin 250mg\",\n    \"sku\": \"MED-AMX-250\",\n    \"category\": \"MEDICATION\",\n    \"quantityOnHand\": 100,\n    \"unit\": \"tablets\",\n    \"reorderLevel\": 20,\n    \"costPrice\": 50.00,\n    \"sellPrice\": 120.00,\n    \"expiryDate\": \"2027-06-30\",\n    \"active\": true\n}" },
+            "url": { "raw": "{{baseUrl}}/api/inventory-items", "host": ["{{baseUrl}}"], "path": ["api", "inventory-items"] }
+          }
+        },
+        {
+          "name": "Get All Inventory Items",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "X-Clinic-Id", "value": "{{clinicId}}" }],
+            "url": { "raw": "{{baseUrl}}/api/inventory-items", "host": ["{{baseUrl}}"], "path": ["api", "inventory-items"] }
+          }
+        },
+        {
+          "name": "Create Inventory Transaction",
+          "event": [{ "listen": "test", "script": { "exec": ["if(pm.response.code===201){pm.collectionVariables.set('inventoryTransactionId',pm.response.json().id);}"], "type": "text/javascript" }}],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "X-Clinic-Id", "value": "{{clinicId}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n    \"inventoryItemId\": \"{{inventoryItemId}}\",\n    \"type\": \"IN\",\n    \"quantity\": 50,\n    \"performedBy\": \"{{userId}}\",\n    \"note\": \"Restocking from supplier\"\n}" },
+            "url": { "raw": "{{baseUrl}}/api/inventory-transactions", "host": ["{{baseUrl}}"], "path": ["api", "inventory-transactions"] }
+          }
+        },
+        {
+          "name": "Get Transactions by Item",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "X-Clinic-Id", "value": "{{clinicId}}" }],
+            "url": { "raw": "{{baseUrl}}/api/inventory-transactions/by-item/{{inventoryItemId}}", "host": ["{{baseUrl}}"], "path": ["api", "inventory-transactions", "by-item", "{{inventoryItemId}}"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Documents",
+      "item": [
+        {
+          "name": "Create Document",
+          "event": [{ "listen": "test", "script": { "exec": ["if(pm.response.code===201){pm.collectionVariables.set('documentId',pm.response.json().id);}"], "type": "text/javascript" }}],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "X-Clinic-Id", "value": "{{clinicId}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n    \"petId\": \"{{petId}}\",\n    \"uploadedBy\": \"{{userId}}\",\n    \"fileName\": \"xray-rex-20260208.jpg\",\n    \"fileType\": \"IMAGE\",\n    \"mimeType\": \"image/jpeg\",\n    \"fileSizeBytes\": 2048000,\n    \"storagePath\": \"/uploads/2026/02/xray-rex-20260208.jpg\",\n    \"description\": \"X-ray of abdomen\"\n}" },
+            "url": { "raw": "{{baseUrl}}/api/documents", "host": ["{{baseUrl}}"], "path": ["api", "documents"] }
+          }
+        },
+        {
+          "name": "Get Documents by Pet",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "X-Clinic-Id", "value": "{{clinicId}}" }],
+            "url": { "raw": "{{baseUrl}}/api/documents/by-pet/{{petId}}", "host": ["{{baseUrl}}"], "path": ["api", "documents", "by-pet", "{{petId}}"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Notifications",
+      "item": [
+        {
+          "name": "Create Notification",
+          "event": [{ "listen": "test", "script": { "exec": ["if(pm.response.code===201){pm.collectionVariables.set('notificationId',pm.response.json().id);}"], "type": "text/javascript" }}],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "X-Clinic-Id", "value": "{{clinicId}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n    \"recipientType\": \"OWNER\",\n    \"recipientId\": \"{{ownerId}}\",\n    \"type\": \"APPOINTMENT_REMINDER\",\n    \"channel\": \"SMS\",\n    \"title\": \"Appointment Reminder\",\n    \"message\": \"Your pet Rex has an appointment tomorrow at 09:00\",\n    \"scheduledAt\": \"2026-02-09T08:00:00+01:00\",\n    \"status\": \"PENDING\"\n}" },
+            "url": { "raw": "{{baseUrl}}/api/notifications", "host": ["{{baseUrl}}"], "path": ["api", "notifications"] }
+          }
+        },
+        {
+          "name": "Get Pending Notifications",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "X-Clinic-Id", "value": "{{clinicId}}" }],
+            "url": { "raw": "{{baseUrl}}/api/notifications/pending?before=2026-02-10T00:00:00+01:00", "host": ["{{baseUrl}}"], "path": ["api", "notifications", "pending"], "query": [{ "key": "before", "value": "2026-02-10T00:00:00+01:00" }] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Clinics",
+      "item": [
+        {
+          "name": "Get All Clinics",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/clinics", "host": ["{{baseUrl}}"], "path": ["api", "clinics"] }
+          }
+        },
+        {
+          "name": "Get Clinic by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/clinics/{{clinicId}}", "host": ["{{baseUrl}}"], "path": ["api", "clinics", "{{clinicId}}"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "User Locations",
+      "item": [
+        {
+          "name": "Create User Location",
+          "event": [{ "listen": "test", "script": { "exec": ["if(pm.response.code===201){pm.collectionVariables.set('userLocationId',pm.response.json().id);}"], "type": "text/javascript" }}],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "X-Clinic-Id", "value": "{{clinicId}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n    \"userId\": \"{{userId}}\",\n    \"locationId\": \"{{locationId}}\",\n    \"isPrimary\": true\n}" },
+            "url": { "raw": "{{baseUrl}}/api/user-locations", "host": ["{{baseUrl}}"], "path": ["api", "user-locations"] }
+          }
+        },
+        {
+          "name": "Get User Locations by User",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "X-Clinic-Id", "value": "{{clinicId}}" }],
+            "url": { "raw": "{{baseUrl}}/api/user-locations/by-user/{{userId}}", "host": ["{{baseUrl}}"], "path": ["api", "user-locations", "by-user", "{{userId}}"] }
+          }
+        }
+      ]
+    }
+  ]
+}
