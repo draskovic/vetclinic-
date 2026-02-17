@@ -140,7 +140,7 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
                 <configuration>
-                    <fork>true</fork>
+                    <fork>false</fork>
                     <executable>C:\Program Files\Eclipse Adoptium\jdk-17.0.18.8-hotspot\bin\javac</executable>
                     <source>17</source>
                     <target>17</target>
@@ -168,7 +168,7 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>
-                    <jvm>C:\Program Files\Eclipse Adoptium\jdk-17.0.18.8-hotspot\bin\java</jvm>
+                    
                 </configuration>
             </plugin>
             <plugin>
