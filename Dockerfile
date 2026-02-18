@@ -4,7 +4,7 @@ WORKDIR /app
 COPY pom.xml .
 RUN mvn dependency:go-offline -B
 COPY src src
-RUN mvn package -DskipTests -B
+RUN mvn package -DskipTests -B -Pdocker
 
 # Stage 2: Run
 FROM eclipse-temurin:17-jre-alpine

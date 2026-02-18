@@ -15,6 +15,12 @@ spring:
       max-request-size: 10MB
 
 
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    baseline-version: 3
+    locations: classpath:db/migration
+
   jpa:
     hibernate:
       ddl-auto: none
@@ -36,6 +42,9 @@ app:
     refresh-token-expiration: 604800000
   upload:
     base-dir: uploads
+  cors:
+    allowed-origins: http://localhost:3000
+
 
 
 # SpringDoc / Swagger UI

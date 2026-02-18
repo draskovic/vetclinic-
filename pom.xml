@@ -97,6 +97,16 @@
             <artifactId>spring-boot-starter-actuator</artifactId>
         </dependency>
 
+        <!-- Flyway (database migrations) -->
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-database-postgresql</artifactId>
+        </dependency>
+
         <!-- Apache PDFBox (PDF parsing) -->
         <dependency>
             <groupId>org.apache.pdfbox</groupId>
@@ -134,14 +144,36 @@
         </dependency>
     </dependencies>
 
+    <profiles>
+        <!-- Lokalni razvoj: fork=true sa putanjom do javac-a (potrebno za MapStruct na Windows) -->
+        <profile>
+            <id>local</id>
+            <activation>
+                <activeByDefault>true</activeByDefault>
+            </activation>
+            <properties>
+                <compiler.fork>true</compiler.fork>
+                <compiler.executable>C:\Program Files\Eclipse Adoptium\jdk-17.0.18.8-hotspot\bin\javac</compiler.executable>
+            </properties>
+        </profile>
+        <!-- Docker/CI build: fork=false, bez hardkodirane putanje -->
+        <profile>
+            <id>docker</id>
+            <properties>
+                <compiler.fork>false</compiler.fork>
+                <compiler.executable></compiler.executable>
+            </properties>
+        </profile>
+    </profiles>
+
     <build>
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
                 <configuration>
-                    <fork>false</fork>
-                    <executable>C:\Program Files\Eclipse Adoptium\jdk-17.0.18.8-hotspot\bin\javac</executable>
+                    <fork>${compiler.fork}</fork>
+                    <executable>${compiler.executable}</executable>
                     <source>17</source>
                     <target>17</target>
                     <release>17</release>
