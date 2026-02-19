@@ -20,3 +20,23 @@
 2026-02-19T14:57:55.624+01:00  INFO 20616 --- [vetclinic] [main] o.hibernate.jpa.internal.util.LogHelper  : HHH000204: Processing PersistenceUnitInfo [name: default]
 2026-02-19T14:57:55.729+01:00  INFO 20616 --- [vetclinic] [main] org.hibernate.Version                    : HHH000412: Hibernate ORM core version 6.6.41.Final
 2026-02-19T14:57:55.777+01:00  INFO 20616 --- [vetclinic] [main] o.h.c.internal.RegionFactoryInitiator    : HHH000026: Second-level cache disabled
+2026-02-19T14:57:56.149+01:00  INFO 20616 --- [vetclinic] [main] o.s.o.j.p.SpringPersistenceUnitInfo      : No LoadTimeWeaver setup: ignoring JPA class transformer
+2026-02-19T14:57:56.271+01:00  INFO 20616 --- [vetclinic] [main] org.hibernate.orm.connections.pooling    : HHH10001005: Database info:
+	Database JDBC URL [Connecting through datasource 'com.softart.vetclinic.config.tenant.TenantAwareDataSource@5ae66c98']
+	Database driver: undefined/unknown
+	Database version: 18.1
+	Autocommit mode: undefined/unknown
+	Isolation level: undefined/unknown
+	Minimum pool size: undefined/unknown
+	Maximum pool size: undefined/unknown
+2026-02-19T14:57:57.718+01:00  INFO 20616 --- [vetclinic] [main] o.h.e.t.j.p.i.JtaPlatformInitiator       : HHH000489: No JTA platform available (set 'hibernate.transaction.jta.platform' to enable JTA platform integration)
+2026-02-19T14:57:57.722+01:00  INFO 20616 --- [vetclinic] [main] j.LocalContainerEntityManagerFactoryBean : Initialized JPA EntityManagerFactory for persistence unit 'default'
+2026-02-19T14:57:58.222+01:00  INFO 20616 --- [vetclinic] [main] o.s.d.j.r.query.QueryEnhancerFactory     : Hibernate is in classpath; If applicable, HQL parser will be used.
+2026-02-19T14:58:00.178+01:00  INFO 20616 --- [vetclinic] [main] o.s.b.a.e.web.EndpointLinksResolver      : Exposing 1 endpoint beneath base path '/actuator'
+2026-02-19T14:58:00.233+01:00  INFO 20616 --- [vetclinic] [main] r$InitializeUserDetailsManagerConfigurer : Global AuthenticationManager configured with UserDetailsService bean with name customUserDetailsService
+2026-02-19T14:58:00.927+01:00  INFO 20616 --- [vetclinic] [main] o.s.b.w.embedded.tomcat.TomcatWebServer  : Tomcat started on port 8080 (http) with context path '/'
+2026-02-19T14:58:00.947+01:00  INFO 20616 --- [vetclinic] [main] c.s.vetclinic.VetClinicApplication       : Started VetClinicApplication in 9.786 seconds (process running for 10.435)
+2026-02-19T14:58:01.030+01:00  INFO 20616 --- [vetclinic] [main] c.softart.vetclinic.config.DataSeeder    : Database already has 4 users, skipping seed.
+2026-02-19T14:58:01.532+01:00  INFO 20616 --- [vetclinic] [RMI TCP Connection(5)-127.0.0.1] o.a.c.c.C.[Tomcat].[localhost].[/]       : Initializing Spring DispatcherServlet 'dispatcherServlet'
+2026-02-19T14:58:01.533+01:00  INFO 20616 --- [vetclinic] [RMI TCP Connection(5)-127.0.0.1] o.s.web.servlet.DispatcherServlet        : Initializing Servlet 'dispatcherServlet'
+2026-02-19T14:58:01.535+01:00  INFO 20616 --- [vetclinic] [RMI TCP Connection(5)-127.0.0.1] o.s.web.servlet.DispatcherServlet        : Completed initialization in 2 ms
