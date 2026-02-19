@@ -123,6 +123,7 @@ public class PdfParserService {
     }
 
     private String extractAnalysisType(String text) {
+        // 1. Poznati profili (stara logika)
         if (text.contains("Opšti profil")) return "Opšti profil";
         if (text.contains("Hematološki profil")) return "Hematološki profil";
         if (text.contains("Biohemijski profil")) return "Biohemijski profil";
@@ -133,6 +134,49 @@ public class PdfParserService {
         if (hasHem) return "Hematologija";
         if (hasBio) return "Biohemija";
 
+        // 2. Poznati tipovi analiza - direktno pretraživanje u tekstu
+        String[] knownTypes = {
+            "Koprokultura mali antibiogram",
+            "Koprokultura veliki antibiogram",
+            "Koprokultura",
+            "Dijareja profil mali antibiogram",
+            "Dijareja profil veliki antibiogram",
+            "Dijareja profil",
+            "Urinokultura mali antibiogram",
+            "Urinokultura veliki antibiogram",
+            "Urinokultura",
+            "Dermatološki profil",
+            "Endokrinološki profil",
+            "Koagulacioni profil",
+            "Elektroliti",
+            "Urin analiza",
+            "Citologija",
+            "Parazitološki pregled",
+            "Brisevi mali antibiogram",
+            "Brisevi veliki antibiogram"
+        };
+        for (String type : knownTypes) {
+            if (text.contains(type)) return type;
+        }
+
+        // 3. Fallback: tekst između "Vreme početka ispitivanja: dd.MM.yyyy HH:mm" i "Vreme završetka"
+        Matcher m = Pattern.compile(
+                "Vreme početka ispitivanja:\\s*\\d{2}\\.\\d{2}\\.\\d{4}\\s+\\d{2}:\\d{2}\\s+(.+?)\\s+Vreme završetka"
+        ).matcher(text);
+        if (m.find()) {
+            String candidate = m.group(1).trim();
+            // Ukloni ime vlasnika (pretpostavljamo da su prve 2 reči ime i prezime)
+            String[] words = candidate.split("\\s+", 3);
+            if (words.length >= 3) {
+                return words[2]; // sve posle imena i prezimena
+            }
+            if (!candidate.isEmpty()) {
+                return candidate;
+            }
+        }
+
+        log.warn("Nije moguće prepoznati vrstu analize iz PDF-a");
         return null;
     }
+
 }
