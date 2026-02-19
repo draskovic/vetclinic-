@@ -33,4 +33,8 @@ public interface LabReportRepository extends JpaRepository<LabReport, UUID> {
     List<LabReport> findByClinicIdAndVetIdAndDeletedFalse(UUID clinicId, UUID vetId);
 
     boolean existsByClinicIdAndReportNumberAndDeletedFalse(UUID clinicId, String reportNumber);
+    
+    @EntityGraph(attributePaths = {"pet", "pet.owner", "vet"})
+    List<LabReport> findByClinicIdAndMedicalRecordIdAndDeletedFalse(UUID clinicId, UUID medicalRecordId);
+
 }

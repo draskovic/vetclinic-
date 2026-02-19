@@ -99,6 +99,15 @@ public class LabReportController {
                 .map(labReportMapper::toResponse).toList();
     }
     
+    @GetMapping("/by-medical-record/{medicalRecordId}")
+    public List<LabReportResponse> getByMedicalRecord(
+            @RequestHeader("X-Clinic-Id") UUID clinicId,
+            @PathVariable UUID medicalRecordId) {
+        return labReportService.findByMedicalRecord(clinicId, medicalRecordId).stream()
+                .map(labReportMapper::toResponse).toList();
+    }
+
+    
     @PostMapping(value="/parse-pdf", consumes = "multipart/form-data")
     public PdfParseResult parsePdf(
             @RequestHeader("X-Clinic-Id") UUID clinicId,

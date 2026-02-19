@@ -166,4 +166,10 @@ public class LabReportService extends AbstractCrudService<LabReport, LabReportRe
     public List<LabReport> findByVet(UUID clinicId, UUID vetId) {
         return labReportRepository.findByClinicIdAndVetIdAndDeletedFalse(clinicId, vetId);
     }
+    
+    @Transactional(readOnly = true)
+    public List<LabReport> findByMedicalRecord(UUID clinicId, UUID medicalRecordId) {
+        return labReportRepository.findByClinicIdAndMedicalRecordIdAndDeletedFalse(clinicId, medicalRecordId);
+    }
+
 }

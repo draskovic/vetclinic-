@@ -15,7 +15,8 @@ DO $$
 DECLARE
     -- Existing IDs
     v_clinic UUID := 'b5434818-265f-4386-8ed5-e568a238a451';
-    v_admin UUID := '8c0e4077-3478-4d6e-b6b5-c2b6ba0cca22';
+        v_admin UUID := '963b228a-90ce-4b26-8ac5-8b46b6cc1dd6';
+
     v_vet_role UUID := 'f1e746f4-e14e-411e-bcda-5e0e993643b3';
     v_location UUID := '4d1233d9-415f-4946-98a3-ecd635f9a66f';
 
