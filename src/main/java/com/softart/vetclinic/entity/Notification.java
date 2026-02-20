@@ -16,6 +16,13 @@ import java.util.UUID;
 @NoArgsConstructor @AllArgsConstructor
 public class Notification extends BaseEntity {
 
+	@PrePersist
+	public void prePersist() {
+	    if (status == null) {
+	        status = NotificationStatus.PENDING;
+	    }
+	}
+
     @Enumerated(EnumType.STRING)
     @Column(name = "recipient_type", nullable = false, length = 20)
     private RecipientType recipientType;
@@ -56,4 +63,8 @@ public class Notification extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "clinic_id", insertable = false, updatable = false)
     private Clinic clinic;
+    
+    @Column(name = "read_at")
+    private OffsetDateTime readAt;
+
 }

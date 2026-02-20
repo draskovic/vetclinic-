@@ -21,6 +21,7 @@ public record NotificationResponse(
         NotificationStatus status,
         String referenceType,
         UUID referenceId,
+        OffsetDateTime readAt,          // <-- NOVO
         OffsetDateTime createdAt,
         OffsetDateTime updatedAt
 ) {}

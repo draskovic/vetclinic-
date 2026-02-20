@@ -45,4 +45,9 @@ public interface AppointmentRepository extends JpaRepository<Appointment, UUID> 
                                       @Param("startTime") OffsetDateTime startTime,
                                       @Param("endTime") OffsetDateTime endTime,
                                       @Param("excludeId") UUID excludeId);
+    
+    @Query("SELECT a FROM Appointment a WHERE a.startTime >= :start AND a.startTime < :end " +
+    	       "AND a.status IN ('SCHEDULED', 'CONFIRMED') AND a.deleted = false")
+    	List<Appointment> findTomorrowAppointments(@Param("start") OffsetDateTime start, @Param("end") OffsetDateTime end);
+
 }

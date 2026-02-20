@@ -48,4 +48,27 @@ public class NotificationService extends AbstractCrudService<Notification, Notif
         return notificationRepository.findByClinicIdAndDeletedFalseAndStatusAndScheduledAtBefore(
                 clinicId, NotificationStatus.PENDING, before);
     }
+    
+    @Transactional(readOnly = true)
+    public Page<Notification> findByRecipient(UUID clinicId, UUID userId, Pageable pageable) {
+        return notificationRepository.findByClinicIdAndRecipientIdAndDeletedFalse(clinicId, userId, pageable);
+    }
+
+    @Transactional(readOnly = true)
+    public long countUnread(UUID clinicId, UUID userId) {
+        return notificationRepository.countByClinicIdAndRecipientIdAndDeletedFalseAndReadAtIsNull(clinicId, userId);
+    }
+
+    @Transactional
+    public Notification markAsRead(UUID id, UUID clinicId) {
+        Notification notification = findById(id, clinicId);
+        notification.setReadAt(OffsetDateTime.now());
+        return notificationRepository.save(notification);
+    }
+
+    @Transactional
+    public void markAllAsRead(UUID clinicId, UUID userId) {
+        notificationRepository.markAllAsRead(clinicId, userId, OffsetDateTime.now());
+    }
+
 }
