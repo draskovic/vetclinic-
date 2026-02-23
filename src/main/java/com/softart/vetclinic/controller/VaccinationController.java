@@ -80,4 +80,15 @@ public class VaccinationController {
         return vaccinationService.findDueVaccinations(clinicId, before).stream()
                 .map(vaccinationMapper::toResponse).toList();
     }
+    
+    @GetMapping("/by-medical-record/{medicalRecordId}")
+    public List<VaccinationResponse> getByMedicalRecord(
+            @RequestHeader("X-Clinic-Id") UUID clinicId,
+            @PathVariable UUID medicalRecordId) {
+        return vaccinationService.findByMedicalRecord(clinicId, medicalRecordId)
+                .stream()
+                .map(vaccinationMapper::toResponse)
+                .toList();
+    }
+
 }

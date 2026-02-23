@@ -42,5 +42,9 @@ public interface VaccinationRepository extends JpaRepository<Vaccination, UUID> 
            "AND v.nextDueDate <= :reminderDate AND v.nextDueDate >= CURRENT_DATE " +
            "AND v.deleted = false")
     List<Vaccination> findUpcomingDueVaccinations(@Param("reminderDate") LocalDate reminderDate);
+    
+    @EntityGraph(attributePaths = {"pet", "vet"})
+    List<Vaccination> findByClinicIdAndMedicalRecordIdAndDeletedFalse(UUID clinicId, UUID medicalRecordId);
+
 
 }

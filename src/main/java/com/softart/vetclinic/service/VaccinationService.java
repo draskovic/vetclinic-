@@ -81,4 +81,9 @@ public class VaccinationService extends AbstractCrudService<Vaccination, Vaccina
     public List<Vaccination> findDueVaccinations(UUID clinicId, LocalDate beforeDate) {
         return vaccinationRepository.findByClinicIdAndDeletedFalseAndNextDueDateBefore(clinicId, beforeDate);
     }
+    
+    public List<Vaccination> findByMedicalRecord(UUID clinicId, UUID medicalRecordId) {
+        return vaccinationRepository.findByClinicIdAndMedicalRecordIdAndDeletedFalse(clinicId, medicalRecordId);
+    }
+
 }
