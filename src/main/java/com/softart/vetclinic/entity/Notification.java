@@ -66,5 +66,9 @@ public class Notification extends BaseEntity {
     
     @Column(name = "read_at")
     private OffsetDateTime readAt;
+    
+    @Column(name = "failure_reason", columnDefinition = "TEXT")
+    private String failureReason;
+
 
 }

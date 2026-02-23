@@ -9,6 +9,8 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import com.softart.vetclinic.enums.NotificationChannel;
+
 
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -37,5 +39,14 @@ public interface NotificationRepository extends JpaRepository<Notification, UUID
     void markAllAsRead(@Param("clinicId") UUID clinicId, @Param("userId") UUID userId, @Param("readAt") OffsetDateTime readAt);
 
     boolean existsByReferenceIdAndReferenceTypeAndDeletedFalse(UUID referenceId, String referenceType);
+
+    @Query("SELECT n FROM Notification n WHERE n.deleted = false " +
+            "AND n.status = :status AND n.channel = :channel " +
+            "AND n.scheduledAt <= :before ORDER BY n.scheduledAt ASC")
+     List<Notification> findPendingSmsNotifications(
+             @Param("status") NotificationStatus status,
+             @Param("channel") NotificationChannel channel,
+             @Param("before") OffsetDateTime before,
+             Pageable pageable);
 
 }

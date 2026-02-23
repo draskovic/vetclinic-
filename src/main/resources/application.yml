@@ -44,8 +44,12 @@ app:
     base-dir: uploads
   cors:
     allowed-origins: http://localhost:3000
-
-
+  sms:
+    twilio:
+      account-sid: YOUR_TWILIO_ACCOUNT_SID
+      auth-token: YOUR_TWILIO_AUTH_TOKEN
+      from-number: "+17176403933"
+      enabled: false
 
 # SpringDoc / Swagger UI
 springdoc:
