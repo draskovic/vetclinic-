@@ -31,18 +31,21 @@ public class TwilioSmsService implements SmsService {
 
     @PostConstruct
     public void init() {
+        log.info("Twilio config: accountSid={}, enabled={}", 
+                accountSid != null ? accountSid.substring(0, Math.min(5, accountSid.length())) + "..." : "null", 
+                enabled);
         if (enabled) {
             try {
                 Twilio.init(accountSid, authToken);
                 log.info("Twilio SMS servis inicijalizovan (from: {})", fromNumber);
             } catch (Exception e) {
-                log.error("Greska pri inicijalizaciji Twilio SMS servisa: {}", e.getMessage());
-                log.warn("SMS slanje nece biti dostupno dok se problem ne resi");
+                log.error("Greska pri inicijalizaciji Twilio: {}", e.getMessage(), e);
             }
         } else {
             log.info("Twilio SMS servis je ONEMOGUCEN (enabled=false)");
         }
     }
+
 
 
     @Override
