@@ -32,12 +32,18 @@ public class TwilioSmsService implements SmsService {
     @PostConstruct
     public void init() {
         if (enabled) {
-            Twilio.init(accountSid, authToken);
-            log.info("Twilio SMS servis inicijalizovan (from: {})", fromNumber);
+            try {
+                Twilio.init(accountSid, authToken);
+                log.info("Twilio SMS servis inicijalizovan (from: {})", fromNumber);
+            } catch (Exception e) {
+                log.error("Greska pri inicijalizaciji Twilio SMS servisa: {}", e.getMessage());
+                log.warn("SMS slanje nece biti dostupno dok se problem ne resi");
+            }
         } else {
             log.info("Twilio SMS servis je ONEMOGUCEN (enabled=false)");
         }
     }
+
 
     @Override
     public String sendSms(String toPhoneNumber, String messageBody) {
@@ -65,4 +71,5 @@ public class TwilioSmsService implements SmsService {
             throw new SmsDeliveryException("Greska pri slanju SMS: " + e.getMessage(), e);
         }
     }
+
 }
