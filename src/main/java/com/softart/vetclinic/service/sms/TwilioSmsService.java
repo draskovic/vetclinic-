@@ -31,12 +31,6 @@ public class TwilioSmsService implements SmsService {
 
     @PostConstruct
     public void init() {
-        // Dijagnostika - privremeno
-        String envSid = System.getenv("TWILIO_ACCOUNT_SID");
-        String envEnabled = System.getenv("TWILIO_ENABLED");
-        log.info("ENV direktno: TWILIO_ACCOUNT_SID={}, TWILIO_ENABLED={}", 
-                envSid != null ? envSid.substring(0, Math.min(5, envSid.length())) + "..." : "NULL",
-                envEnabled);
         
         log.info("Twilio config: accountSid={}, enabled={}", 
                 accountSid != null ? accountSid.substring(0, Math.min(5, accountSid.length())) + "..." : "null", 
