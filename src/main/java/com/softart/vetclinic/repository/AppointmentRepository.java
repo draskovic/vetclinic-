@@ -49,5 +49,7 @@ public interface AppointmentRepository extends JpaRepository<Appointment, UUID> 
     @Query("SELECT a FROM Appointment a WHERE a.startTime >= :start AND a.startTime < :end " +
     	       "AND a.status IN ('SCHEDULED', 'CONFIRMED') AND a.deleted = false")
     	List<Appointment> findTomorrowAppointments(@Param("start") OffsetDateTime start, @Param("end") OffsetDateTime end);
+    
+    List<Appointment> findByClinicIdAndPetIdAndDeletedFalseOrderByStartTimeDesc(UUID clinicId, UUID petId);
 
 }

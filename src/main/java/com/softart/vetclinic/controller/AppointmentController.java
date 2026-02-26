@@ -83,4 +83,14 @@ public class AppointmentController {
         return appointmentService.findByVetAndDateRange(clinicId, vetId, from, to).stream()
                 .map(appointmentMapper::toResponse).toList();
     }
+    
+    @GetMapping("/by-pet/{petId}")                                                                                            
+    public List<AppointmentResponse> getByPet(
+            @RequestHeader("X-Clinic-Id") UUID clinicId,
+            @PathVariable UUID petId) {
+        return appointmentService.findByPet(clinicId, petId)
+                .stream()
+                .map(appointmentMapper::toResponse)
+                .toList();
+    }
 }

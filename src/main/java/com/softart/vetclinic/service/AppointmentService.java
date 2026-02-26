@@ -107,4 +107,9 @@ public class AppointmentService extends AbstractCrudService<Appointment, Appoint
     public List<Appointment> findByVetAndDateRange(UUID clinicId, UUID vetId, OffsetDateTime from, OffsetDateTime to) {
         return appointmentRepository.findByClinicIdAndDeletedFalseAndVetIdAndStartTimeBetween(clinicId, vetId, from, to);
     }
+    
+    @Transactional(readOnly = true)
+    public List<Appointment> findByPet(UUID clinicId, UUID petId) {                                                           
+        return appointmentRepository.findByClinicIdAndPetIdAndDeletedFalseOrderByStartTimeDesc(clinicId, petId);
+    }
 }
