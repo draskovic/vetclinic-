@@ -5,6 +5,7 @@ import com.softart.vetclinic.enums.LabReportStatus;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.UUID;
+import com.softart.vetclinic.enums.TestCategory;
 
 public record LabReportResponse(
         UUID id,
@@ -16,6 +17,7 @@ public record LabReportResponse(
         UUID vetId,
         String vetName,
         UUID medicalRecordId,
+        TestCategory testCategory,
         String laboratoryName,
         LabReportStatus status,
         LocalDate requestedAt,

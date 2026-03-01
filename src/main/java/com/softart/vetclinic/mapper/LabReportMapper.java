@@ -31,6 +31,7 @@ public interface LabReportMapper {
     @Mapping(target = "storagePath", ignore = true)
     @Mapping(target = "isAbnormal", defaultExpression = "java(false)")
     @Mapping(target = "status", defaultExpression = "java(com.softart.vetclinic.enums.LabReportStatus.PENDING)")
+    @Mapping(target = "testCategory", defaultExpression = "java(com.softart.vetclinic.enums.TestCategory.LABORATORY)")
     LabReport toEntity(CreateLabReportRequest dto);
 
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)

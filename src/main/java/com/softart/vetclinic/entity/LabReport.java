@@ -1,6 +1,7 @@
 package com.softart.vetclinic.entity;
 
 import com.softart.vetclinic.enums.LabReportStatus;
+import com.softart.vetclinic.enums.TestCategory;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -34,6 +35,11 @@ public class LabReport extends BaseEntity {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private LabReportStatus status = LabReportStatus.PENDING;
+    
+    @Enumerated(EnumType.STRING)
+    @Column(name = "test_category", nullable = false, length = 20)
+    private TestCategory testCategory = TestCategory.LABORATORY;
+
 
     @Column(name = "requested_at", nullable = false)
     private LocalDate requestedAt;

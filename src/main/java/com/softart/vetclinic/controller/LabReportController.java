@@ -1,13 +1,7 @@
 package com.softart.vetclinic.controller;
 
-import com.softart.vetclinic.dto.CreateLabReportRequest;
-import com.softart.vetclinic.dto.LabReportResponse;
-import com.softart.vetclinic.dto.UpdateLabReportRequest;
-import com.softart.vetclinic.enums.LabReportStatus;
-import com.softart.vetclinic.mapper.LabReportMapper;
-import com.softart.vetclinic.service.LabReportService;
-import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
+import java.util.List;
+import java.util.UUID;
 
 import org.springframework.core.io.Resource;
 import org.springframework.data.domain.Page;
@@ -15,14 +9,31 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseStatus;
+import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.util.List;
-import java.util.UUID;
-
+import com.softart.vetclinic.dto.CreateLabReportRequest;
+import com.softart.vetclinic.dto.LabReportResponse;
 import com.softart.vetclinic.dto.PdfParseResult;
+import com.softart.vetclinic.dto.UpdateLabReportRequest;
+import com.softart.vetclinic.enums.LabReportStatus;
+import com.softart.vetclinic.enums.TestCategory;
+import com.softart.vetclinic.mapper.LabReportMapper;
+import com.softart.vetclinic.service.LabReportService;
 import com.softart.vetclinic.service.PdfParserService;
+
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 
 
 @RestController
@@ -104,6 +115,14 @@ public class LabReportController {
             @RequestHeader("X-Clinic-Id") UUID clinicId,
             @PathVariable UUID medicalRecordId) {
         return labReportService.findByMedicalRecord(clinicId, medicalRecordId).stream()
+                .map(labReportMapper::toResponse).toList();
+    }
+
+    @GetMapping("/by-category")
+    public List<LabReportResponse> getByTestCategory(
+            @RequestHeader("X-Clinic-Id") UUID clinicId,
+            @RequestParam TestCategory testCategory) {
+        return labReportService.findByTestCategory(clinicId, testCategory).stream()
                 .map(labReportMapper::toResponse).toList();
     }
 

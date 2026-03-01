@@ -6,6 +6,7 @@ import jakarta.validation.constraints.NotNull;
 
 import java.time.LocalDate;
 import java.util.UUID;
+import com.softart.vetclinic.enums.TestCategory;
 
 public record CreateLabReportRequest(
         @NotBlank String reportNumber,
@@ -13,6 +14,7 @@ public record CreateLabReportRequest(
         @NotNull UUID petId,
         @NotNull UUID vetId,
         UUID medicalRecordId,
+        TestCategory testCategory,
         String laboratoryName,
         LabReportStatus status,
         @NotNull LocalDate requestedAt,

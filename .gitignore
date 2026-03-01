@@ -6,3 +6,4 @@ target/
 .project
 uploads/
 "github api token.txt" 
+logs/

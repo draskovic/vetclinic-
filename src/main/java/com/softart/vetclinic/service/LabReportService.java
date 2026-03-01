@@ -1,13 +1,10 @@
 package com.softart.vetclinic.service;
 
-import com.softart.vetclinic.entity.LabReport;
-import com.softart.vetclinic.enums.LabReportStatus;
-import com.softart.vetclinic.exception.DuplicateResourceException;
-import com.softart.vetclinic.exception.ResourceNotFoundException;
-import com.softart.vetclinic.repository.LabReportRepository;
-import com.softart.vetclinic.repository.MedicalRecordRepository;
-import com.softart.vetclinic.repository.PetRepository;
-import com.softart.vetclinic.repository.UserRepository;
+import java.time.OffsetDateTime;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+
 import org.springframework.core.io.Resource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -15,10 +12,15 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.time.OffsetDateTime;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
+import com.softart.vetclinic.entity.LabReport;
+import com.softart.vetclinic.enums.LabReportStatus;
+import com.softart.vetclinic.enums.TestCategory;
+import com.softart.vetclinic.exception.DuplicateResourceException;
+import com.softart.vetclinic.exception.ResourceNotFoundException;
+import com.softart.vetclinic.repository.LabReportRepository;
+import com.softart.vetclinic.repository.MedicalRecordRepository;
+import com.softart.vetclinic.repository.PetRepository;
+import com.softart.vetclinic.repository.UserRepository;
 
 @Service
 public class LabReportService extends AbstractCrudService<LabReport, LabReportRepository> {
@@ -170,6 +172,11 @@ public class LabReportService extends AbstractCrudService<LabReport, LabReportRe
     @Transactional(readOnly = true)
     public List<LabReport> findByMedicalRecord(UUID clinicId, UUID medicalRecordId) {
         return labReportRepository.findByClinicIdAndMedicalRecordIdAndDeletedFalse(clinicId, medicalRecordId);
+    }
+
+    @Transactional(readOnly = true)
+    public List<LabReport> findByTestCategory(UUID clinicId, TestCategory testCategory) {
+        return labReportRepository.findByClinicIdAndTestCategoryAndDeletedFalse(clinicId, testCategory);
     }
 
 }
