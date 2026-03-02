@@ -107,4 +107,12 @@ public class InvoiceService extends AbstractCrudService<Invoice, InvoiceReposito
         }
         return String.format("INV-%s-%03d", dateStr, nextSeq);
     }
+    
+    public Page<Invoice> searchAll(UUID clinicId, String search, Pageable pageable) {
+    	 if (search == null || search.isBlank()) {
+    	        return findAllByClinicId(clinicId, pageable);
+    	    }
+        return invoiceRepository.searchByClinicId(clinicId, search, pageable);
+    }
+
 }

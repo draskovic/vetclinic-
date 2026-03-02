@@ -50,4 +50,12 @@ public class OwnerService extends AbstractCrudService<Owner, OwnerRepository> {
     public List<Owner> searchByPhone(UUID clinicId, String phone) {
         return ownerRepository.findByClinicIdAndDeletedFalseAndPhone(clinicId, phone);
     }
+    
+    public Page<Owner> searchAll(UUID clinicId, String search, Pageable pageable) {
+    	if (search == null || search.isBlank()) {
+            return findAllByClinicId(clinicId, pageable);
+        }
+        return ownerRepository.searchByClinicId(clinicId, search, pageable);
+    }
+
 }

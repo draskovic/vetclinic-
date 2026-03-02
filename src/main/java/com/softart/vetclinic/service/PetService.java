@@ -99,4 +99,12 @@ public class PetService extends AbstractCrudService<Pet, PetRepository> {
     public List<Pet> findByOwner(UUID clinicId, UUID ownerId) {
         return petRepository.findByClinicIdAndOwnerIdAndDeletedFalse(clinicId, ownerId);
     }
+    
+    public Page<Pet> searchAll(UUID clinicId, String search, Pageable pageable) {
+    	 if (search == null || search.isBlank()) {
+    	        return findAllByClinicId(clinicId, pageable);
+    	    }
+        return petRepository.searchByClinicId(clinicId, search, pageable);
+    }
+
 }

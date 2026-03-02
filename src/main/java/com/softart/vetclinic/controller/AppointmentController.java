@@ -28,8 +28,9 @@ public class AppointmentController {
     @GetMapping
     public Page<AppointmentResponse> getAll(
             @RequestHeader("X-Clinic-Id") UUID clinicId,
+            @RequestParam(required = false) String search,
             Pageable pageable) {
-        return appointmentService.findAll(clinicId, pageable).map(appointmentMapper::toResponse);
+        return appointmentService.searchAll(clinicId, search, pageable).map(appointmentMapper::toResponse);
     }
 
     @GetMapping("/{id}")

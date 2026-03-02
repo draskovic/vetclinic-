@@ -27,8 +27,9 @@ public class InvoiceController {
     @GetMapping
     public Page<InvoiceResponse> getAll(
             @RequestHeader("X-Clinic-Id") UUID clinicId,
+            @RequestParam(required = false) String search,
             Pageable pageable) {
-        return invoiceService.findAll(clinicId, pageable).map(invoiceMapper::toResponse);
+        return invoiceService.searchAll(clinicId, search, pageable).map(invoiceMapper::toResponse);
     }
 
     @GetMapping("/{id}")

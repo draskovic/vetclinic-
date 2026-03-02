@@ -26,9 +26,11 @@ public class OwnerController {
     @GetMapping
     public Page<OwnerResponse> getAll(
             @RequestHeader("X-Clinic-Id") UUID clinicId,
+            @RequestParam(required = false) String search,
             Pageable pageable) {
-        return ownerService.findAll(clinicId, pageable).map(ownerMapper::toResponse);
+        return ownerService.searchAll(clinicId, search, pageable).map(ownerMapper::toResponse);
     }
+
 
     @GetMapping("/{id}")
     public OwnerResponse getById(

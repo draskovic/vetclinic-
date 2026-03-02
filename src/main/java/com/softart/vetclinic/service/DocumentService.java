@@ -114,4 +114,12 @@ public class DocumentService extends AbstractCrudService<Document, DocumentRepos
         fileStorageService.detachFile(document);
         return repository.save(document);
     }
+    
+    public Page<Document> searchAll(UUID clinicId, String search, Pageable pageable) {
+		 if (search == null || search.isBlank()) {
+		        return findAllByClinicId(clinicId, pageable);
+		    }
+        return documentRepository.searchByClinicId(clinicId, search, pageable);
+    }
+
 }

@@ -112,4 +112,12 @@ public class AppointmentService extends AbstractCrudService<Appointment, Appoint
     public List<Appointment> findByPet(UUID clinicId, UUID petId) {                                                           
         return appointmentRepository.findByClinicIdAndPetIdAndDeletedFalseOrderByStartTimeDesc(clinicId, petId);
     }
+    
+    public Page<Appointment> searchAll(UUID clinicId, String search, Pageable pageable) {
+    	 if (search == null || search.isBlank()) {
+    	        return findAllByClinicId(clinicId, pageable);
+    	    }
+        return appointmentRepository.searchByClinicId(clinicId, search, pageable);
+    }
+
 }

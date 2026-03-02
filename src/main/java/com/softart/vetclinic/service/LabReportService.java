@@ -158,4 +158,11 @@ public class LabReportService extends AbstractCrudService<LabReport, LabReportRe
         return labReportRepository.findByClinicIdAndTestCategoryAndDeletedFalse(clinicId, testCategory);
     }
 
+    public Page<LabReport> searchAll(UUID clinicId, String search, Pageable pageable) {
+    	 if (search == null || search.isBlank()) {
+	        return findAllByClinicId(clinicId, pageable);
+	     }
+        return labReportRepository.searchByClinicId(clinicId, search, pageable);
+    }
+
 }

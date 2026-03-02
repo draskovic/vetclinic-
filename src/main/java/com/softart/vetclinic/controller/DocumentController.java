@@ -33,9 +33,11 @@ public class DocumentController {
     @GetMapping
     public Page<DocumentResponse> getAll(
             @RequestHeader("X-Clinic-Id") UUID clinicId,
+            @RequestParam(required = false) String search,
             Pageable pageable) {
-        return documentService.findAll(clinicId, pageable).map(documentMapper::toResponse);
+        return documentService.searchAll(clinicId, search, pageable).map(documentMapper::toResponse);
     }
+
 
     @GetMapping("/{id}")
     public DocumentResponse getById(

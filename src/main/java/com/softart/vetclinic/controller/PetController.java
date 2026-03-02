@@ -26,9 +26,11 @@ public class PetController {
     @GetMapping
     public Page<PetResponse> getAll(
             @RequestHeader("X-Clinic-Id") UUID clinicId,
+            @RequestParam(required = false) String search,
             Pageable pageable) {
-        return petService.findAll(clinicId, pageable).map(petMapper::toResponse);
+        return petService.searchAll(clinicId, search, pageable).map(petMapper::toResponse);
     }
+
 
     @GetMapping("/{id}")
     public PetResponse getById(

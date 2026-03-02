@@ -49,8 +49,9 @@ public class LabReportController {
     @GetMapping
     public Page<LabReportResponse> getAll(
             @RequestHeader("X-Clinic-Id") UUID clinicId,
+            @RequestParam(required = false) String search,
             Pageable pageable) {
-        return labReportService.findAll(clinicId, pageable).map(labReportMapper::toResponse);
+        return labReportService.searchAll(clinicId, search, pageable).map(labReportMapper::toResponse);
     }
 
     @GetMapping("/{id}")

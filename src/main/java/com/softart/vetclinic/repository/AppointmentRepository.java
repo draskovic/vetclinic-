@@ -52,4 +52,14 @@ public interface AppointmentRepository extends JpaRepository<Appointment, UUID> 
     
     List<Appointment> findByClinicIdAndPetIdAndDeletedFalseOrderByStartTimeDesc(UUID clinicId, UUID petId);
 
+    @EntityGraph(attributePaths = {"location", "pet", "owner", "vet"})
+    @Query("SELECT a FROM Appointment a WHERE a.clinicId = :clinicId AND a.deleted = false " +
+           "AND (:search IS NULL OR LOWER(a.pet.name) LIKE LOWER(CONCAT('%', :search, '%')) " +
+           "OR LOWER(a.owner.firstName) LIKE LOWER(CONCAT('%', :search, '%')) " +
+           "OR LOWER(a.owner.lastName) LIKE LOWER(CONCAT('%', :search, '%')) " +
+           "OR LOWER(a.vet.firstName) LIKE LOWER(CONCAT('%', :search, '%')) " +
+           "OR LOWER(a.vet.lastName) LIKE LOWER(CONCAT('%', :search, '%')) " +
+           "OR LOWER(a.reason) LIKE LOWER(CONCAT('%', :search, '%')))")
+    Page<Appointment> searchByClinicId(@Param("clinicId") UUID clinicId, @Param("search") String search, Pageable pageable);
+
 }

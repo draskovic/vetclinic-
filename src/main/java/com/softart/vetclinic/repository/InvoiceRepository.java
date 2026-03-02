@@ -41,4 +41,13 @@ public interface InvoiceRepository extends JpaRepository<Invoice, UUID> {
 
     @Query("SELECT MAX(i.invoiceNumber) FROM Invoice i WHERE i.clinicId = :clinicId")
     String findMaxInvoiceNumber(@Param("clinicId") UUID clinicId);
+    
+    @EntityGraph(attributePaths = {"location", "owner"})
+    @Query("SELECT i FROM Invoice i WHERE i.clinicId = :clinicId AND i.deleted = false " +
+           "AND (:search IS NULL OR LOWER(i.invoiceNumber) LIKE LOWER(CONCAT('%', :search, '%')) " +
+           "OR LOWER(i.owner.firstName) LIKE LOWER(CONCAT('%', :search, '%')) " +
+           "OR LOWER(i.owner.lastName) LIKE LOWER(CONCAT('%', :search, '%')) " +
+           "OR LOWER(i.owner.email) LIKE LOWER(CONCAT('%', :search, '%')))")
+    Page<Invoice> searchByClinicId(@Param("clinicId") UUID clinicId, @Param("search") String search, Pageable pageable);
+
 }
