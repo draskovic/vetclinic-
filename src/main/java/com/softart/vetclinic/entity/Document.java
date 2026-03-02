@@ -10,7 +10,7 @@ import java.util.UUID;
 @Table(name = "document")
 @Getter @Setter
 @NoArgsConstructor @AllArgsConstructor
-public class Document extends BaseEntity {
+public class Document extends BaseEntity implements FileAttachable {
 
     @Column(name = "pet_id")
     private UUID petId;

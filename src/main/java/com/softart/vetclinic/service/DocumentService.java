@@ -1,6 +1,7 @@
 package com.softart.vetclinic.service;
 
 import com.softart.vetclinic.entity.Document;
+import com.softart.vetclinic.exception.ResourceNotFoundException;
 import com.softart.vetclinic.repository.DocumentRepository;
 import com.softart.vetclinic.repository.MedicalRecordRepository;
 import com.softart.vetclinic.repository.PetRepository;
@@ -13,6 +14,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.core.io.Resource;
+import org.springframework.web.multipart.MultipartFile;
 
 @Service
 public class DocumentService extends AbstractCrudService<Document, DocumentRepository> {
@@ -21,16 +24,19 @@ public class DocumentService extends AbstractCrudService<Document, DocumentRepos
     private final PetRepository petRepository;
     private final MedicalRecordRepository medicalRecordRepository;
     private final UserRepository userRepository;
+    private final FileStorageService fileStorageService;
 
     public DocumentService(DocumentRepository documentRepository,
                            PetRepository petRepository,
                            MedicalRecordRepository medicalRecordRepository,
-                           UserRepository userRepository) {
+                           UserRepository userRepository,
+                           FileStorageService fileStorageService) {
         super(documentRepository);
         this.documentRepository = documentRepository;
         this.petRepository = petRepository;
         this.medicalRecordRepository = medicalRecordRepository;
         this.userRepository = userRepository;
+        this.fileStorageService = fileStorageService;
     }
 
     @Override
@@ -81,5 +87,31 @@ public class DocumentService extends AbstractCrudService<Document, DocumentRepos
     @Transactional(readOnly = true)
     public List<Document> findByMedicalRecord(UUID clinicId, UUID medicalRecordId) {
         return documentRepository.findByClinicIdAndMedicalRecordIdAndDeletedFalse(clinicId, medicalRecordId);
+    }
+    
+    @Transactional
+    public Document uploadFile(UUID id, UUID clinicId, MultipartFile file) {
+    	Document document = findById(id, clinicId);
+    	        
+        fileStorageService.attachFile(document, file, "documents/" + clinicId);
+        return repository.save(document);
+    }
+
+    @Transactional(readOnly = true)
+    public Resource downloadFile(UUID id, UUID clinicId) {
+    	Document document = findById(id, clinicId);
+
+        if (document.getStoragePath() == null) {
+            throw new ResourceNotFoundException("Fajl nije pronađen za dokument: " + id);
+        }
+        return fileStorageService.load(document.getStoragePath());
+    }
+
+    @Transactional
+    public Document deleteFile(UUID id, UUID clinicId) {
+    	Document document = findById(id, clinicId);
+    	        
+        fileStorageService.detachFile(document);
+        return repository.save(document);
     }
 }

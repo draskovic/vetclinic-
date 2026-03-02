@@ -93,20 +93,7 @@ public class LabReportService extends AbstractCrudService<LabReport, LabReportRe
     @Transactional
     public LabReport uploadFile(UUID id, UUID clinicId, MultipartFile file) {
         LabReport labReport = findById(id, clinicId);
-
-        // Ako već postoji fajl, obriši ga
-        if (labReport.getStoragePath() != null) {
-            fileStorageService.delete(labReport.getStoragePath());
-        }
-
-        String subPath = "lab-reports/" + clinicId;
-        String storagePath = fileStorageService.save(file, subPath);
-
-        labReport.setFileName(file.getOriginalFilename());
-        labReport.setMimeType(file.getContentType());
-        labReport.setFileSizeBytes(file.getSize());
-        labReport.setStoragePath(storagePath);
-
+        fileStorageService.attachFile(labReport, file, "lab-reports/" + clinicId);
         return labReportRepository.save(labReport);
     }
 
@@ -124,18 +111,10 @@ public class LabReportService extends AbstractCrudService<LabReport, LabReportRe
     @Transactional
     public LabReport deleteFile(UUID id, UUID clinicId) {
         LabReport labReport = findById(id, clinicId);
-
-        if (labReport.getStoragePath() != null) {
-            fileStorageService.delete(labReport.getStoragePath());
-        }
-
-        labReport.setFileName(null);
-        labReport.setMimeType(null);
-        labReport.setFileSizeBytes(null);
-        labReport.setStoragePath(null);
-
+        fileStorageService.detachFile(labReport);
         return labReportRepository.save(labReport);
     }
+
 
     @Override
     @Transactional

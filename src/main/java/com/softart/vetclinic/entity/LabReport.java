@@ -12,7 +12,7 @@ import java.util.UUID;
 @Table(name = "lab_report")
 @Getter @Setter
 @NoArgsConstructor @AllArgsConstructor
-public class LabReport extends BaseEntity {
+public class LabReport extends BaseEntity implements FileAttachable {
 
     @Column(name = "report_number", nullable = false, length = 50)
     private String reportNumber;

@@ -1,21 +1,25 @@
 package com.softart.vetclinic.service;
 
-import com.softart.vetclinic.config.FileStorageConfig;
-import com.softart.vetclinic.exception.BadRequestException;
-import com.softart.vetclinic.exception.ResourceNotFoundException;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.core.io.Resource;
-import org.springframework.core.io.UrlResource;
-import org.springframework.stereotype.Service;
-import org.springframework.web.multipart.MultipartFile;
-
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.util.List;
 import java.util.UUID;
+
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.UrlResource;
+import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
+
+import com.softart.vetclinic.config.FileStorageConfig;
+import com.softart.vetclinic.entity.FileAttachable;
+import com.softart.vetclinic.exception.BadRequestException;
+import com.softart.vetclinic.exception.ResourceNotFoundException;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @Service
 @RequiredArgsConstructor
@@ -104,9 +108,49 @@ public class FileStorageService {
         if (file.isEmpty()) {
             throw new BadRequestException("File is empty");
         }
+        
         String contentType = file.getContentType();
-        if (contentType == null || !contentType.equals("application/pdf")) {
-            throw new BadRequestException("Only PDF files are allowed. Got: " + contentType);
+        if (contentType == null) {
+            throw new BadRequestException("File content type is unknown");
         }
+        
+        List<String> allowedTypes = List.of(
+            "application/pdf",
+            "image/jpeg",
+            "image/png",
+            "image/gif",
+            "image/webp",
+            "image/bmp",
+            "image/tiff"
+        );
+        
+        if (!allowedTypes.contains(contentType)) {
+            throw new BadRequestException("File type not allowed: " + contentType 
+                + ". Allowed: PDF, JPEG, PNG, GIF, WEBP, BMP, TIFF");
+        }
+    }
+
+    
+    public void attachFile(FileAttachable entity, MultipartFile file, String subPath) {
+        // Obriši stari fajl ako postoji
+        if (entity.getStoragePath() != null) {
+            delete(entity.getStoragePath());
+        }
+        
+        String path = save(file, subPath);
+        entity.setFileName(file.getOriginalFilename());
+        entity.setMimeType(file.getContentType());
+        entity.setFileSizeBytes(file.getSize());
+        entity.setStoragePath(path);
+    }
+
+    public void detachFile(FileAttachable entity) {
+        if (entity.getStoragePath() != null) {
+            delete(entity.getStoragePath());
+        }
+        entity.setFileName(null);
+        entity.setMimeType(null);
+        entity.setFileSizeBytes(null);
+        entity.setStoragePath(null);
     }
 }

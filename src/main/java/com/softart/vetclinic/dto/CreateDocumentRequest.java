@@ -10,10 +10,10 @@ public record CreateDocumentRequest(
         UUID petId,
         UUID medicalRecordId,
         @NotNull UUID uploadedBy,
-        @NotBlank String fileName,
+        String fileName,
         @NotNull FileType fileType,
         String mimeType,
         Long fileSizeBytes,
-        @NotBlank String storagePath,
+        String storagePath,
         String description
 ) {}

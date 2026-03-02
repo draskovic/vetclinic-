@@ -19,6 +19,8 @@ public interface NotificationMapper {
     @Mapping(target = "deletedAt", ignore = true)
     @Mapping(target = "version", ignore = true)
     @Mapping(target = "clinic", ignore = true)
+    @Mapping(target = "failureReason", ignore = true)
+    @Mapping(target = "readAt", ignore = true)
     Notification toEntity(CreateNotificationRequest dto);
 
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
@@ -30,5 +32,7 @@ public interface NotificationMapper {
     @Mapping(target = "deletedAt", ignore = true)
     @Mapping(target = "version", ignore = true)
     @Mapping(target = "clinic", ignore = true)
+    @Mapping(target = "failureReason", ignore = true)
+    @Mapping(target = "readAt", ignore = true)
     void updateEntity(UpdateNotificationRequest dto, @MappingTarget Notification entity);
 }
