@@ -13,6 +13,11 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
+import com.softart.vetclinic.service.InvoicePdfService;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+
 import java.util.List;
 import java.util.UUID;
 
@@ -23,6 +28,8 @@ public class InvoiceController {
 
     private final InvoiceService invoiceService;
     private final InvoiceMapper invoiceMapper;
+    private final InvoicePdfService invoicePdfService;
+
 
     @GetMapping
     public Page<InvoiceResponse> getAll(
@@ -47,6 +54,22 @@ public class InvoiceController {
         var entity = invoiceMapper.toEntity(request);
         return invoiceMapper.toResponse(invoiceService.create(entity, clinicId));
     }
+    
+    @GetMapping("/{id}/pdf")
+    public ResponseEntity<byte[]> downloadPdf(
+            @RequestHeader("X-Clinic-Id") UUID clinicId,
+            @PathVariable UUID id) {
+
+        byte[] pdfBytes = invoicePdfService.generatePdf(id, clinicId);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_PDF);
+        headers.setContentDispositionFormData("attachment", "faktura-" + id + ".pdf");
+        headers.setContentLength(pdfBytes.length);
+
+        return ResponseEntity.ok().headers(headers).body(pdfBytes);
+    }
+
 
     @PutMapping("/{id}")
     public InvoiceResponse update(

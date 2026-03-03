@@ -2,6 +2,13 @@ spring:
   application:
     name: vetclinic
 
+  thymeleaf:
+    check-template-location: false
+    prefix: classpath:/templates/pdf/
+    suffix: .html
+    mode: HTML
+    enabled: true
+
   datasource:
     url: jdbc:postgresql://localhost:5432/vetapp
     username: vetapp_user

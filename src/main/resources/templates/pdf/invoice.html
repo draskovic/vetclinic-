@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <style>
+        @page {
+            size: A4;
+            margin: 25mm 20mm;
+        }
+
+        body {
+            font-family: 'DejaVu Sans', sans-serif;
+            font-size: 10pt;
+            color: #333;
+            line-height: 1.4;
+        }
+
+        .header {
+            display: block;
+            margin-bottom: 30px;
+            overflow: hidden;
+        }
+
+        .clinic-info {
+            float: left;
+            width: 55%;
+        }
+
+        .invoice-info {
+            float: right;
+            width: 40%;
+            text-align: right;
+        }
+
+        .clinic-name {
+            font-size: 18pt;
+            font-weight: bold;
+            color: #1a73e8;
+            margin-bottom: 5px;
+        }
+
+        .clinic-detail {
+            font-size: 9pt;
+            color: #666;
+            margin: 2px 0;
+        }
+
+        .invoice-title {
+            font-size: 22pt;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 8px;
+        }
+
+        .invoice-number {
+            font-size: 11pt;
+            color: #666;
+            margin: 3px 0;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 3px 12px;
+            border-radius: 4px;
+            font-size: 9pt;
+            font-weight: bold;
+            color: white;
+            margin-top: 5px;
+        }
+
+        .status-DRAFT { background-color: #8c8c8c; }
+        .status-ISSUED { background-color: #1890ff; }
+        .status-PAID { background-color: #52c41a; }
+        .status-PARTIALLY_PAID { background-color: #fa8c16; }
+        .status-OVERDUE { background-color: #ff4d4f; }
+        .status-CANCELLED { background-color: #8c8c8c; }
+        .status-REFUNDED { background-color: #722ed1; }
+
+        .separator {
+            border: none;
+            border-top: 2px solid #1a73e8;
+            margin: 20px 0;
+        }
+
+        .parties {
+            display: block;
+            margin-bottom: 25px;
+            overflow: hidden;
+        }
+
+        .party-box {
+            float: left;
+            width: 48%;
+            padding: 12px;
+            background-color: #f8f9fa;
+            border-radius: 6px;
+        }
+
+        .party-box.right {
+            float: right;
+        }
+
+        .party-label {
+            font-size: 8pt;
+            text-transform: uppercase;
+            color: #999;
+            letter-spacing: 1px;
+            margin-bottom: 6px;
+        }
+
+        .party-name {
+            font-size: 12pt;
+            font-weight: bold;
+            margin-bottom: 4px;
+        }
+
+        .party-detail {
+            font-size: 9pt;
+            color: #666;
+            margin: 2px 0;
+        }
+
+        table.items {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+
+        table.items thead th {
+            background-color: #1a73e8;
+            color: white;
+            padding: 8px 10px;
+            font-size: 9pt;
+            text-align: left;
+            font-weight: bold;
+        }
+
+        table.items thead th.right {
+            text-align: right;
+        }
+
+        table.items tbody td {
+            padding: 8px 10px;
+            font-size: 9pt;
+            border-bottom: 1px solid #eee;
+        }
+
+        table.items tbody td.right {
+            text-align: right;
+        }
+
+        table.items tbody tr:nth-child(even) {
+            background-color: #f8f9fa;
+        }
+
+        .totals {
+            float: right;
+            width: 280px;
+            margin-top: 10px;
+        }
+
+        .totals table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .totals table td {
+            padding: 5px 10px;
+            font-size: 10pt;
+        }
+
+        .totals table td.label {
+            text-align: right;
+            color: #666;
+        }
+
+        .totals table td.value {
+            text-align: right;
+            font-weight: bold;
+            width: 120px;
+        }
+
+        .totals table tr.grand-total td {
+            border-top: 2px solid #333;
+            font-size: 13pt;
+            padding-top: 8px;
+            color: #333;
+        }
+
+        .note-section {
+            clear: both;
+            margin-top: 40px;
+            padding: 12px;
+            background-color: #f8f9fa;
+            border-radius: 6px;
+            border-left: 3px solid #1a73e8;
+        }
+
+        .note-label {
+            font-size: 8pt;
+            text-transform: uppercase;
+            color: #999;
+            letter-spacing: 1px;
+            margin-bottom: 4px;
+        }
+
+        .note-text {
+            font-size: 9pt;
+            color: #555;
+        }
+
+        .footer {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            text-align: center;
+            font-size: 8pt;
+            color: #999;
+            border-top: 1px solid #ddd;
+            padding-top: 8px;
+        }
+    </style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+    <div class="clinic-info">
+        <div class="clinic-name" th:text="${clinic.name}">VetCare Beograd</div>
+        <div class="clinic-detail" th:if="${clinic.address}" th:text="${clinic.address}"></div>
+        <div class="clinic-detail">
+            <span th:if="${clinic.city}" th:text="${clinic.city}"></span>
+            <span th:if="${clinic.country}">, <span th:text="${clinic.country}"></span></span>
+        </div>
+        <div class="clinic-detail" th:if="${clinic.phone}">Tel: <span th:text="${clinic.phone}"></span></div>
+        <div class="clinic-detail" th:if="${clinic.email}" th:text="${clinic.email}"></div>
+        <div class="clinic-detail" th:if="${clinic.taxId}">PIB: <span th:text="${clinic.taxId}"></span></div>
+    </div>
+    <div class="invoice-info">
+        <div class="invoice-title">FAKTURA</div>
+        <div class="invoice-number">Br: <strong th:text="${invoice.invoiceNumber}">INV-001</strong></div>
+        <div class="invoice-number" th:if="${invoice.issuedAt}">Datum izdavanja: <span th:text="${#temporals.format(invoice.issuedAt, 'dd.MM.yyyy.')}"></span></div>
+        <div class="invoice-number" th:if="${invoice.dueDate}">Rok plaćanja: <span th:text="${#temporals.format(invoice.dueDate, 'dd.MM.yyyy.')}"></span></div>
+        <div>
+            <span class="status-badge" th:classappend="'status-' + ${invoice.status}" th:text="${statusLabel}">ISSUED</span>
+        </div>
+    </div>
+</div>
+
+<hr class="separator"/>
+
+<!-- PARTIES -->
+<div class="parties">
+    <div class="party-box">
+        <div class="party-label">Izdavalac</div>
+        <div class="party-name" th:text="${clinic.name}">VetCare Beograd</div>
+        <div class="party-detail" th:if="${clinic.address}" th:text="${clinic.address}"></div>
+        <div class="party-detail" th:if="${clinic.city}" th:text="${clinic.city}"></div>
+        <div class="party-detail" th:if="${clinic.taxId}">PIB: <span th:text="${clinic.taxId}"></span></div>
+    </div>
+    <div class="party-box right">
+        <div class="party-label">Primalac</div>
+        <div class="party-name" th:text="${owner.firstName + ' ' + owner.lastName}">Ime Prezime</div>
+        <div class="party-detail" th:if="${owner.email}" th:text="${owner.email}"></div>
+        <div class="party-detail" th:if="${owner.phone}" th:text="${owner.phone}"></div>
+        <div class="party-detail" th:if="${owner.address}" th:text="${owner.address}"></div>
+        <div class="party-detail" th:if="${owner.city}" th:text="${owner.city}"></div>
+    </div>
+</div>
+
+<!-- ITEMS TABLE -->
+<table class="items">
+    <thead>
+        <tr>
+            <th style="width: 5%">#</th>
+            <th style="width: 35%">Opis</th>
+            <th class="right" style="width: 10%">Količina</th>
+            <th class="right" style="width: 15%">Jed. cena</th>
+            <th class="right" style="width: 10%">PDV %</th>
+            <th class="right" style="width: 10%">Popust %</th>
+            <th class="right" style="width: 15%">Ukupno</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr th:each="item, iter : ${items}">
+            <td th:text="${iter.index + 1}">1</td>
+            <td th:text="${item.description}">Pregled</td>
+            <td class="right" th:text="${#numbers.formatDecimal(item.quantity, 1, 0)}">1</td>
+            <td class="right" th:text="${#numbers.formatDecimal(item.unitPrice, 1, 2)}">0.00</td>
+            <td class="right" th:text="${#numbers.formatDecimal(item.taxRate, 1, 0) + '%'}">20%</td>
+            <td class="right" th:text="${item.discountPercent > 0 ? #numbers.formatDecimal(item.discountPercent, 1, 0) + '%' : '-'}">-</td>
+            <td class="right" th:text="${#numbers.formatDecimal(item.lineTotal, 1, 2)}">0.00</td>
+        </tr>
+    </tbody>
+</table>
+
+<!-- TOTALS -->
+<div class="totals">
+    <table>
+        <tr>
+            <td class="label">Osnovica:</td>
+            <td class="value" th:text="${#numbers.formatDecimal(invoice.subtotal, 1, 2) + ' ' + invoice.currency}">0.00 RSD</td>
+        </tr>
+        <tr>
+            <td class="label">PDV:</td>
+            <td class="value" th:text="${#numbers.formatDecimal(invoice.taxAmount, 1, 2) + ' ' + invoice.currency}">0.00 RSD</td>
+        </tr>
+        <tr th:if="${invoice.discountAmount > 0}">
+            <td class="label">Popust:</td>
+            <td class="value" th:text="${'-' + #numbers.formatDecimal(invoice.discountAmount, 1, 2) + ' ' + invoice.currency}">0.00 RSD</td>
+        </tr>
+        <tr class="grand-total">
+            <td class="label">UKUPNO:</td>
+            <td class="value" th:text="${#numbers.formatDecimal(invoice.total, 1, 2) + ' ' + invoice.currency}">0.00 RSD</td>
+        </tr>
+    </table>
+</div>
+
+<!-- NOTE -->
+<div class="note-section" th:if="${invoice.note != null and !invoice.note.isEmpty()}">
+    <div class="note-label">Napomena</div>
+    <div class="note-text" th:text="${invoice.note}"></div>
+</div>
+
+<!-- FOOTER -->
+<div class="footer">
+    <span th:text="${clinic.name}"></span> | <span th:text="${clinic.email}"></span> | <span th:text="${clinic.phone}"></span>
+</div>
+
+</body>
+</html>
