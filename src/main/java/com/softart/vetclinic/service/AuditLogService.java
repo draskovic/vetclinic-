@@ -16,13 +16,22 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
+import com.softart.vetclinic.entity.User;
+import com.softart.vetclinic.repository.UserRepository;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
+
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class AuditLogService {
 
     private final AuditLogRepository auditLogRepository;
+    private final UserRepository userRepository;
 
+    
     // ========================================================================
     // Write (poziva AOP aspekt)
     // ========================================================================
@@ -87,4 +96,18 @@ public class AuditLogService {
         return auditLogRepository.findByClinicIdAndCreatedAtBetweenOrderByCreatedAtDesc(
                 clinicId, from, to, pageable);
     }
+    
+    public Map<UUID, String> resolveUserNames(java.util.List<AuditLog> logs) {
+        Set<UUID> userIds = logs.stream()
+                .map(AuditLog::getUserId)
+                .filter(java.util.Objects::nonNull)
+                .collect(Collectors.toSet());
+
+        return userRepository.findAllById(userIds).stream()
+                .collect(Collectors.toMap(
+                        User::getId,
+                        u -> u.getFirstName() + " " + u.getLastName()
+                ));
+    }
+
 }
