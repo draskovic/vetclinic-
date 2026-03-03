@@ -9,6 +9,7 @@ public record AuditLogResponse(
         UUID id,
         UUID clinicId,
         UUID userId,
+        String userName,
         AuditAction action,
         String entityType,
         UUID entityId,
