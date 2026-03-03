@@ -1,6 +1,7 @@
 package com.softart.vetclinic.controller;
 
 import com.softart.vetclinic.dto.AuditLogResponse;
+import com.softart.vetclinic.entity.AuditLog;
 import com.softart.vetclinic.enums.AuditAction;
 import com.softart.vetclinic.mapper.AuditLogMapper;
 import com.softart.vetclinic.service.AuditLogService;
@@ -11,6 +12,7 @@ import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.OffsetDateTime;
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -25,14 +27,17 @@ public class AuditLogController {
     public Page<AuditLogResponse> getAll(
             @RequestHeader("X-Clinic-Id") UUID clinicId,
             Pageable pageable) {
-        return auditLogService.findAll(clinicId, pageable).map(auditLogMapper::toResponse);
+        Page<AuditLog> logs = auditLogService.findAll(clinicId, pageable);
+        return mapWithUserNames(logs);
     }
 
     @GetMapping("/{id}")
     public AuditLogResponse getById(
             @RequestHeader("X-Clinic-Id") UUID clinicId,
             @PathVariable UUID id) {
-        return auditLogMapper.toResponse(auditLogService.findById(id, clinicId));
+        AuditLog log = auditLogService.findById(id, clinicId);
+        Map<UUID, String> names = auditLogService.resolveUserNames(java.util.List.of(log));
+        return withUserName(auditLogMapper.toResponse(log), names);
     }
 
     @GetMapping("/by-entity/{entityType}/{entityId}")
@@ -41,8 +46,8 @@ public class AuditLogController {
             @PathVariable String entityType,
             @PathVariable UUID entityId,
             Pageable pageable) {
-        return auditLogService.findByEntity(clinicId, entityType, entityId, pageable)
-                .map(auditLogMapper::toResponse);
+        Page<AuditLog> logs = auditLogService.findByEntity(clinicId, entityType, entityId, pageable);
+        return mapWithUserNames(logs);
     }
 
     @GetMapping("/by-user/{userId}")
@@ -50,8 +55,8 @@ public class AuditLogController {
             @RequestHeader("X-Clinic-Id") UUID clinicId,
             @PathVariable UUID userId,
             Pageable pageable) {
-        return auditLogService.findByUser(clinicId, userId, pageable)
-                .map(auditLogMapper::toResponse);
+        Page<AuditLog> logs = auditLogService.findByUser(clinicId, userId, pageable);
+        return mapWithUserNames(logs);
     }
 
     @GetMapping("/by-action/{action}")
@@ -59,8 +64,8 @@ public class AuditLogController {
             @RequestHeader("X-Clinic-Id") UUID clinicId,
             @PathVariable AuditAction action,
             Pageable pageable) {
-        return auditLogService.findByAction(clinicId, action, pageable)
-                .map(auditLogMapper::toResponse);
+        Page<AuditLog> logs = auditLogService.findByAction(clinicId, action, pageable);
+        return mapWithUserNames(logs);
     }
 
     @GetMapping("/by-date-range")
@@ -69,7 +74,26 @@ public class AuditLogController {
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime from,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime to,
             Pageable pageable) {
-        return auditLogService.findByDateRange(clinicId, from, to, pageable)
-                .map(auditLogMapper::toResponse);
+        Page<AuditLog> logs = auditLogService.findByDateRange(clinicId, from, to, pageable);
+        return mapWithUserNames(logs);
+    }
+
+    // ========================================================================
+    // Helper — resolve userName from userId
+    // ========================================================================
+
+    private Page<AuditLogResponse> mapWithUserNames(Page<AuditLog> logs) {
+        Map<UUID, String> names = auditLogService.resolveUserNames(logs.getContent());
+        return logs.map(log -> withUserName(auditLogMapper.toResponse(log), names));
+    }
+
+    private AuditLogResponse withUserName(AuditLogResponse response, Map<UUID, String> names) {
+        return new AuditLogResponse(
+                response.id(), response.clinicId(), response.userId(),
+                names.getOrDefault(response.userId(), null),
+                response.action(), response.entityType(), response.entityId(),
+                response.oldValues(), response.newValues(),
+                response.ipAddress(), response.userAgent(), response.createdAt()
+        );
     }
 }
