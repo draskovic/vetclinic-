@@ -42,31 +42,26 @@ public class NotificationScheduler {
 
         int count = 0;
         for (Appointment apt : appointments) {
-            // Proveri da li notifikacija već postoji za ovaj termin
-            boolean exists = notificationRepository
-                    .existsByReferenceIdAndReferenceTypeAndDeletedFalse(
-                            apt.getId(), "APPOINTMENT");
-            if (exists) continue;
-
-            Notification notif = new Notification();
-            notif.setClinicId(apt.getClinicId());
-            notif.setRecipientType(RecipientType.OWNER);
-            notif.setRecipientId(apt.getOwnerId());
-            notif.setType(NotificationType.APPOINTMENT_REMINDER);
-            notif.setChannel(NotificationChannel.SMS);
-            notif.setTitle("Podsetnik za termin");
-            notif.setMessage(String.format("Poštovani, podsetnik: termin za vašeg ljubimca je zakazan za sutra (%s). Očekujemo vas!",
+            Notification template = new Notification();
+            template.setClinicId(apt.getClinicId());
+            template.setRecipientType(RecipientType.OWNER);
+            template.setRecipientId(apt.getOwnerId());
+            template.setType(NotificationType.APPOINTMENT_REMINDER);
+            template.setTitle("Podsetnik za termin");
+            template.setMessage(String.format(
+                    "Poštovani, podsetnik: termin za vašeg ljubimca je zakazan za sutra (%s). Očekujemo vas!",
                     apt.getStartTime().toLocalDate()));
-            notif.setScheduledAt(OffsetDateTime.now());
-            notif.setStatus(NotificationStatus.PENDING);
-            notif.setReferenceType("APPOINTMENT");
-            notif.setReferenceId(apt.getId());
+            template.setReferenceType("APPOINTMENT");
+            template.setReferenceId(apt.getId());
 
-            notificationRepository.save(notif);
+            createNotification(template, NotificationChannel.SMS);
+            createNotification(template, NotificationChannel.EMAIL);
             count++;
         }
-        log.info("Kreirano {} podsetnika za termine", count);
+
+        log.info("Kreirano podsetnika za {} termina (SMS + EMAIL)", count);
     }
+
 
     // Svaki dan u 9:00
     @Scheduled(cron = "0 0 9 * * *")
@@ -75,35 +70,52 @@ public class NotificationScheduler {
         log.info("=== Kreiranje podsetnika za vakcinacije ===");
 
         LocalDate reminderDate = LocalDate.now().plusDays(7);
-
         List<Vaccination> vaccinations = vaccinationRepository
                 .findUpcomingDueVaccinations(reminderDate);
 
         int count = 0;
         for (Vaccination vac : vaccinations) {
-            // Proveri da li notifikacija već postoji za ovu vakcinaciju
-            boolean exists = notificationRepository
-                    .existsByReferenceIdAndReferenceTypeAndDeletedFalse(
-                            vac.getId(), "VACCINATION");
-            if (exists) continue;
-
-            Notification notif = new Notification();
-            notif.setClinicId(vac.getClinicId());
-            notif.setRecipientType(RecipientType.OWNER);
-            notif.setRecipientId(vac.getPet().getOwnerId());
-            notif.setType(NotificationType.VACCINATION_DUE);
-            notif.setChannel(NotificationChannel.SMS);
-            notif.setTitle("Podsetnik za vakcinaciju");
-            notif.setMessage(String.format("Poštovani, vakcinacija '%s' za vašeg ljubimca %s ističe %s. Pozovite nas za zakazivanje.",
+            Notification template = new Notification();
+            template.setClinicId(vac.getClinicId());
+            template.setRecipientType(RecipientType.OWNER);
+            template.setRecipientId(vac.getPet().getOwnerId());
+            template.setType(NotificationType.VACCINATION_DUE);
+            template.setTitle("Podsetnik za vakcinaciju");
+            template.setMessage(String.format(
+                    "Poštovani, vakcinacija '%s' za vašeg ljubimca %s ističe %s. Pozovite nas za zakazivanje.",
                     vac.getVaccineName(), vac.getPet().getName(), vac.getNextDueDate()));
-            notif.setScheduledAt(OffsetDateTime.now());
-            notif.setStatus(NotificationStatus.PENDING);
-            notif.setReferenceType("VACCINATION");
-            notif.setReferenceId(vac.getId());
+            template.setReferenceType("VACCINATION");
+            template.setReferenceId(vac.getId());
 
-            notificationRepository.save(notif);
+            createNotification(template, NotificationChannel.SMS);
+            createNotification(template, NotificationChannel.EMAIL);
             count++;
         }
-        log.info("Kreirano {} podsetnika za vakcinacije", count);
+
+        log.info("Kreirano podsetnika za {} vakcinacija (SMS + EMAIL)", count);
     }
+
+    
+    private void createNotification(Notification source, NotificationChannel channel) {
+        boolean exists = notificationRepository
+                .existsByReferenceIdAndReferenceTypeAndChannelAndDeletedFalse(
+                        source.getReferenceId(), source.getReferenceType(), channel);
+        if (exists) return;
+
+        Notification notif = new Notification();
+        notif.setClinicId(source.getClinicId());
+        notif.setRecipientType(source.getRecipientType());
+        notif.setRecipientId(source.getRecipientId());
+        notif.setType(source.getType());
+        notif.setChannel(channel);
+        notif.setTitle(source.getTitle());
+        notif.setMessage(source.getMessage());
+        notif.setScheduledAt(OffsetDateTime.now());
+        notif.setStatus(NotificationStatus.PENDING);
+        notif.setReferenceType(source.getReferenceType());
+        notif.setReferenceId(source.getReferenceId());
+
+        notificationRepository.save(notif);
+    }
+
 }

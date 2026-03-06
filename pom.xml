@@ -150,6 +150,13 @@
 		    <version>10.6.4</version>
 		</dependency>
 		
+		<!-- Spring mail -->
+		<dependency>
+		    <groupId>org.springframework.boot</groupId>
+		    <artifactId>spring-boot-starter-mail</artifactId>
+		</dependency>
+
+		
 		<!-- PDF Generation: Thymeleaf + Flying Saucer -->
 		<dependency>
 		    <groupId>org.springframework.boot</groupId>
@@ -174,6 +181,7 @@
             <properties>
                 <compiler.fork>true</compiler.fork>
                 <compiler.executable>C:\Program Files\Eclipse Adoptium\jdk-17.0.18.8-hotspot\bin\javac</compiler.executable>
+                <spring-boot.run.profiles>local</spring-boot.run.profiles>
             </properties>
         </profile>
         <!-- Docker/CI build: fork=false, bez hardkodirane putanje -->

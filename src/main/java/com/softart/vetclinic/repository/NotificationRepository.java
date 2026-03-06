@@ -48,5 +48,16 @@ public interface NotificationRepository extends JpaRepository<Notification, UUID
              @Param("channel") NotificationChannel channel,
              @Param("before") OffsetDateTime before,
              Pageable pageable);
+    
+    @Query("SELECT n FROM Notification n WHERE n.status = :status AND n.channel = :channel AND n.scheduledAt <= :before AND n.deleted = false")
+    List<Notification> findPendingEmailNotifications(
+            @Param("status") NotificationStatus status,
+            @Param("channel") NotificationChannel channel,
+            @Param("before") OffsetDateTime before,
+            Pageable pageable
+    );
+
+    boolean existsByReferenceIdAndReferenceTypeAndChannelAndDeletedFalse(
+            UUID referenceId, String referenceType, NotificationChannel channel);
 
 }

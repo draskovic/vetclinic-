@@ -1,4 +1,15 @@
 spring:
+  mail:
+    host: ${EMAIL_SMTP_HOST:smtp.gmail.com}
+    port: ${EMAIL_SMTP_PORT:587}
+    username: ${EMAIL_SMTP_USERNAME:disabled}
+    password: ${EMAIL_SMTP_PASSWORD:disabled}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
   datasource:
     url: jdbc:postgresql://${PGHOST}:${PGPORT}/${PGDATABASE}
     username: ${PGUSER}
@@ -30,6 +41,9 @@ app:
       auth-token: ${TWILIO_AUTH_TOKEN:disabled}
       from-number: ${TWILIO_FROM_NUMBER:+0000000000}
       enabled: ${TWILIO_ENABLED:false}
+  email:
+    from: ${EMAIL_FROM:noreply@vetclinic.com}
+    enabled: ${EMAIL_ENABLED:false}
 
 logging:
   level:
