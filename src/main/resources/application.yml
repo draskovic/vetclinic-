@@ -72,6 +72,8 @@ app:
   email:
     from: YOUR_EMAIL_FROM
     enabled: false
+    resend:
+      api-key: YOUR_RESEND_API_KEY
 
 # SpringDoc / Swagger UI
 springdoc:

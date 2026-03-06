@@ -3,12 +3,14 @@ package com.softart.vetclinic.service.email;
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Profile;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
 
 @Slf4j
 @Service
+@Profile("!prod")
 public class SmtpEmailService implements EmailService {
 
     private final JavaMailSender mailSender;

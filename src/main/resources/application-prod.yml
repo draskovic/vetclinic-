@@ -42,8 +42,10 @@ app:
       from-number: ${TWILIO_FROM_NUMBER:+0000000000}
       enabled: ${TWILIO_ENABLED:false}
   email:
-    from: ${EMAIL_FROM:noreply@vetclinic.com}
+    from: ${EMAIL_FROM:onboarding@resend.dev}
     enabled: ${EMAIL_ENABLED:false}
+    resend:
+      api-key: ${RESEND_API_KEY:disabled}
 
 logging:
   level:
