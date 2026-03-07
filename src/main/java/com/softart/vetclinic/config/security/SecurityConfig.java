@@ -30,6 +30,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/api/clinics/lookup").permitAll()
                         .requestMatchers("/api/health").permitAll()
+                        .requestMatchers("/api/public/**").permitAll()
                         .requestMatchers("/swagger-ui/**", "/swagger-ui.html",
                                 "/v3/api-docs/**", "/v3/api-docs.yaml").permitAll()
                         .requestMatchers("/actuator/**").permitAll()

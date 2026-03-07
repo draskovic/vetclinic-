@@ -1,6 +1,9 @@
 package com.softart.vetclinic.controller;
 
 import com.softart.vetclinic.dto.CreateDocumentRequest;
+import org.springframework.security.core.Authentication;
+import com.softart.vetclinic.config.security.JwtPrincipal;
+
 import com.softart.vetclinic.dto.DocumentResponse;
 import com.softart.vetclinic.dto.UpdateDocumentRequest;
 import com.softart.vetclinic.entity.Document;
@@ -20,6 +23,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -122,4 +126,15 @@ public class DocumentController {
         Document document = documentService.deleteFile(id, clinicId);
         return ResponseEntity.ok(documentMapper.toResponse(document));
     }
+    
+    @PostMapping("/upload-token")
+    public ResponseEntity<Map<String, String>> generateUploadToken(
+            @RequestHeader("X-Clinic-Id") UUID clinicId,
+            @RequestParam UUID petId,
+            Authentication authentication) {
+        JwtPrincipal principal = (JwtPrincipal) authentication.getPrincipal();
+        String token = documentService.generateUploadToken(petId, clinicId, principal.userId());
+        return ResponseEntity.ok(Map.of("token", token));
+    }
+
 }

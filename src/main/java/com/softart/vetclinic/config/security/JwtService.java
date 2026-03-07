@@ -85,4 +85,33 @@ public class JwtService {
     public long getRefreshTokenExpirationMs() {
         return refreshTokenExpiration;
     }
+    
+ // === Upload Token za QR kod ===
+
+    private static final long UPLOAD_TOKEN_EXPIRATION = 30 * 60 * 1000; // 30 minuta
+
+    public String generateUploadToken(UUID petId, UUID clinicId, UUID uploadedBy, String petName) {
+        return Jwts.builder()
+                .subject("upload")  // NE userId — sprečava zloupotrebu u JwtAuthFilter
+                .claim("purpose", "document-upload")
+                .claim("petId", petId.toString())
+                .claim("clinicId", clinicId.toString())
+                .claim("uploadedBy", uploadedBy.toString())
+                .claim("petName", petName)
+                .issuedAt(new Date())
+                .expiration(new Date(System.currentTimeMillis() + UPLOAD_TOKEN_EXPIRATION))
+                .signWith(secretKey)
+                .compact();
+    }
+
+    public boolean isUploadToken(String token) {
+        try {
+            Claims claims = parseToken(token);
+            return "upload".equals(claims.getSubject()) 
+                    && "document-upload".equals(claims.get("purpose", String.class));
+        } catch (JwtException | IllegalArgumentException e) {
+            return false;
+        }
+    }
+
 }

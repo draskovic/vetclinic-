@@ -1,6 +1,14 @@
 package com.softart.vetclinic.service;
 
 import com.softart.vetclinic.entity.Document;
+import com.softart.vetclinic.config.security.JwtService;
+import com.softart.vetclinic.config.tenant.ClinicContextHolder;
+import com.softart.vetclinic.enums.FileType;
+import io.jsonwebtoken.Claims;
+
+import java.util.HashMap;
+import java.util.Map;
+
 import com.softart.vetclinic.exception.ResourceNotFoundException;
 import com.softart.vetclinic.repository.DocumentRepository;
 import com.softart.vetclinic.repository.MedicalRecordRepository;
@@ -25,18 +33,22 @@ public class DocumentService extends AbstractCrudService<Document, DocumentRepos
     private final MedicalRecordRepository medicalRecordRepository;
     private final UserRepository userRepository;
     private final FileStorageService fileStorageService;
+    private final JwtService jwtService;  // novo polje
+
 
     public DocumentService(DocumentRepository documentRepository,
                            PetRepository petRepository,
                            MedicalRecordRepository medicalRecordRepository,
                            UserRepository userRepository,
-                           FileStorageService fileStorageService) {
+                           FileStorageService fileStorageService,
+                           JwtService jwtService) {
         super(documentRepository);
         this.documentRepository = documentRepository;
         this.petRepository = petRepository;
         this.medicalRecordRepository = medicalRecordRepository;
         this.userRepository = userRepository;
         this.fileStorageService = fileStorageService;
+        this.jwtService = jwtService; 
     }
 
     @Override
@@ -120,6 +132,69 @@ public class DocumentService extends AbstractCrudService<Document, DocumentRepos
 		        return findAllByClinicId(clinicId, pageable);
 		    }
         return documentRepository.searchByClinicId(clinicId, search, pageable);
+    }
+
+ // === QR Upload metode ===
+
+    public String generateUploadToken(UUID petId, UUID clinicId, UUID userId) {
+        var pet = petRepository.findByIdAndClinicIdAndDeletedFalse(petId, clinicId)
+                .orElseThrow(() -> new ResourceNotFoundException("Pet", "id", petId));
+
+        return jwtService.generateUploadToken(petId, clinicId, userId, pet.getName());
+    }
+
+    @Transactional
+    public Document uploadFromToken(String token, MultipartFile file, String description) {
+        if (!jwtService.isUploadToken(token)) {
+            throw new IllegalArgumentException("Nevažeći ili istekao upload token");
+        }
+
+        Claims claims = jwtService.parseToken(token);
+        UUID petId = UUID.fromString(claims.get("petId", String.class));
+        UUID clinicId = UUID.fromString(claims.get("clinicId", String.class));
+        UUID uploadedBy = UUID.fromString(claims.get("uploadedBy", String.class));
+
+        try {
+            ClinicContextHolder.set(clinicId);
+
+            Document document = new Document();
+            document.setClinicId(clinicId);
+            document.setPetId(petId);
+            document.setUploadedBy(uploadedBy);
+            document.setDescription(description);
+            document.setDeleted(false);
+
+            // Odredi fileType iz MIME tipa
+            String mimeType = file.getContentType();
+            if (mimeType != null && mimeType.startsWith("image/")) {
+                document.setFileType(FileType.IMAGE);
+            } else if ("application/pdf".equals(mimeType)) {
+                document.setFileType(FileType.PDF);
+            } else {
+                document.setFileType(FileType.OTHER);
+            }
+
+            // attachFile postavlja fileName, mimeType, fileSizeBytes, storagePath
+            fileStorageService.attachFile(document, file, "documents/" + clinicId);
+
+            return repository.save(document);
+
+        } finally {
+            ClinicContextHolder.clear();
+        }
+    }
+
+    public Map<String, Object> getUploadTokenInfo(String token) {
+        if (!jwtService.isUploadToken(token)) {
+            throw new IllegalArgumentException("Nevažeći ili istekao upload token");
+        }
+
+        Claims claims = jwtService.parseToken(token);
+        Map<String, Object> info = new HashMap<>();
+        info.put("petName", claims.get("petName", String.class));
+        info.put("expiresAt", claims.getExpiration().toInstant().toString());
+        info.put("valid", true);
+        return info;
     }
 
 }
