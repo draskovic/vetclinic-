@@ -1,29 +1,37 @@
 package com.softart.vetclinic.service;
 
-import com.softart.vetclinic.entity.Payment;
-import com.softart.vetclinic.repository.InvoiceRepository;
-import com.softart.vetclinic.repository.PaymentRepository;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
+import com.softart.vetclinic.entity.Payment;
+import com.softart.vetclinic.repository.InvoiceRepository;
+import com.softart.vetclinic.repository.PaymentRepository;
+
+
 
 @Service
 public class PaymentService extends AbstractCrudService<Payment, PaymentRepository> {
 
     private final PaymentRepository paymentRepository;
     private final InvoiceRepository invoiceRepository;
-
+  
+    
     public PaymentService(PaymentRepository paymentRepository,
-                          InvoiceRepository invoiceRepository) {
-        super(paymentRepository);
-        this.paymentRepository = paymentRepository;
-        this.invoiceRepository = invoiceRepository;
-    }
+            InvoiceRepository invoiceRepository) {
+		super(paymentRepository);
+		this.paymentRepository = paymentRepository;
+		this.invoiceRepository = invoiceRepository;
+		
+	}
+
 
     @Override
     protected String getEntityName() {
@@ -56,5 +64,6 @@ public class PaymentService extends AbstractCrudService<Payment, PaymentReposito
     @Transactional(readOnly = true)
     public List<Payment> findByInvoice(UUID clinicId, UUID invoiceId) {
         return paymentRepository.findByClinicIdAndInvoiceIdAndDeletedFalse(clinicId, invoiceId);
-    }
+    }    
+
 }

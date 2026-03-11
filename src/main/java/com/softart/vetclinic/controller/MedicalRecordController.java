@@ -1,10 +1,14 @@
 package com.softart.vetclinic.controller;
 
 import com.softart.vetclinic.dto.CreateMedicalRecordRequest;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import com.softart.vetclinic.dto.MedicalRecordResponse;
 import com.softart.vetclinic.dto.UpdateMedicalRecordRequest;
 import com.softart.vetclinic.exception.ResourceNotFoundException;
 import com.softart.vetclinic.mapper.MedicalRecordMapper;
+import com.softart.vetclinic.service.MedicalRecordPdfService;
 import com.softart.vetclinic.service.MedicalRecordService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -23,6 +27,8 @@ public class MedicalRecordController {
 
     private final MedicalRecordService medicalRecordService;
     private final MedicalRecordMapper medicalRecordMapper;
+    private final MedicalRecordPdfService medicalRecordPdfService;
+
 
     @GetMapping
     public Page<MedicalRecordResponse> getAll(
@@ -80,4 +86,16 @@ public class MedicalRecordController {
                 .map(medicalRecordMapper::toResponse)
                 .orElseThrow(() -> new ResourceNotFoundException("MedicalRecord", "appointmentId", appointmentId));
     }
+    
+    @GetMapping("/{id}/pdf")
+    public ResponseEntity<byte[]> generatePdf(
+            @RequestHeader("X-Clinic-Id") UUID clinicId,
+            @PathVariable UUID id) {
+        byte[] pdf = medicalRecordPdfService.generatePdf(id, clinicId);
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_PDF);
+        headers.setContentDispositionFormData("attachment", "karton-" + id + ".pdf");
+        return ResponseEntity.ok().headers(headers).body(pdf);
+    }
+
 }

@@ -16,6 +16,10 @@ import org.springframework.web.bind.annotation.*;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
+import com.softart.vetclinic.service.VaccinationPdfService;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 
 @RestController
 @RequestMapping("/api/vaccinations")
@@ -24,6 +28,8 @@ public class VaccinationController {
 
     private final VaccinationService vaccinationService;
     private final VaccinationMapper vaccinationMapper;
+    private final VaccinationPdfService vaccinationPdfService;
+
 
     @GetMapping
     public Page<VaccinationResponse> getAll(
@@ -90,5 +96,17 @@ public class VaccinationController {
                 .map(vaccinationMapper::toResponse)
                 .toList();
     }
+    
+    @GetMapping("/pet/{petId}/pdf")
+    public ResponseEntity<byte[]> generatePdf(
+            @RequestHeader("X-Clinic-Id") UUID clinicId,
+            @PathVariable UUID petId) {
+        byte[] pdf = vaccinationPdfService.generatePdf(petId, clinicId);
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_PDF);
+        headers.setContentDispositionFormData("attachment", "vakcinacije-" + petId + ".pdf");
+        return ResponseEntity.ok().headers(headers).body(pdf);
+    }
+
 
 }

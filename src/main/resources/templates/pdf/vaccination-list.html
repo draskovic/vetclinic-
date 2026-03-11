@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <style>
+        @page {
+            size: A4;
+            margin: 15mm 20mm 20mm 20mm;
+            @bottom-center {
+                content: element(footer);
+            }
+        }
+
+        body {
+            font-family: 'DejaVu Sans', sans-serif;
+            font-size: 10pt;
+            color: #333;
+            line-height: 1.4;
+        }
+
+        .footer {
+            position: running(footer);
+            text-align: center;
+            font-size: 8pt;
+            color: #999;
+            border-top: 1px solid #ddd;
+            padding-top: 8px;
+        }
+
+        .header {
+            display: block;
+            margin-bottom: 20px;
+            overflow: hidden;
+        }
+
+        .clinic-info {
+            float: left;
+            width: 55%;
+        }
+
+        .record-info {
+            float: right;
+            width: 40%;
+            text-align: right;
+        }
+
+        .clinic-name {
+            font-size: 18pt;
+            font-weight: bold;
+            color: #1a73e8;
+            margin-bottom: 5px;
+        }
+
+        .clinic-detail {
+            font-size: 9pt;
+            color: #666;
+            margin: 2px 0;
+        }
+
+        .record-title {
+            font-size: 20pt;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 8px;
+        }
+
+        .separator {
+            border: none;
+            border-top: 2px solid #1a73e8;
+            margin: 15px 0;
+        }
+
+        .parties-table {
+            width: 100%;
+            margin-bottom: 15px;
+            border-collapse: separate;
+            border-spacing: 8px 0;
+        }
+
+        .parties-table td {
+            width: 50%;
+            padding: 10px;
+            background-color: #f8f9fa;
+            border-radius: 6px;
+            vertical-align: top;
+            font-size: 9pt;
+        }
+
+        .party-label {
+            font-size: 8pt;
+            text-transform: uppercase;
+            color: #999;
+            letter-spacing: 1px;
+            margin-bottom: 6px;
+        }
+
+        .party-name {
+            font-size: 12pt;
+            font-weight: bold;
+            margin-bottom: 4px;
+        }
+
+        .party-detail {
+            font-size: 9pt;
+            color: #666;
+            margin: 2px 0;
+        }
+
+        table.items {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+
+        table.items thead th {
+            background-color: #1a73e8;
+            color: white;
+            padding: 8px 10px;
+            font-size: 9pt;
+            text-align: left;
+            font-weight: bold;
+        }
+
+        table.items tbody td {
+            padding: 8px 10px;
+            font-size: 9pt;
+            border-bottom: 1px solid #eee;
+        }
+
+        table.items tbody tr:nth-child(even) {
+            background-color: #f8f9fa;
+        }
+
+        .no-data {
+            font-size: 9pt;
+            color: #999;
+            font-style: italic;
+            margin-top: 15px;
+        }
+    </style>
+</head>
+<body>
+
+<!-- FOOTER -->
+<div class="footer">
+    <span th:text="${clinic.name}"></span> | <span th:text="${clinic.email}"></span> | <span th:text="${clinic.phone}"></span>
+</div>
+
+<!-- HEADER -->
+<div class="header">
+    <div class="clinic-info">
+        <div class="clinic-name" th:text="${clinic.name}"></div>
+        <div class="clinic-detail" th:if="${clinic.address}" th:text="${clinic.address}"></div>
+        <div class="clinic-detail">
+            <span th:if="${clinic.city}" th:text="${clinic.city}"></span>
+            <span th:if="${clinic.country}">, <span th:text="${clinic.country}"></span></span>
+        </div>
+        <div class="clinic-detail" th:if="${clinic.phone}">Tel: <span th:text="${clinic.phone}"></span></div>
+        <div class="clinic-detail" th:if="${clinic.email}" th:text="${clinic.email}"></div>
+    </div>
+    <div class="record-info">
+        <div class="record-title">VAKCINACIJE</div>
+    </div>
+</div>
+
+<hr class="separator"/>
+
+<!-- PET + OWNER -->
+<table class="parties-table">
+    <tr>
+        <td>
+            <div class="party-label">Pacijent</div>
+            <div class="party-name" th:text="${pet.name}"></div>
+            <div class="party-detail" th:if="${speciesName != ''}">Vrsta: <span th:text="${speciesName}"></span></div>
+            <div class="party-detail" th:if="${breedName != ''}">Rasa: <span th:text="${breedName}"></span></div>
+            <div class="party-detail" th:if="${pet.gender != null}">Pol: <span th:text="${pet.gender}"></span></div>
+            <div class="party-detail" th:if="${pet.dateOfBirth != null}">Datum rođenja: <span th:text="${#temporals.format(pet.dateOfBirth, 'dd.MM.yyyy.')}"></span></div>
+            <div class="party-detail" th:if="${pet.microchipNumber != null}">Mikročip: <span th:text="${pet.microchipNumber}"></span></div>
+        </td>
+        <td>
+            <div class="party-label">Vlasnik</div>
+            <div class="party-name" th:text="${owner.firstName + ' ' + owner.lastName}"></div>
+            <div class="party-detail" th:if="${owner.phone}" th:text="'Tel: ' + ${owner.phone}"></div>
+            <div class="party-detail" th:if="${owner.email}" th:text="${owner.email}"></div>
+            <div class="party-detail" th:if="${owner.address}" th:text="${owner.address}"></div>
+            <div class="party-detail" th:if="${owner.city}" th:text="${owner.city}"></div>
+        </td>
+    </tr>
+</table>
+
+<!-- VACCINATIONS TABLE -->
+<table class="items" th:if="${vaccinations != null and !vaccinations.isEmpty()}">
+    <thead>
+        <tr>
+            <th style="width: 5%">#</th>
+            <th style="width: 22%">Vakcina</th>
+            <th style="width: 15%">Proizvođač</th>
+            <th style="width: 13%">Serija</th>
+            <th style="width: 15%">Dato</th>
+            <th style="width: 15%">Važi do</th>
+            <th style="width: 15%">Sledeća doza</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr th:each="v, iter : ${vaccinations}">
+            <td th:text="${iter.index + 1}">1</td>
+            <td th:text="${v.vaccineName}"></td>
+            <td th:text="${v.manufacturer != null ? v.manufacturer : '-'}"></td>
+            <td th:text="${v.batchNumber != null ? v.batchNumber : '-'}"></td>
+            <td th:text="${#temporals.format(v.administeredAt, 'dd.MM.yyyy.')}"></td>
+            <td th:text="${v.validUntil != null ? #temporals.format(v.validUntil, 'dd.MM.yyyy.') : '-'}"></td>
+            <td th:text="${v.nextDueDate != null ? #temporals.format(v.nextDueDate, 'dd.MM.yyyy.') : '-'}"></td>
+        </tr>
+    </tbody>
+</table>
+<div class="no-data" th:if="${vaccinations == null or vaccinations.isEmpty()}">Nema evidentiranih vakcinacija za ovog ljubimca.</div>
+
+</body>
+</html>

@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <style>
+        @page {
+            size: A4;
+            margin: 15mm 20mm 20mm 20mm;
+            @bottom-center {
+                content: element(footer);
+            }
+        }
+
+        body {
+            font-family: 'DejaVu Sans', sans-serif;
+            font-size: 10pt;
+            color: #333;
+            line-height: 1.4;
+        }
+
+        .footer {
+            position: running(footer);
+            text-align: center;
+            font-size: 8pt;
+            color: #999;
+            border-top: 1px solid #ddd;
+            padding-top: 8px;
+        }
+
+        .header {
+            display: block;
+            margin-bottom: 20px;
+            overflow: hidden;
+        }
+
+        .clinic-info {
+            float: left;
+            width: 55%;
+        }
+
+        .record-info {
+            float: right;
+            width: 40%;
+            text-align: right;
+        }
+
+        .clinic-name {
+            font-size: 18pt;
+            font-weight: bold;
+            color: #1a73e8;
+            margin-bottom: 5px;
+        }
+
+        .clinic-detail {
+            font-size: 9pt;
+            color: #666;
+            margin: 2px 0;
+        }
+
+        .record-title {
+            font-size: 22pt;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 8px;
+        }
+
+        .record-detail {
+            font-size: 11pt;
+            color: #666;
+            margin: 3px 0;
+        }
+
+        .separator {
+            border: none;
+            border-top: 2px solid #1a73e8;
+            margin: 15px 0;
+        }
+
+        .parties-table {
+            width: 100%;
+            margin-bottom: 15px;
+            border-collapse: separate;
+            border-spacing: 8px 0;
+        }
+
+        .parties-table td {
+            width: 50%;
+            padding: 10px;
+            background-color: #f8f9fa;
+            border-radius: 6px;
+            vertical-align: top;
+            font-size: 9pt;
+        }
+
+        .party-label {
+            font-size: 8pt;
+            text-transform: uppercase;
+            color: #999;
+            letter-spacing: 1px;
+            margin-bottom: 6px;
+        }
+
+        .party-name {
+            font-size: 12pt;
+            font-weight: bold;
+            margin-bottom: 4px;
+        }
+
+        .party-detail {
+            font-size: 9pt;
+            color: #666;
+            margin: 2px 0;
+        }
+
+        .section-title {
+            font-size: 13pt;
+            font-weight: bold;
+            color: #1a73e8;
+            margin: 20px 0 10px 0;
+            padding-bottom: 5px;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .rx-symbol {
+            font-size: 28pt;
+            font-weight: bold;
+            color: #1a73e8;
+            margin-bottom: 10px;
+        }
+
+        .med-name {
+            font-size: 16pt;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 15px;
+        }
+
+        .details-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 15px;
+        }
+
+        .details-table td {
+            padding: 8px 12px;
+            font-size: 10pt;
+            border-bottom: 1px solid #eee;
+        }
+
+        .details-table td.label {
+            width: 35%;
+            color: #666;
+            font-weight: bold;
+        }
+
+        .details-table td.value {
+            width: 65%;
+            color: #333;
+        }
+
+        .instructions-box {
+            padding: 12px;
+            background-color: #f8f9fa;
+            border-radius: 6px;
+            border-left: 3px solid #1a73e8;
+            margin-top: 10px;
+        }
+
+        .instructions-label {
+            font-size: 8pt;
+            text-transform: uppercase;
+            color: #999;
+            letter-spacing: 1px;
+            margin-bottom: 4px;
+        }
+
+        .instructions-text {
+            font-size: 10pt;
+            color: #333;
+            white-space: pre-line;
+        }
+    </style>
+</head>
+<body>
+
+<!-- FOOTER -->
+<div class="footer">
+    <span th:text="${clinic.name}"></span> | <span th:text="${clinic.email}"></span> | <span th:text="${clinic.phone}"></span>
+</div>
+
+<!-- HEADER -->
+<div class="header">
+    <div class="clinic-info">
+        <div class="clinic-name" th:text="${clinic.name}"></div>
+        <div class="clinic-detail" th:if="${clinic.address}" th:text="${clinic.address}"></div>
+        <div class="clinic-detail">
+            <span th:if="${clinic.city}" th:text="${clinic.city}"></span>
+            <span th:if="${clinic.country}">, <span th:text="${clinic.country}"></span></span>
+        </div>
+        <div class="clinic-detail" th:if="${clinic.phone}">Tel: <span th:text="${clinic.phone}"></span></div>
+        <div class="clinic-detail" th:if="${clinic.email}" th:text="${clinic.email}"></div>
+    </div>
+    <div class="record-info">
+        <div class="record-title">RECEPT</div>
+        <div class="record-detail">Datum: <span th:text="${#temporals.format(prescription.createdAt, 'dd.MM.yyyy.')}"></span></div>
+        <div class="record-detail">Veterinar: <span th:text="${vetName}"></span></div>
+    </div>
+</div>
+
+<hr class="separator"/>
+
+<!-- PET + OWNER -->
+<table class="parties-table">
+    <tr>
+        <td>
+            <div class="party-label">Pacijent</div>
+            <div class="party-name" th:text="${pet.name}"></div>
+            <div class="party-detail" th:if="${speciesName != ''}">Vrsta: <span th:text="${speciesName}"></span></div>
+            <div class="party-detail" th:if="${breedName != ''}">Rasa: <span th:text="${breedName}"></span></div>
+            <div class="party-detail" th:if="${pet.gender != null}">Pol: <span th:text="${pet.gender}"></span></div>
+            <div class="party-detail" th:if="${pet.dateOfBirth != null}">Datum rođenja: <span th:text="${#temporals.format(pet.dateOfBirth, 'dd.MM.yyyy.')}"></span></div>
+        </td>
+        <td>
+            <div class="party-label">Vlasnik</div>
+            <div class="party-name" th:text="${owner.firstName + ' ' + owner.lastName}"></div>
+            <div class="party-detail" th:if="${owner.phone}" th:text="'Tel: ' + ${owner.phone}"></div>
+            <div class="party-detail" th:if="${owner.email}" th:text="${owner.email}"></div>
+            <div class="party-detail" th:if="${owner.address}" th:text="${owner.address}"></div>
+            <div class="party-detail" th:if="${owner.city}" th:text="${owner.city}"></div>
+        </td>
+    </tr>
+</table>
+
+<!-- PRESCRIPTION DETAILS -->
+<div class="rx-symbol">℞</div>
+<div class="med-name" th:text="${prescription.medicationName}"></div>
+
+<table class="details-table">
+    <tr>
+        <td class="label">Doziranje:</td>
+        <td class="value" th:text="${prescription.dosage}"></td>
+    </tr>
+    <tr>
+        <td class="label">Učestalost:</td>
+        <td class="value" th:text="${prescription.frequency}"></td>
+    </tr>
+    <tr th:if="${prescription.durationDays != null}">
+        <td class="label">Trajanje:</td>
+        <td class="value" th:text="${prescription.durationDays + ' dana'}"></td>
+    </tr>
+    <tr>
+        <td class="label">Početak terapije:</td>
+        <td class="value" th:text="${#temporals.format(prescription.startDate, 'dd.MM.yyyy.')}"></td>
+    </tr>
+    <tr th:if="${prescription.endDate != null}">
+        <td class="label">Kraj terapije:</td>
+        <td class="value" th:text="${#temporals.format(prescription.endDate, 'dd.MM.yyyy.')}"></td>
+    </tr>
+</table>
+
+<!-- INSTRUCTIONS -->
+<div th:if="${prescription.instructions != null and !prescription.instructions.isEmpty()}">
+    <div class="instructions-box">
+        <div class="instructions-label">Uputstvo za primenu</div>
+        <div class="instructions-text" th:text="${prescription.instructions}"></div>
+    </div>
+</div>
+
+</body>
+</html>

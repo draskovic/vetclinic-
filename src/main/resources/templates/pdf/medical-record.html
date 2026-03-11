@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <style>
+		@page {
+		    size: A4;
+		    margin: 15mm 20mm 20mm 20mm;
+		    @bottom-center {
+		        content: element(footer);
+		    }
+		}
+
+        body {
+            font-family: 'DejaVu Sans', sans-serif;
+            font-size: 10pt;
+            color: #333;
+            line-height: 1.4;
+        }
+
+        .header {
+            display: block;
+            margin-bottom: 30px;
+            overflow: hidden;
+        }
+
+        .clinic-info {
+            float: left;
+            width: 55%;
+        }
+
+        .record-info {
+            float: right;
+            width: 40%;
+            text-align: right;
+        }
+
+        .clinic-name {
+            font-size: 18pt;
+            font-weight: bold;
+            color: #1a73e8;
+            margin-bottom: 5px;
+        }
+
+        .clinic-detail {
+            font-size: 9pt;
+            color: #666;
+            margin: 2px 0;
+        }
+
+        .record-title {
+            font-size: 22pt;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 8px;
+        }
+
+        .record-detail {
+            font-size: 11pt;
+            color: #666;
+            margin: 3px 0;
+        }
+
+        .separator {
+            border: none;
+            border-top: 2px solid #1a73e8;
+            margin: 20px 0;
+        }
+
+		.parties-table {
+		    width: 100%;
+		    margin-bottom: 15px;
+		    border-collapse: separate;
+		    border-spacing: 8px 0;
+		}
+
+		.parties-table td {
+		    width: 50%;
+		    padding: 10px;
+		    background-color: #f8f9fa;
+		    border-radius: 6px;
+		    vertical-align: top;
+		    font-size: 9pt;
+		}
+
+        .party-box.right {
+            float: right;
+        }
+
+        .party-label {
+            font-size: 8pt;
+            text-transform: uppercase;
+            color: #999;
+            letter-spacing: 1px;
+            margin-bottom: 6px;
+        }
+
+        .party-name {
+            font-size: 12pt;
+            font-weight: bold;
+            margin-bottom: 4px;
+        }
+
+        .party-detail {
+            font-size: 9pt;
+            color: #666;
+            margin: 2px 0;
+        }
+
+        .section-title {
+            font-size: 13pt;
+            font-weight: bold;
+            color: #1a73e8;
+            margin: 25px 0 10px 0;
+            padding-bottom: 5px;
+            border-bottom: 1px solid #ddd;
+        }
+
+		.vitals-table {
+		    width: 100%;
+		    margin-bottom: 15px;
+		    border-collapse: separate;
+		    border-spacing: 8px 0;
+		}
+
+		.vitals-table td {
+		    padding: 10px;
+		    text-align: center;
+		    background-color: #f0f7ff;
+		    border-radius: 6px;
+		}
+
+		.vital-value {
+		    font-size: 16pt;
+		    font-weight: bold;
+		    color: #1a73e8;
+		}
+
+		.vital-label {
+		    font-size: 8pt;
+		    color: #666;
+		    text-transform: uppercase;
+		    margin-top: 3px;
+		}
+
+        .vital-value {
+            font-size: 16pt;
+            font-weight: bold;
+            color: #1a73e8;
+        }
+
+        .vital-label {
+            font-size: 8pt;
+            color: #666;
+            text-transform: uppercase;
+            margin-top: 3px;
+        }
+
+        .text-block {
+            padding: 10px 12px;
+            background-color: #f8f9fa;
+            border-radius: 6px;
+            border-left: 3px solid #1a73e8;
+            margin-bottom: 12px;
+        }
+
+        .text-block-label {
+            font-size: 8pt;
+            text-transform: uppercase;
+            color: #999;
+            letter-spacing: 1px;
+            margin-bottom: 4px;
+        }
+
+        .text-block-content {
+            font-size: 9pt;
+            color: #333;
+            white-space: pre-line;
+        }
+
+        .follow-up {
+            padding: 10px 12px;
+            background-color: #fff7e6;
+            border-radius: 6px;
+            border-left: 3px solid #fa8c16;
+            margin-bottom: 12px;
+        }
+
+        table.items {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+
+        table.items thead th {
+            background-color: #1a73e8;
+            color: white;
+            padding: 8px 10px;
+            font-size: 9pt;
+            text-align: left;
+            font-weight: bold;
+        }
+
+        table.items tbody td {
+            padding: 8px 10px;
+            font-size: 9pt;
+            border-bottom: 1px solid #eee;
+        }
+
+        table.items tbody tr:nth-child(even) {
+            background-color: #f8f9fa;
+        }
+
+        .no-data {
+            font-size: 9pt;
+            color: #999;
+            font-style: italic;
+            margin-bottom: 15px;
+        }
+
+		.footer {
+		    position: running(footer);
+		    text-align: center;
+		    font-size: 8pt;
+		    color: #999;
+		    border-top: 1px solid #ddd;
+		    padding-top: 8px;
+		}
+		
+		.section-title {
+		    font-size: 13pt;
+		    font-weight: bold;
+		    color: #1a73e8;
+		    margin: 25px 0 10px 0;
+		    padding-bottom: 5px;
+		    border-bottom: 1px solid #ddd;
+		    page-break-after: avoid;
+		}
+
+		table.items {
+		    width: 100%;
+		    border-collapse: collapse;
+		    margin-bottom: 20px;
+		    page-break-inside: avoid;
+		}
+
+    </style>
+</head>
+<body>
+	<!-- FOOTER -->
+	<div class="footer">
+	    <span th:text="${clinic.name}"></span> | <span th:text="${clinic.email}"></span> | <span th:text="${clinic.phone}"></span>
+	</div>
+<!-- HEADER -->
+<div class="header">
+    <div class="clinic-info">
+        <div class="clinic-name" th:text="${clinic.name}">Naziv klinike</div>
+        <div class="clinic-detail" th:if="${clinic.address}" th:text="${clinic.address}"></div>
+        <div class="clinic-detail">
+            <span th:if="${clinic.city}" th:text="${clinic.city}"></span>
+            <span th:if="${clinic.country}">, <span th:text="${clinic.country}"></span></span>
+        </div>
+        <div class="clinic-detail" th:if="${clinic.phone}">Tel: <span th:text="${clinic.phone}"></span></div>
+        <div class="clinic-detail" th:if="${clinic.email}" th:text="${clinic.email}"></div>
+    </div>
+    <div class="record-info">
+        <div class="record-title">KARTON</div>
+        <div class="record-detail">Datum: <span th:text="${#temporals.format(record.createdAt, 'dd.MM.yyyy. HH:mm')}"></span></div>
+        <div class="record-detail">Veterinar: <span th:text="${vetName}"></span></div>
+    </div>
+</div>
+
+<hr class="separator"/>
+
+<!-- PET + OWNER -->
+<table class="parties-table">
+    <tr>
+        <td>
+            <div class="party-label">Pacijent</div>
+            <div class="party-name" th:text="${pet.name}"></div>
+            <div class="party-detail" th:if="${speciesName != ''}">Vrsta: <span th:text="${speciesName}"></span></div>
+            <div class="party-detail" th:if="${breedName != ''}">Rasa: <span th:text="${breedName}"></span></div>
+            <div class="party-detail" th:if="${pet.gender != null}">Pol: <span th:text="${pet.gender}"></span></div>
+            <div class="party-detail" th:if="${pet.dateOfBirth != null}">Datum rođenja: <span th:text="${#temporals.format(pet.dateOfBirth, 'dd.MM.yyyy.')}"></span></div>
+            <div class="party-detail" th:if="${pet.microchipNumber != null}">Mikročip: <span th:text="${pet.microchipNumber}"></span></div>
+        </td>
+        <td>
+            <div class="party-label">Vlasnik</div>
+            <div class="party-name" th:text="${owner.firstName + ' ' + owner.lastName}"></div>
+            <div class="party-detail" th:if="${owner.phone}" th:text="'Tel: ' + ${owner.phone}"></div>
+            <div class="party-detail" th:if="${owner.email}" th:text="${owner.email}"></div>
+            <div class="party-detail" th:if="${owner.address}" th:text="${owner.address}"></div>
+            <div class="party-detail" th:if="${owner.city}" th:text="${owner.city}"></div>
+        </td>
+    </tr>
+</table>
+
+
+<!-- VITALS -->
+<div th:if="${record.weightKg != null or record.temperatureC != null or record.heartRate != null}">
+    <div class="section-title">Vitalni parametri</div>
+    <table class="vitals-table">
+        <tr>
+            <td th:if="${record.weightKg != null}">
+                <div class="vital-value" th:text="${#numbers.formatDecimal(record.weightKg, 1, 1)} + ' kg'"></div>
+                <div class="vital-label">Težina</div>
+            </td>
+            <td th:if="${record.temperatureC != null}">
+                <div class="vital-value" th:text="${#numbers.formatDecimal(record.temperatureC, 1, 1)} + ' °C'"></div>
+                <div class="vital-label">Temperatura</div>
+            </td>
+            <td th:if="${record.heartRate != null}">
+                <div class="vital-value" th:text="${record.heartRate} + ' bpm'"></div>
+                <div class="vital-label">Puls</div>
+            </td>
+        </tr>
+    </table>
+</div>
+
+
+<!-- SYMPTOMS -->
+<div th:if="${record.symptoms != null and !record.symptoms.isEmpty()}">
+    <div class="section-title">Simptomi</div>
+    <div class="text-block">
+        <div class="text-block-content" th:text="${record.symptoms}"></div>
+    </div>
+</div>
+
+<!-- DIAGNOSIS -->
+<div th:if="${record.diagnosis != null and !record.diagnosis.isEmpty()}">
+    <div class="section-title">Dijagnoza</div>
+    <div class="text-block">
+        <div class="text-block-content" th:text="${record.diagnosis}"></div>
+    </div>
+</div>
+
+<!-- EXAMINATION NOTES -->
+<div th:if="${record.examinationNotes != null and !record.examinationNotes.isEmpty()}">
+    <div class="section-title">Napomene pregleda</div>
+    <div class="text-block">
+        <div class="text-block-content" th:text="${record.examinationNotes}"></div>
+    </div>
+</div>
+
+<!-- TREATMENTS -->
+<div class="section-title">Usluge</div>
+<table class="items" th:if="${treatments != null and !treatments.isEmpty()}">
+    <thead>
+        <tr>
+            <th style="width: 5%">#</th>
+            <th style="width: 35%">Naziv</th>
+            <th style="width: 30%">Opis</th>
+            <th style="width: 30%">Rezultat</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr th:each="t, iter : ${treatments}">
+            <td th:text="${iter.index + 1}">1</td>
+            <td th:text="${t.name}"></td>
+            <td th:text="${t.description != null ? t.description : '-'}"></td>
+            <td th:text="${t.result != null ? t.result : '-'}"></td>
+        </tr>
+    </tbody>
+</table>
+<div class="no-data" th:if="${treatments == null or treatments.isEmpty()}">Nema usluga u ovom kartonu.</div>
+
+<!-- LAB REPORTS -->
+<div class="section-title">Laboratorijski izveštaji</div>
+<table class="items" th:if="${labReports != null and !labReports.isEmpty()}">
+    <thead>
+        <tr>
+            <th style="width: 5%">#</th>
+            <th style="width: 15%">Broj</th>
+            <th style="width: 25%">Analiza</th>
+            <th style="width: 10%">Kategorija</th>
+            <th style="width: 10%">Status</th>
+            <th style="width: 15%">Datum</th>
+            <th style="width: 20%">Rezultat</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr th:each="lr, iter : ${labReports}">
+            <td th:text="${iter.index + 1}">1</td>
+            <td th:text="${lr.reportNumber}"></td>
+            <td th:text="${lr.analysisType}"></td>
+            <td th:text="${lr.testCategory}"></td>
+            <td th:text="${lr.status}"></td>
+            <td th:text="${lr.requestedAt != null ? #temporals.format(lr.requestedAt, 'dd.MM.yyyy.') : '-'}"></td>
+            <td th:text="${lr.resultSummary != null ? lr.resultSummary : '-'}"></td>
+        </tr>
+    </tbody>
+</table>
+<div class="no-data" th:if="${labReports == null or labReports.isEmpty()}">Nema laboratorijskih izveštaja.</div>
+
+
+<!-- PRESCRIPTIONS -->
+<div class="section-title">Recepti</div>
+<table class="items" th:if="${prescriptions != null and !prescriptions.isEmpty()}">
+    <thead>
+        <tr>
+            <th style="width: 5%">#</th>
+            <th style="width: 25%">Lek</th>
+            <th style="width: 15%">Doziranje</th>
+            <th style="width: 15%">Učestalost</th>
+            <th style="width: 10%">Trajanje</th>
+            <th style="width: 15%">Početak</th>
+            <th style="width: 15%">Kraj</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr th:each="p, iter : ${prescriptions}">
+            <td th:text="${iter.index + 1}">1</td>
+            <td th:text="${p.medicationName}">Lek</td>
+            <td th:text="${p.dosage}">10mg</td>
+            <td th:text="${p.frequency}">2x dnevno</td>
+            <td th:text="${p.durationDays != null ? p.durationDays + ' dana' : '-'}">7 dana</td>
+            <td th:text="${#temporals.format(p.startDate, 'dd.MM.yyyy.')}"></td>
+            <td th:text="${p.endDate != null ? #temporals.format(p.endDate, 'dd.MM.yyyy.') : '-'}"></td>
+        </tr>
+    </tbody>
+</table>
+<div class="no-data" th:if="${prescriptions == null or prescriptions.isEmpty()}">Nema propisanih lekova.</div>
+
+<!-- VACCINATIONS -->
+<div class="section-title">Vakcinacije</div>
+<table class="items" th:if="${vaccinations != null and !vaccinations.isEmpty()}">
+    <thead>
+        <tr>
+            <th style="width: 5%">#</th>
+            <th style="width: 25%">Vakcina</th>
+            <th style="width: 15%">Proizvođač</th>
+            <th style="width: 15%">Serija</th>
+            <th style="width: 15%">Dato</th>
+            <th style="width: 12%">Važi do</th>
+            <th style="width: 13%">Sledeća</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr th:each="v, iter : ${vaccinations}">
+            <td th:text="${iter.index + 1}">1</td>
+            <td th:text="${v.vaccineName}">Vakcina</td>
+            <td th:text="${v.manufacturer != null ? v.manufacturer : '-'}">-</td>
+            <td th:text="${v.batchNumber != null ? v.batchNumber : '-'}">-</td>
+            <td th:text="${#temporals.format(v.administeredAt, 'dd.MM.yyyy.')}"></td>
+            <td th:text="${v.validUntil != null ? #temporals.format(v.validUntil, 'dd.MM.yyyy.') : '-'}"></td>
+            <td th:text="${v.nextDueDate != null ? #temporals.format(v.nextDueDate, 'dd.MM.yyyy.') : '-'}"></td>
+        </tr>
+    </tbody>
+</table>
+<div class="no-data" th:if="${vaccinations == null or vaccinations.isEmpty()}">Nema vakcinacija u ovom kartonu.</div>
+
+<!-- FOLLOW-UP -->
+<div th:if="${record.followUpRecommended != null and record.followUpRecommended}">
+    <div class="section-title">Kontrolni pregled</div>
+    <div class="follow-up">
+        <span>Preporučena kontrola</span>
+        <span th:if="${record.followUpDate != null}"> — <strong th:text="${#temporals.format(record.followUpDate, 'dd.MM.yyyy.')}"></strong></span>
+    </div>
+</div>
+
+
+
+</body>
+</html>

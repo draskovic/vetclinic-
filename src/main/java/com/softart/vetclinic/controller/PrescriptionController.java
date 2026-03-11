@@ -14,6 +14,10 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.UUID;
+import com.softart.vetclinic.service.PrescriptionPdfService;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 
 @RestController
 @RequestMapping("/api/prescriptions")
@@ -22,6 +26,8 @@ public class PrescriptionController {
 
     private final PrescriptionService prescriptionService;
     private final PrescriptionMapper prescriptionMapper;
+    private final PrescriptionPdfService prescriptionPdfService;
+
 
     @GetMapping
     public Page<PrescriptionResponse> getAll(
@@ -78,4 +84,16 @@ public class PrescriptionController {
         return prescriptionService.findByPet(clinicId, petId).stream()
                 .map(prescriptionMapper::toResponse).toList();
     }
+    
+    @GetMapping("/{id}/pdf")
+    public ResponseEntity<byte[]> generatePdf(
+            @RequestHeader("X-Clinic-Id") UUID clinicId,
+            @PathVariable UUID id) {
+        byte[] pdf = prescriptionPdfService.generatePdf(id, clinicId);
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_PDF);
+        headers.setContentDispositionFormData("attachment", "recept-" + id + ".pdf");
+        return ResponseEntity.ok().headers(headers).body(pdf);
+    }
+
 }
