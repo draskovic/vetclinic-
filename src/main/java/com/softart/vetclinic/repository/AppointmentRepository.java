@@ -50,7 +50,9 @@ public interface AppointmentRepository extends JpaRepository<Appointment, UUID> 
     	       "AND a.status IN ('SCHEDULED', 'CONFIRMED') AND a.deleted = false")
     	List<Appointment> findTomorrowAppointments(@Param("start") OffsetDateTime start, @Param("end") OffsetDateTime end);
     
+    @EntityGraph(attributePaths = {"location", "pet", "owner", "vet"})
     List<Appointment> findByClinicIdAndPetIdAndDeletedFalseOrderByStartTimeDesc(UUID clinicId, UUID petId);
+
 
     @EntityGraph(attributePaths = {"location", "pet", "owner", "vet"})
     @Query("SELECT a FROM Appointment a WHERE a.clinicId = :clinicId AND a.deleted = false " +
@@ -62,7 +64,10 @@ public interface AppointmentRepository extends JpaRepository<Appointment, UUID> 
            "OR LOWER(a.reason) LIKE LOWER(CONCAT('%', :search, '%')))")
     Page<Appointment> searchByClinicId(@Param("clinicId") UUID clinicId, @Param("search") String search, Pageable pageable);
     
+    @EntityGraph(attributePaths = {"location", "pet", "owner", "vet"})
     List<Appointment> findByClinicIdAndOwnerIdAndDeletedFalseOrderByStartTimeDesc(UUID clinicId, UUID ownerId);
+
+   
 
 
 }

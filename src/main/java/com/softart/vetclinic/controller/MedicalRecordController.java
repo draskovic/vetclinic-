@@ -1,6 +1,13 @@
 package com.softart.vetclinic.controller;
 
 import com.softart.vetclinic.dto.CreateMedicalRecordRequest;
+import com.softart.vetclinic.repository.PetRepository;
+import com.softart.vetclinic.repository.UserRepository;
+import com.softart.vetclinic.entity.MedicalRecord;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
+
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -28,6 +35,10 @@ public class MedicalRecordController {
     private final MedicalRecordService medicalRecordService;
     private final MedicalRecordMapper medicalRecordMapper;
     private final MedicalRecordPdfService medicalRecordPdfService;
+
+   
+    private final PetRepository petRepository;
+    private final UserRepository userRepository;
 
 
     @GetMapping
@@ -102,8 +113,34 @@ public class MedicalRecordController {
     public List<MedicalRecordResponse> getByOwner(
             @RequestHeader("X-Clinic-Id") UUID clinicId,
             @PathVariable UUID ownerId) {
-        return medicalRecordService.findByOwner(clinicId, ownerId).stream()
-                .map(medicalRecordMapper::toResponse).toList();
+        List<MedicalRecord> records = medicalRecordService.findByOwner(clinicId, ownerId);
+
+        Set<UUID> petIds = records.stream().map(MedicalRecord::getPetId).collect(Collectors.toSet());
+        Map<UUID, String> petNames = petRepository.findAllById(petIds).stream()
+                .collect(Collectors.toMap(p -> p.getId(), p -> p.getName()));
+
+        Set<UUID> vetIds = records.stream().map(MedicalRecord::getVetId).collect(Collectors.toSet());
+        Map<UUID, String> vetNames = userRepository.findAllById(vetIds).stream()
+                .collect(Collectors.toMap(u -> u.getId(), u -> u.getFirstName() + " " + u.getLastName()));
+
+        return records.stream().map(r -> new MedicalRecordResponse(
+                r.getId(),
+                r.getAppointmentId(),
+                r.getPetId(),
+                petNames.getOrDefault(r.getPetId(), ""),
+                r.getVetId(),
+                vetNames.getOrDefault(r.getVetId(), ""),
+                r.getSymptoms(),
+                r.getDiagnosis(),
+                r.getExaminationNotes(),
+                r.getWeightKg(),
+                r.getTemperatureC(),
+                r.getHeartRate(),
+                r.getFollowUpRecommended(),
+                r.getFollowUpDate(),
+                r.getCreatedAt(),
+                r.getUpdatedAt()
+        )).toList();
     }
 
 
