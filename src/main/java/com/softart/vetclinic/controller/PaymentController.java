@@ -92,8 +92,7 @@ public class PaymentController {
         System.out.println(">>> 2. Current status: " + invoice.getStatus());
 
         if (invoice.getStatus() == InvoiceStatus.CANCELLED
-                || invoice.getStatus() == InvoiceStatus.REFUNDED
-                || invoice.getStatus() == InvoiceStatus.DRAFT) {
+                || invoice.getStatus() == InvoiceStatus.REFUNDED) {
             return;
         }
 
