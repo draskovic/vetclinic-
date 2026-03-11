@@ -80,4 +80,10 @@ public class MedicalRecordService extends AbstractCrudService<MedicalRecord, Med
     public Optional<MedicalRecord> findByAppointment(UUID appointmentId) {
         return medicalRecordRepository.findByAppointmentIdAndDeletedFalse(appointmentId);
     }
+    
+    @Transactional(readOnly = true)
+    public List<MedicalRecord> findByOwner(UUID clinicId, UUID ownerId) {
+        return medicalRecordRepository.findByClinicIdAndOwnerIdOrderByCreatedAtDesc(clinicId, ownerId);
+    }
+
 }

@@ -94,4 +94,13 @@ public class AppointmentController {
                 .map(appointmentMapper::toResponse)
                 .toList();
     }
+    
+    @GetMapping("/by-owner/{ownerId}")
+    public List<AppointmentResponse> getByOwner(
+            @RequestHeader("X-Clinic-Id") UUID clinicId,
+            @PathVariable UUID ownerId) {
+        return appointmentService.findByOwner(clinicId, ownerId).stream()
+                .map(appointmentMapper::toResponse).toList();
+    }
+
 }

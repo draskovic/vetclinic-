@@ -119,5 +119,11 @@ public class AppointmentService extends AbstractCrudService<Appointment, Appoint
     	    }
         return appointmentRepository.searchByClinicId(clinicId, search, pageable);
     }
+    
+    @Transactional(readOnly = true)
+    public List<Appointment> findByOwner(UUID clinicId, UUID ownerId) {
+        return appointmentRepository.findByClinicIdAndOwnerIdAndDeletedFalseOrderByStartTimeDesc(clinicId, ownerId);
+    }
+
 
 }

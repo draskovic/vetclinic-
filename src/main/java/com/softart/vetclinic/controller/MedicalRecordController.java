@@ -97,5 +97,14 @@ public class MedicalRecordController {
         headers.setContentDispositionFormData("attachment", "karton-" + id + ".pdf");
         return ResponseEntity.ok().headers(headers).body(pdf);
     }
+    
+    @GetMapping("/by-owner/{ownerId}")
+    public List<MedicalRecordResponse> getByOwner(
+            @RequestHeader("X-Clinic-Id") UUID clinicId,
+            @PathVariable UUID ownerId) {
+        return medicalRecordService.findByOwner(clinicId, ownerId).stream()
+                .map(medicalRecordMapper::toResponse).toList();
+    }
+
 
 }

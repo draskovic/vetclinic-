@@ -61,5 +61,8 @@ public interface AppointmentRepository extends JpaRepository<Appointment, UUID> 
            "OR LOWER(a.vet.lastName) LIKE LOWER(CONCAT('%', :search, '%')) " +
            "OR LOWER(a.reason) LIKE LOWER(CONCAT('%', :search, '%')))")
     Page<Appointment> searchByClinicId(@Param("clinicId") UUID clinicId, @Param("search") String search, Pageable pageable);
+    
+    List<Appointment> findByClinicIdAndOwnerIdAndDeletedFalseOrderByStartTimeDesc(UUID clinicId, UUID ownerId);
+
 
 }
