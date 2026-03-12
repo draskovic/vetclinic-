@@ -20,7 +20,9 @@ import com.softart.vetclinic.service.MedicalRecordService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
@@ -40,13 +42,6 @@ public class MedicalRecordController {
     private final PetRepository petRepository;
     private final UserRepository userRepository;
 
-
-    @GetMapping
-    public Page<MedicalRecordResponse> getAll(
-            @RequestHeader("X-Clinic-Id") UUID clinicId,
-            Pageable pageable) {
-        return medicalRecordService.findAll(clinicId, pageable).map(medicalRecordMapper::toResponse);
-    }
 
     @GetMapping("/{id}")
     public MedicalRecordResponse getById(
@@ -142,6 +137,17 @@ public class MedicalRecordController {
                 r.getUpdatedAt()
         )).toList();
     }
-
+    
+    @GetMapping
+    public Page<MedicalRecordResponse> getAll(
+            @RequestHeader("X-Clinic-Id") UUID clinicId,
+            @RequestParam(required = false) String search,
+            Pageable pageable) {
+        if (pageable.getSort().isUnsorted()) {
+            pageable = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(),
+                    Sort.by(Sort.Direction.DESC, "createdAt"));
+        }
+        return medicalRecordService.searchAll(clinicId, search, pageable).map(medicalRecordMapper::toResponse);
+    }
 
 }

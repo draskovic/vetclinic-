@@ -86,4 +86,11 @@ public class MedicalRecordService extends AbstractCrudService<MedicalRecord, Med
         return medicalRecordRepository.findByClinicIdAndOwnerIdOrderByCreatedAtDesc(clinicId, ownerId);
     }
 
+    public Page<MedicalRecord> searchAll(UUID clinicId, String search, Pageable pageable) {
+        if (search == null || search.isBlank()) {
+            return findAllByClinicId(clinicId, pageable);
+        }
+        return repository.searchByClinicId(clinicId, search, pageable);
+    }
+
 }
