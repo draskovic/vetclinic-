@@ -186,7 +186,7 @@
         </profile>
         <!-- Docker/CI build: fork=false, bez hardkodirane putanje -->
         <profile>
-            <id>production</id>
+            <id>docker</id>
             <properties>
                 <compiler.fork>false</compiler.fork>
                 <compiler.executable></compiler.executable>
