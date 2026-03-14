@@ -10,6 +10,8 @@ public record MedicalRecordResponse(
         UUID appointmentId,
         UUID petId,
         String petName,
+        UUID ownerId,
+        String ownerName,
         UUID vetId,
         String vetName,
         String symptoms,

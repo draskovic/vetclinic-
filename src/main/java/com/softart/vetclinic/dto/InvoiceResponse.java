@@ -11,6 +11,7 @@ public record InvoiceResponse(
         UUID id,
         UUID appointmentId,
         UUID ownerId,
+        UUID medicalRecordId,
         String ownerName,
         UUID locationId,
         String locationName,

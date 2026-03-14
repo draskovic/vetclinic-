@@ -1,6 +1,7 @@
 package com.softart.vetclinic.controller;
 
 import com.softart.vetclinic.dto.CreateMedicalRecordRequest;
+import com.softart.vetclinic.repository.OwnerRepository;
 import com.softart.vetclinic.repository.PetRepository;
 import com.softart.vetclinic.repository.UserRepository;
 import com.softart.vetclinic.entity.MedicalRecord;
@@ -41,14 +42,41 @@ public class MedicalRecordController {
    
     private final PetRepository petRepository;
     private final UserRepository userRepository;
+    private final OwnerRepository ownerRepository;
+
 
 
     @GetMapping("/{id}")
     public MedicalRecordResponse getById(
             @RequestHeader("X-Clinic-Id") UUID clinicId,
             @PathVariable UUID id) {
-        return medicalRecordMapper.toResponse(medicalRecordService.findById(id, clinicId));
+        MedicalRecord r = medicalRecordService.findById(id, clinicId);
+        var pet = petRepository.findById(r.getPetId()).orElse(null);
+        var owner = pet != null ? ownerRepository.findById(pet.getOwnerId()).orElse(null) : null;
+        var vet = userRepository.findById(r.getVetId()).orElse(null);
+
+        return new MedicalRecordResponse(
+                r.getId(),
+                r.getAppointmentId(),
+                r.getPetId(),
+                pet != null ? pet.getName() : "",
+                pet != null ? pet.getOwnerId() : null,
+                owner != null ? owner.getFirstName() + " " + owner.getLastName() : "",
+                r.getVetId(),
+                vet != null ? vet.getFirstName() + " " + vet.getLastName() : "",
+                r.getSymptoms(),
+                r.getDiagnosis(),
+                r.getExaminationNotes(),
+                r.getWeightKg(),
+                r.getTemperatureC(),
+                r.getHeartRate(),
+                r.getFollowUpRecommended(),
+                r.getFollowUpDate(),
+                r.getCreatedAt(),
+                r.getUpdatedAt()
+        );
     }
+
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
@@ -56,17 +84,50 @@ public class MedicalRecordController {
             @RequestHeader("X-Clinic-Id") UUID clinicId,
             @Valid @RequestBody CreateMedicalRecordRequest request) {
         var entity = medicalRecordMapper.toEntity(request);
-        return medicalRecordMapper.toResponse(medicalRecordService.create(entity, clinicId));
+        MedicalRecord r = medicalRecordService.create(entity, clinicId);
+        var pet = petRepository.findById(r.getPetId()).orElse(null);
+        var owner = pet != null ? ownerRepository.findById(pet.getOwnerId()).orElse(null) : null;
+        var vet = userRepository.findById(r.getVetId()).orElse(null);
+
+        return new MedicalRecordResponse(
+                r.getId(), r.getAppointmentId(), r.getPetId(),
+                pet != null ? pet.getName() : "",
+                pet != null ? pet.getOwnerId() : null,
+                owner != null ? owner.getFirstName() + " " + owner.getLastName() : "",
+                r.getVetId(),
+                vet != null ? vet.getFirstName() + " " + vet.getLastName() : "",
+                r.getSymptoms(), r.getDiagnosis(), r.getExaminationNotes(),
+                r.getWeightKg(), r.getTemperatureC(), r.getHeartRate(),
+                r.getFollowUpRecommended(), r.getFollowUpDate(),
+                r.getCreatedAt(), r.getUpdatedAt()
+        );
     }
+
 
     @PutMapping("/{id}")
     public MedicalRecordResponse update(
             @RequestHeader("X-Clinic-Id") UUID clinicId,
             @PathVariable UUID id,
             @Valid @RequestBody UpdateMedicalRecordRequest request) {
-        return medicalRecordMapper.toResponse(
-                medicalRecordService.update(id, clinicId, existing -> medicalRecordMapper.updateEntity(request, existing)));
+        MedicalRecord r = medicalRecordService.update(id, clinicId, existing -> medicalRecordMapper.updateEntity(request, existing));
+        var pet = petRepository.findById(r.getPetId()).orElse(null);
+        var owner = pet != null ? ownerRepository.findById(pet.getOwnerId()).orElse(null) : null;
+        var vet = userRepository.findById(r.getVetId()).orElse(null);
+
+        return new MedicalRecordResponse(
+                r.getId(), r.getAppointmentId(), r.getPetId(),
+                pet != null ? pet.getName() : "",
+                pet != null ? pet.getOwnerId() : null,
+                owner != null ? owner.getFirstName() + " " + owner.getLastName() : "",
+                r.getVetId(),
+                vet != null ? vet.getFirstName() + " " + vet.getLastName() : "",
+                r.getSymptoms(), r.getDiagnosis(), r.getExaminationNotes(),
+                r.getWeightKg(), r.getTemperatureC(), r.getHeartRate(),
+                r.getFollowUpRecommended(), r.getFollowUpDate(),
+                r.getCreatedAt(), r.getUpdatedAt()
+        );
     }
+
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
@@ -80,18 +141,53 @@ public class MedicalRecordController {
     public List<MedicalRecordResponse> getByPet(
             @RequestHeader("X-Clinic-Id") UUID clinicId,
             @PathVariable UUID petId) {
-        return medicalRecordService.findByPet(clinicId, petId).stream()
-                .map(medicalRecordMapper::toResponse).toList();
+        List<MedicalRecord> records = medicalRecordService.findByPet(clinicId, petId);
+        var pet = petRepository.findById(petId).orElse(null);
+        var owner = pet != null ? ownerRepository.findById(pet.getOwnerId()).orElse(null) : null;
+
+        Set<UUID> vetIds = records.stream().map(MedicalRecord::getVetId).collect(Collectors.toSet());
+        Map<UUID, String> vetNames = userRepository.findAllById(vetIds).stream()
+                .collect(Collectors.toMap(u -> u.getId(), u -> u.getFirstName() + " " + u.getLastName()));
+
+        return records.stream().map(r -> new MedicalRecordResponse(
+                r.getId(), r.getAppointmentId(), r.getPetId(),
+                pet != null ? pet.getName() : "",
+                pet != null ? pet.getOwnerId() : null,
+                owner != null ? owner.getFirstName() + " " + owner.getLastName() : "",
+                r.getVetId(),
+                vetNames.getOrDefault(r.getVetId(), ""),
+                r.getSymptoms(), r.getDiagnosis(), r.getExaminationNotes(),
+                r.getWeightKg(), r.getTemperatureC(), r.getHeartRate(),
+                r.getFollowUpRecommended(), r.getFollowUpDate(),
+                r.getCreatedAt(), r.getUpdatedAt()
+        )).toList();
     }
+
 
     @GetMapping("/by-appointment/{appointmentId}")
     public MedicalRecordResponse getByAppointment(
             @RequestHeader("X-Clinic-Id") UUID clinicId,
             @PathVariable UUID appointmentId) {
-        return medicalRecordService.findByAppointment(appointmentId)
-                .map(medicalRecordMapper::toResponse)
+        MedicalRecord r = medicalRecordService.findByAppointment(appointmentId)
                 .orElseThrow(() -> new ResourceNotFoundException("MedicalRecord", "appointmentId", appointmentId));
+        var pet = petRepository.findById(r.getPetId()).orElse(null);
+        var owner = pet != null ? ownerRepository.findById(pet.getOwnerId()).orElse(null) : null;
+        var vet = userRepository.findById(r.getVetId()).orElse(null);
+
+        return new MedicalRecordResponse(
+                r.getId(), r.getAppointmentId(), r.getPetId(),
+                pet != null ? pet.getName() : "",
+                pet != null ? pet.getOwnerId() : null,
+                owner != null ? owner.getFirstName() + " " + owner.getLastName() : "",
+                r.getVetId(),
+                vet != null ? vet.getFirstName() + " " + vet.getLastName() : "",
+                r.getSymptoms(), r.getDiagnosis(), r.getExaminationNotes(),
+                r.getWeightKg(), r.getTemperatureC(), r.getHeartRate(),
+                r.getFollowUpRecommended(), r.getFollowUpDate(),
+                r.getCreatedAt(), r.getUpdatedAt()
+        );
     }
+
     
     @GetMapping("/{id}/pdf")
     public ResponseEntity<byte[]> generatePdf(
@@ -110,6 +206,10 @@ public class MedicalRecordController {
             @PathVariable UUID ownerId) {
         List<MedicalRecord> records = medicalRecordService.findByOwner(clinicId, ownerId);
 
+        String ownerFullName = ownerRepository.findById(ownerId)
+                .map(o -> o.getFirstName() + " " + o.getLastName())
+                .orElse("");
+        
         Set<UUID> petIds = records.stream().map(MedicalRecord::getPetId).collect(Collectors.toSet());
         Map<UUID, String> petNames = petRepository.findAllById(petIds).stream()
                 .collect(Collectors.toMap(p -> p.getId(), p -> p.getName()));
@@ -123,6 +223,8 @@ public class MedicalRecordController {
                 r.getAppointmentId(),
                 r.getPetId(),
                 petNames.getOrDefault(r.getPetId(), ""),
+                ownerId,           // <-- novo
+                ownerFullName,     // <-- novo
                 r.getVetId(),
                 vetNames.getOrDefault(r.getVetId(), ""),
                 r.getSymptoms(),
@@ -147,7 +249,43 @@ public class MedicalRecordController {
             pageable = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(),
                     Sort.by(Sort.Direction.DESC, "createdAt"));
         }
-        return medicalRecordService.searchAll(clinicId, search, pageable).map(medicalRecordMapper::toResponse);
+        Page<MedicalRecord> page = medicalRecordService.searchAll(clinicId, search, pageable);
+
+        Set<UUID> petIds = page.getContent().stream().map(MedicalRecord::getPetId).collect(Collectors.toSet());
+        Map<UUID, String> petNames = petRepository.findAllById(petIds).stream()
+                .collect(Collectors.toMap(p -> p.getId(), p -> p.getName()));
+        Map<UUID, UUID> petOwnerMap = petRepository.findAllById(petIds).stream()
+                .collect(Collectors.toMap(p -> p.getId(), p -> p.getOwnerId()));
+
+        Set<UUID> ownerIds = new java.util.HashSet<>(petOwnerMap.values());
+        Map<UUID, String> ownerNames = ownerRepository.findAllById(ownerIds).stream()
+                .collect(Collectors.toMap(o -> o.getId(), o -> o.getFirstName() + " " + o.getLastName()));
+
+        Set<UUID> vetIds = page.getContent().stream().map(MedicalRecord::getVetId).collect(Collectors.toSet());
+        Map<UUID, String> vetNames = userRepository.findAllById(vetIds).stream()
+                .collect(Collectors.toMap(u -> u.getId(), u -> u.getFirstName() + " " + u.getLastName()));
+
+        return page.map(r -> new MedicalRecordResponse(
+                r.getId(),
+                r.getAppointmentId(),
+                r.getPetId(),
+                petNames.getOrDefault(r.getPetId(), ""),
+                petOwnerMap.get(r.getPetId()),
+                ownerNames.getOrDefault(petOwnerMap.get(r.getPetId()), ""),
+                r.getVetId(),
+                vetNames.getOrDefault(r.getVetId(), ""),
+                r.getSymptoms(),
+                r.getDiagnosis(),
+                r.getExaminationNotes(),
+                r.getWeightKg(),
+                r.getTemperatureC(),
+                r.getHeartRate(),
+                r.getFollowUpRecommended(),
+                r.getFollowUpDate(),
+                r.getCreatedAt(),
+                r.getUpdatedAt()
+        ));
     }
+
 
 }

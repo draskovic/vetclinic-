@@ -11,6 +11,8 @@ public interface MedicalRecordMapper {
 
     @Mapping(target = "petName", source = "pet.name")
     @Mapping(target = "vetName", expression = "java(entity.getVet() != null ? entity.getVet().getFirstName() + \" \" + entity.getVet().getLastName() : null)")
+    @Mapping(target = "ownerId", ignore = true)
+    @Mapping(target = "ownerName", ignore = true)
     MedicalRecordResponse toResponse(MedicalRecord entity);
 
     @Mapping(target = "id", ignore = true)

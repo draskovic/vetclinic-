@@ -5,6 +5,7 @@ import com.softart.vetclinic.dto.InvoiceResponse;
 import com.softart.vetclinic.dto.UpdateInvoiceRequest;
 import com.softart.vetclinic.enums.InvoiceStatus;
 import com.softart.vetclinic.mapper.InvoiceMapper;
+import com.softart.vetclinic.repository.InvoiceRepository;
 import com.softart.vetclinic.service.InvoiceService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -27,6 +28,7 @@ import java.util.UUID;
 public class InvoiceController {
 
     private final InvoiceService invoiceService;
+    private final InvoiceRepository invoiceRepository;
     private final InvoiceMapper invoiceMapper;
     private final InvoicePdfService invoicePdfService;
 
@@ -103,4 +105,16 @@ public class InvoiceController {
         return invoiceService.findByStatus(clinicId, status).stream()
                 .map(invoiceMapper::toResponse).toList();
     }
+    
+    @GetMapping("/by-medical-record/{medicalRecordId}")
+    public ResponseEntity<InvoiceResponse> getByMedicalRecord(
+            @RequestHeader("X-Clinic-Id") UUID clinicId,
+            @PathVariable UUID medicalRecordId) {
+        return invoiceRepository.findByMedicalRecordIdAndDeletedFalse(medicalRecordId)
+                .map(invoice -> invoiceMapper.toResponse(invoiceService.findById(invoice.getId(), clinicId)))
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+
 }

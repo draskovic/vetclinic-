@@ -51,4 +51,6 @@ public interface InvoiceRepository extends JpaRepository<Invoice, UUID> {
            "OR LOWER(i.owner.email) LIKE LOWER(CONCAT('%', :search, '%')))")
     Page<Invoice> searchByClinicId(@Param("clinicId") UUID clinicId, @Param("search") String search, Pageable pageable);
 
+    Optional<Invoice> findByMedicalRecordIdAndDeletedFalse(UUID medicalRecordId);
+
 }

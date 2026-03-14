@@ -11,6 +11,7 @@ import java.util.UUID;
 public record CreateInvoiceRequest(
         UUID appointmentId,
         @NotNull UUID ownerId,
+        UUID medicalRecordId,
         UUID locationId,
         InvoiceStatus status,
         OffsetDateTime issuedAt,

@@ -72,4 +72,8 @@ public class Invoice extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "location_id", insertable = false, updatable = false)
     private ClinicLocation location;
+    
+    @Column(name = "medical_record_id")
+    private UUID medicalRecordId;
+
 }
