@@ -1,19 +1,20 @@
 package com.softart.vetclinic.controller;
 
-import com.softart.vetclinic.IntegrationTestBase;
-import com.softart.vetclinic.dto.CreateAppointmentRequest;
-import com.softart.vetclinic.dto.UpdateAppointmentRequest;
-import com.softart.vetclinic.enums.AppointmentStatus;
-import com.softart.vetclinic.enums.AppointmentType;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
+import static org.hamcrest.Matchers.hasSize;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.UUID;
 
-import static org.hamcrest.Matchers.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+
+import com.softart.vetclinic.IntegrationTestBase;
+import com.softart.vetclinic.dto.CreateAppointmentRequest;
+import com.softart.vetclinic.enums.AppointmentStatus;
+import com.softart.vetclinic.enums.AppointmentType;
 
 class AppointmentControllerTest extends IntegrationTestBase {
 

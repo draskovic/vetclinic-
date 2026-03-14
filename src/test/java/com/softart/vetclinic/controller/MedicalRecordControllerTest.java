@@ -1,18 +1,17 @@
 package com.softart.vetclinic.controller;
 
-import com.softart.vetclinic.IntegrationTestBase;
-import com.softart.vetclinic.dto.CreateMedicalRecordRequest;
-import com.softart.vetclinic.dto.UpdateMedicalRecordRequest;
+import static org.hamcrest.Matchers.hasSize;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import java.math.BigDecimal;
+import java.util.UUID;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import java.math.BigDecimal;
-import java.time.OffsetDateTime;
-import java.time.ZoneOffset;
-import java.util.UUID;
-
-import static org.hamcrest.Matchers.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import com.softart.vetclinic.IntegrationTestBase;
+import com.softart.vetclinic.dto.CreateMedicalRecordRequest;
 
 class MedicalRecordControllerTest extends IntegrationTestBase {
 

@@ -1,17 +1,18 @@
 package com.softart.vetclinic.controller;
 
-import com.softart.vetclinic.IntegrationTestBase;
-import com.softart.vetclinic.dto.CreateInvoiceRequest;
-import com.softart.vetclinic.dto.UpdateInvoiceRequest;
-import com.softart.vetclinic.enums.InvoiceStatus;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
+import static org.hamcrest.Matchers.hasSize;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.math.BigDecimal;
 import java.util.UUID;
 
-import static org.hamcrest.Matchers.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+
+import com.softart.vetclinic.IntegrationTestBase;
+import com.softart.vetclinic.dto.CreateInvoiceRequest;
+import com.softart.vetclinic.enums.InvoiceStatus;
 
 class InvoiceControllerTest extends IntegrationTestBase {
 
@@ -26,7 +27,7 @@ class InvoiceControllerTest extends IntegrationTestBase {
     void create_success() throws Exception {
         seedPrerequisites();
 
-        var request = new CreateInvoiceRequest(null, ownerId, null,
+        var request = new CreateInvoiceRequest(null, ownerId, null, null,
                 InvoiceStatus.DRAFT, null, null,
                 new BigDecimal("100.00"), new BigDecimal("20.00"), BigDecimal.ZERO,
                 new BigDecimal("120.00"), "RSD", null);
@@ -41,8 +42,8 @@ class InvoiceControllerTest extends IntegrationTestBase {
     @Test
     @DisplayName("POST /api/invoices - invalid owner returns 404")
     void create_invalidOwner() throws Exception {
-        var request = new CreateInvoiceRequest(null, UUID.randomUUID(), null,
-                InvoiceStatus.DRAFT, null, null, null, null, null, null, null, null);
+        var request = new CreateInvoiceRequest(null, UUID.randomUUID(),null, null,
+                InvoiceStatus.DRAFT, null, null,  null,null, null, null, null, null);
 
         performPost("/api/invoices", tokenA, clinicAId, request)
                 .andExpect(status().isNotFound());
@@ -51,7 +52,7 @@ class InvoiceControllerTest extends IntegrationTestBase {
     @Test
     @DisplayName("POST /api/invoices - missing required fields returns 400")
     void create_missingRequired() throws Exception {
-        var request = new CreateInvoiceRequest(null, null, null,
+        var request = new CreateInvoiceRequest(null, null, null,null,
                 null, null, null, null, null, null, null, null, null);
 
         performPost("/api/invoices", tokenA, clinicAId, request)
