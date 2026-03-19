@@ -9,7 +9,9 @@ import com.softart.vetclinic.service.InventoryItemService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
@@ -27,9 +29,15 @@ public class InventoryItemController {
     @GetMapping
     public Page<InventoryItemResponse> getAll(
             @RequestHeader("X-Clinic-Id") UUID clinicId,
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) InventoryCategory category,
             Pageable pageable) {
-        return inventoryItemService.findAll(clinicId, pageable).map(inventoryItemMapper::toResponse);
+        if (pageable.getSort().isUnsorted()) {
+            pageable = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), Sort.by(Sort.Direction.ASC, "name"));
+        }
+        return inventoryItemService.searchAll(clinicId, search, category, pageable).map(inventoryItemMapper::toResponse);
     }
+
 
     @GetMapping("/{id}")
     public InventoryItemResponse getById(

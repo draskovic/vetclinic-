@@ -3,6 +3,7 @@ package com.softart.vetclinic.controller;
 import com.softart.vetclinic.dto.AppointmentResponse;
 import com.softart.vetclinic.dto.CreateAppointmentRequest;
 import com.softart.vetclinic.dto.UpdateAppointmentRequest;
+import com.softart.vetclinic.enums.AppointmentStatus;
 import com.softart.vetclinic.mapper.AppointmentMapper;
 import com.softart.vetclinic.service.AppointmentService;
 import jakarta.validation.Valid;
@@ -12,6 +13,9 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+
 
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -29,9 +33,14 @@ public class AppointmentController {
     public Page<AppointmentResponse> getAll(
             @RequestHeader("X-Clinic-Id") UUID clinicId,
             @RequestParam(required = false) String search,
+            @RequestParam(required = false) AppointmentStatus status,
             Pageable pageable) {
-        return appointmentService.searchAll(clinicId, search, pageable).map(appointmentMapper::toResponse);
+        if (pageable.getSort().isUnsorted()) {
+            pageable = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), Sort.by(Sort.Direction.DESC, "startTime"));
+        }
+        return appointmentService.searchAll(clinicId, search, status, pageable).map(appointmentMapper::toResponse);
     }
+
 
     @GetMapping("/{id}")
     public AppointmentResponse getById(

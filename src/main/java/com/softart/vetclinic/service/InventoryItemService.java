@@ -46,4 +46,15 @@ public class InventoryItemService extends AbstractCrudService<InventoryItem, Inv
     public List<InventoryItem> findByCategory(UUID clinicId, InventoryCategory category) {
         return inventoryItemRepository.findByClinicIdAndCategoryAndActiveTrue(clinicId, category);
     }
+    
+    public Page<InventoryItem> searchAll(UUID clinicId, String search, InventoryCategory category, Pageable pageable) {
+        if ((search == null || search.isBlank()) && category == null) {
+            return findAllByClinicId(clinicId, pageable);
+        }
+        return inventoryItemRepository.searchByClinicIdAndCategory(clinicId,
+                (search == null || search.isBlank()) ? "" : search,
+                category,
+                pageable);
+    }
+
 }

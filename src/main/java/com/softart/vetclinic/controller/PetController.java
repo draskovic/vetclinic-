@@ -8,7 +8,9 @@ import com.softart.vetclinic.service.PetService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
@@ -28,6 +30,10 @@ public class PetController {
             @RequestHeader("X-Clinic-Id") UUID clinicId,
             @RequestParam(required = false) String search,
             Pageable pageable) {
+    	if (pageable.getSort().isUnsorted()) {
+    	    pageable = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), Sort.by(Sort.Direction.ASC, "name"));
+    	}
+
         return petService.searchAll(clinicId, search, pageable).map(petMapper::toResponse);
     }
 

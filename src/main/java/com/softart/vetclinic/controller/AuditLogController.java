@@ -7,7 +7,9 @@ import com.softart.vetclinic.mapper.AuditLogMapper;
 import com.softart.vetclinic.service.AuditLogService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.*;
 
@@ -27,6 +29,10 @@ public class AuditLogController {
     public Page<AuditLogResponse> getAll(
             @RequestHeader("X-Clinic-Id") UUID clinicId,
             Pageable pageable) {
+    	if (pageable.getSort().isUnsorted()) {
+    	    pageable = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), Sort.by(Sort.Direction.DESC, "createdAt"));
+    	}
+
         Page<AuditLog> logs = auditLogService.findAll(clinicId, pageable);
         return mapWithUserNames(logs);
     }

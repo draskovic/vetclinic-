@@ -1,6 +1,10 @@
 package com.softart.vetclinic.controller;
 
 import com.softart.vetclinic.dto.ClinicResponse;
+import com.softart.vetclinic.dto.ProvisionClinicRequest;
+import com.softart.vetclinic.dto.ProvisionClinicResponse;
+import com.softart.vetclinic.service.ClinicProvisioningService;
+
 import com.softart.vetclinic.dto.CreateClinicRequest;
 import com.softart.vetclinic.dto.UpdateClinicRequest;
 import com.softart.vetclinic.mapper.ClinicMapper;
@@ -21,6 +25,8 @@ public class ClinicController {
 
     private final ClinicService clinicService;
     private final ClinicMapper clinicMapper;
+    private final ClinicProvisioningService clinicProvisioningService;
+
 
     @GetMapping
     public Page<ClinicResponse> getAll(Pageable pageable) {
@@ -53,6 +59,12 @@ public class ClinicController {
         clinicService.softDelete(id);
     }
     
+    @PostMapping("/provision")
+    @ResponseStatus(HttpStatus.CREATED)
+    public ProvisionClinicResponse provision(@Valid @RequestBody ProvisionClinicRequest request) {
+        return clinicProvisioningService.provision(request);
+    }
+
     @GetMapping("/lookup")
     public ClinicResponse getByEmail(@RequestParam String email) {
         return clinicMapper.toResponse(clinicService.findByEmail(email));

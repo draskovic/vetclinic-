@@ -12,7 +12,9 @@ import com.softart.vetclinic.service.DocumentService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.core.io.Resource;
@@ -39,6 +41,10 @@ public class DocumentController {
             @RequestHeader("X-Clinic-Id") UUID clinicId,
             @RequestParam(required = false) String search,
             Pageable pageable) {
+    	if (pageable.getSort().isUnsorted()) {
+    	    pageable = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), Sort.by(Sort.Direction.DESC, "createdAt"));
+    	}
+
         return documentService.searchAll(clinicId, search, pageable).map(documentMapper::toResponse);
     }
 

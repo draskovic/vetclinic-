@@ -8,7 +8,9 @@ import com.softart.vetclinic.service.VaccinationService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
@@ -35,6 +37,9 @@ public class VaccinationController {
     public Page<VaccinationResponse> getAll(
             @RequestHeader("X-Clinic-Id") UUID clinicId,
             Pageable pageable) {
+    	if (pageable.getSort().isUnsorted()) {
+    	    pageable = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), Sort.by(Sort.Direction.DESC, "createdAt"));
+    	}
         return vaccinationService.findAll(clinicId, pageable).map(vaccinationMapper::toResponse);
     }
 

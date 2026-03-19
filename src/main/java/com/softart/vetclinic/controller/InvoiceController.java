@@ -1,6 +1,9 @@
 package com.softart.vetclinic.controller;
 
 import com.softart.vetclinic.dto.CreateInvoiceRequest;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+
 import com.softart.vetclinic.dto.InvoiceResponse;
 import com.softart.vetclinic.dto.UpdateInvoiceRequest;
 import com.softart.vetclinic.enums.InvoiceStatus;
@@ -37,9 +40,14 @@ public class InvoiceController {
     public Page<InvoiceResponse> getAll(
             @RequestHeader("X-Clinic-Id") UUID clinicId,
             @RequestParam(required = false) String search,
+            @RequestParam(required = false) InvoiceStatus status,
             Pageable pageable) {
-        return invoiceService.searchAll(clinicId, search, pageable).map(invoiceMapper::toResponse);
+        if (pageable.getSort().isUnsorted()) {
+            pageable = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), Sort.by(Sort.Direction.DESC, "createdAt"));
+        }
+        return invoiceService.searchAll(clinicId, search, status, pageable).map(invoiceMapper::toResponse);
     }
+
 
     @GetMapping("/{id}")
     public InvoiceResponse getById(

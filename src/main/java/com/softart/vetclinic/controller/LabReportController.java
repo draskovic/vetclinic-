@@ -5,7 +5,9 @@ import java.util.UUID;
 
 import org.springframework.core.io.Resource;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -51,6 +53,10 @@ public class LabReportController {
             @RequestHeader("X-Clinic-Id") UUID clinicId,
             @RequestParam(required = false) String search,
             Pageable pageable) {
+    	if (pageable.getSort().isUnsorted()) {
+    	    pageable = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), Sort.by(Sort.Direction.DESC, "createdAt"));
+    	}
+
         return labReportService.searchAll(clinicId, search, pageable).map(labReportMapper::toResponse);
     }
 

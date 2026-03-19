@@ -1,6 +1,7 @@
 package com.softart.vetclinic.service;
 
 import com.softart.vetclinic.entity.Appointment;
+import com.softart.vetclinic.enums.AppointmentStatus;
 import com.softart.vetclinic.exception.BadRequestException;
 import com.softart.vetclinic.repository.AppointmentRepository;
 import com.softart.vetclinic.repository.ClinicLocationRepository;
@@ -113,12 +114,17 @@ public class AppointmentService extends AbstractCrudService<Appointment, Appoint
         return appointmentRepository.findByClinicIdAndPetIdAndDeletedFalseOrderByStartTimeDesc(clinicId, petId);
     }
     
-    public Page<Appointment> searchAll(UUID clinicId, String search, Pageable pageable) {
-    	 if (search == null || search.isBlank()) {
-    	        return findAllByClinicId(clinicId, pageable);
-    	    }
-        return appointmentRepository.searchByClinicId(clinicId, search, pageable);
+    public Page<Appointment> searchAll(UUID clinicId, String search, AppointmentStatus status, Pageable pageable) {
+        if ((search == null || search.isBlank()) && status == null) {
+            return findAllByClinicId(clinicId, pageable);
+        }
+        return appointmentRepository.searchByClinicIdAndStatus(clinicId, 
+                (search == null || search.isBlank()) ? "" : search, 
+                status, 
+                pageable);
     }
+
+
     
     @Transactional(readOnly = true)
     public List<Appointment> findByOwner(UUID clinicId, UUID ownerId) {
