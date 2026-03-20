@@ -18,7 +18,7 @@ class OwnerControllerTest extends IntegrationTestBase {
     void create_success() throws Exception {
         var request = new CreateOwnerRequest(
                 "Marko", "Petrovic", "marko@test.com", "+381641234567",
-                "Knez Mihailova 10", "Beograd", null, null);
+                "Knez Mihailova 10", "Beograd", null, null, null);
 
         performPost("/api/owners", tokenA, clinicAId, request)
                 .andExpect(status().isCreated())
@@ -34,7 +34,7 @@ class OwnerControllerTest extends IntegrationTestBase {
     void create_missingRequired() throws Exception {
         var request = new CreateOwnerRequest(
                 "", "", null, "",
-                null, null, null, null);
+                null, null, null, null, null);
 
         performPost("/api/owners", tokenA, clinicAId, request)
                 .andExpect(status().isBadRequest());
@@ -102,7 +102,7 @@ class OwnerControllerTest extends IntegrationTestBase {
 
         var updateRequest = new UpdateOwnerRequest(
                 "Marko", "Petrovic-Jankovic", null, null,
-                null, null, null, null);
+                null, null, null, null, null);
 
         performPut("/api/owners/" + ownerId, tokenA, clinicAId, updateRequest)
                 .andExpect(status().isOk())

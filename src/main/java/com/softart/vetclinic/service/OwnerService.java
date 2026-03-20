@@ -57,5 +57,28 @@ public class OwnerService extends AbstractCrudService<Owner, OwnerRepository> {
         }
         return ownerRepository.searchByClinicId(clinicId, search, pageable);
     }
+    
+    @Transactional
+    public Owner createWithClientCode(Owner owner, UUID clinicId) {
+        if (owner.getClientCode() == null || owner.getClientCode().isBlank()) {
+            owner.setClientCode(generateNextClientCode(clinicId));
+        }
+        owner.setClinicId(clinicId);
+        return ownerRepository.save(owner);
+    }
+
+    private String generateNextClientCode(UUID clinicId) {
+        String maxCode = ownerRepository.findMaxClientCodeByPrefix(clinicId, "KC-%");
+        if (maxCode == null) {
+            return "KC-0001";
+        }
+        try {
+            int next = Integer.parseInt(maxCode.substring(3)) + 1;
+            return String.format("KC-%04d", next);
+        } catch (NumberFormatException e) {
+            return "KC-0001";
+        }
+    }
+
 
 }

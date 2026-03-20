@@ -13,6 +13,8 @@ public record OwnerResponse(
         String city,
         String personalId,
         String note,
+        String clientCode,
+
         OffsetDateTime createdAt,
         OffsetDateTime updatedAt
 ) {}

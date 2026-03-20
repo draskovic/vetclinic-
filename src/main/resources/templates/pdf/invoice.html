@@ -82,24 +82,6 @@
             margin: 20px 0;
         }
 
-        .parties {
-            display: block;
-            margin-bottom: 25px;
-            overflow: hidden;
-        }
-
-        .party-box {
-            float: left;
-            width: 48%;
-            padding: 12px;
-            background-color: #f8f9fa;
-            border-radius: 6px;
-        }
-
-        .party-box.right {
-            float: right;
-        }
-
         .party-label {
             font-size: 8pt;
             text-transform: uppercase;
@@ -119,6 +101,23 @@
             color: #666;
             margin: 2px 0;
         }
+
+		.parties-table {
+		    width: 100%;
+		    margin-bottom: 25px;
+		}
+
+		.parties-table td {
+		    width: 48%;
+		    vertical-align: top;
+		    padding: 12px;
+		    background-color: #f8f9fa;
+		    border-radius: 6px;
+		}
+
+		.parties-table td + td {
+		    padding-left: 20px;
+		}
 
         table.items {
             width: 100%;
@@ -251,23 +250,27 @@
 <hr class="separator"/>
 
 <!-- PARTIES -->
-<div class="parties">
-    <div class="party-box">
-        <div class="party-label">Izdavalac</div>
-        <div class="party-name" th:text="${clinic.name}">VetCare Beograd</div>
-        <div class="party-detail" th:if="${clinic.address}" th:text="${clinic.address}"></div>
-        <div class="party-detail" th:if="${clinic.city}" th:text="${clinic.city}"></div>
-        <div class="party-detail" th:if="${clinic.taxId}">PIB: <span th:text="${clinic.taxId}"></span></div>
-    </div>
-    <div class="party-box right">
-        <div class="party-label">Primalac</div>
-        <div class="party-name" th:text="${owner.firstName + ' ' + owner.lastName}">Ime Prezime</div>
-        <div class="party-detail" th:if="${owner.email}" th:text="${owner.email}"></div>
-        <div class="party-detail" th:if="${owner.phone}" th:text="${owner.phone}"></div>
-        <div class="party-detail" th:if="${owner.address}" th:text="${owner.address}"></div>
-        <div class="party-detail" th:if="${owner.city}" th:text="${owner.city}"></div>
-    </div>
-</div>
+<table class="parties-table">
+    <tr>
+        <td>
+            <div class="party-label">Izdavalac</div>
+            <div class="party-name" th:text="${clinic.name}">VetCare Beograd</div>
+            <div class="party-detail" th:if="${clinic.address}" th:text="${clinic.address}"></div>
+            <div class="party-detail" th:if="${clinic.city}" th:text="${clinic.city}"></div>
+            <div class="party-detail" th:if="${clinic.taxId}">PIB: <span th:text="${clinic.taxId}"></span></div>
+        </td>
+        <td>
+            <div class="party-label">Primalac</div>
+            <div class="party-name" th:text="${owner.firstName + ' ' + owner.lastName}"></div>
+            <div th:if="${owner.clientCode != null}" th:text="'Br. kartona: ' + ${owner.clientCode}" style="font-size: 9pt; color: #555;"></div>
+            <div class="party-detail" th:if="${owner.email}" th:text="${owner.email}"></div>
+            <div class="party-detail" th:if="${owner.phone}" th:text="${owner.phone}"></div>
+            <div class="party-detail" th:if="${owner.address}" th:text="${owner.address}"></div>
+            <div class="party-detail" th:if="${owner.city}" th:text="${owner.city}"></div>
+        </td>
+    </tr>
+</table>
+
 
 <!-- ITEMS TABLE -->
 <table class="items">

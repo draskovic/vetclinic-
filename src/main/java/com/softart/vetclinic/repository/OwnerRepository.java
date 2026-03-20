@@ -28,13 +28,19 @@ public interface OwnerRepository extends JpaRepository<Owner, UUID> {
 
     List<Owner> findByClinicIdAndDeletedFalseAndPhone(UUID clinicId, String phone);
     
-    @EntityGraph(attributePaths = {"clinic"})
+    
     @Query("SELECT o FROM Owner o WHERE o.clinicId = :clinicId AND o.deleted = false " +
-           "AND (:search IS NULL OR LOWER(o.firstName) LIKE LOWER(CONCAT('%', :search, '%')) " +
-           "OR LOWER(o.lastName) LIKE LOWER(CONCAT('%', :search, '%')) " +
-           "OR LOWER(o.email) LIKE LOWER(CONCAT('%', :search, '%')) " +
-           "OR LOWER(o.phone) LIKE LOWER(CONCAT('%', :search, '%')) " +
-           "OR LOWER(o.address) LIKE LOWER(CONCAT('%', :search, '%')))")
+    	       "AND (:search = '' OR (LOWER(o.firstName) LIKE LOWER(CONCAT('%', :search, '%')) " +
+    	       "OR LOWER(o.lastName) LIKE LOWER(CONCAT('%', :search, '%')) " +
+    	       "OR LOWER(o.email) LIKE LOWER(CONCAT('%', :search, '%')) " +
+    	       "OR LOWER(o.phone) LIKE LOWER(CONCAT('%', :search, '%')) " +
+    	       "OR LOWER(o.address) LIKE LOWER(CONCAT('%', :search, '%')) " +
+    	       "OR LOWER(o.clientCode) LIKE LOWER(CONCAT('%', :search, '%'))))")
     Page<Owner> searchByClinicId(@Param("clinicId") UUID clinicId, @Param("search") String search, Pageable pageable);
+
+    @Query("SELECT MAX(o.clientCode) FROM Owner o WHERE o.clinicId = :clinicId AND o.deleted = false AND o.clientCode LIKE :prefix")
+    String findMaxClientCodeByPrefix(@Param("clinicId") UUID clinicId, @Param("prefix") String prefix);
+
+    Optional<Owner> findByClinicIdAndClientCodeAndDeletedFalse(UUID clinicId, String clientCode);
 
 }

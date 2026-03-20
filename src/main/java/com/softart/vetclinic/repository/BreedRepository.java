@@ -28,4 +28,7 @@ public interface BreedRepository extends JpaRepository<Breed, UUID> {
     List<Breed> findByClinicIdAndSpeciesIdAndDeletedFalse(UUID clinicId, UUID speciesId);
 
     boolean existsBySpeciesIdAndNameAndDeletedFalse(UUID speciesId, String name);
+    
+    Optional<Breed> findBySpeciesIdAndNameIgnoreCaseAndDeletedFalse(UUID speciesId, String name);
+
 }

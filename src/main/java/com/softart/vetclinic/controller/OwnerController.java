@@ -21,9 +21,12 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.softart.vetclinic.dto.CreateOwnerRequest;
+import com.softart.vetclinic.dto.ImportOwnerRequest;
+import com.softart.vetclinic.dto.ImportResultResponse;
 import com.softart.vetclinic.dto.OwnerResponse;
 import com.softart.vetclinic.dto.UpdateOwnerRequest;
 import com.softart.vetclinic.mapper.OwnerMapper;
+import com.softart.vetclinic.service.OwnerImportService;
 import com.softart.vetclinic.service.OwnerService;
 
 import jakarta.validation.Valid;
@@ -36,6 +39,7 @@ public class OwnerController {
 
     private final OwnerService ownerService;
     private final OwnerMapper ownerMapper;
+    private final OwnerImportService  ownerImportService;
 
     @GetMapping
     public Page<OwnerResponse> getAll(
@@ -49,6 +53,12 @@ public class OwnerController {
         return ownerService.searchAll(clinicId, search, pageable).map(ownerMapper::toResponse);
     }
 
+    @PostMapping("/import")
+    public ImportResultResponse importOwners(
+            @RequestHeader("X-Clinic-Id") UUID clinicId,
+            @Valid @RequestBody List<ImportOwnerRequest> requests) {
+        return ownerImportService.importOwners(clinicId, requests);
+    }
 
     @GetMapping("/{id}")
     public OwnerResponse getById(
@@ -63,7 +73,8 @@ public class OwnerController {
             @RequestHeader("X-Clinic-Id") UUID clinicId,
             @Valid @RequestBody CreateOwnerRequest request) {
         var entity = ownerMapper.toEntity(request);
-        return ownerMapper.toResponse(ownerService.create(entity, clinicId));
+        return ownerMapper.toResponse(ownerService.createWithClientCode(entity, clinicId));
+
     }
 
     @PutMapping("/{id}")
@@ -98,4 +109,7 @@ public class OwnerController {
         return ownerService.searchByPhone(clinicId, phone).stream()
                 .map(ownerMapper::toResponse).toList();
     }
+    
+    
+
 }

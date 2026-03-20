@@ -22,7 +22,7 @@ class AuditLoggingAspectTest extends IntegrationTestBase {
     void create_producesAuditLog() throws Exception {
         var request = new CreateOwnerRequest(
                 "Marko", "Petrovic", "marko@test.com", "+381641234567",
-                null, null, null, null);
+                null, null, null, null, null);
 
         performPost("/api/owners", tokenA, clinicAId, request)
                 .andExpect(status().isCreated());
@@ -42,7 +42,7 @@ class AuditLoggingAspectTest extends IntegrationTestBase {
 
         var updateRequest = new UpdateOwnerRequest(
                 "Marko", "Jankovic", null, "+381641111111",
-                null, null, null, null);
+                null, null, null, null, null);
 
         performPut("/api/owners/" + ownerId, tokenA, clinicAId, updateRequest)
                 .andExpect(status().isOk());
@@ -91,7 +91,7 @@ class AuditLoggingAspectTest extends IntegrationTestBase {
     void auditLog_capturesUserId() throws Exception {
         var request = new CreateOwnerRequest(
                 "Ana", "Jovic", null, "+381649999999",
-                null, null, null, null);
+                null, null, null, null, null);
 
         performPost("/api/owners", tokenA, clinicAId, request)
                 .andExpect(status().isCreated());
@@ -109,7 +109,7 @@ class AuditLoggingAspectTest extends IntegrationTestBase {
     void tenantIsolation() throws Exception {
         var request = new CreateOwnerRequest(
                 "Marko", "Petrovic", null, "+381641234567",
-                null, null, null, null);
+                null, null, null, null, null);
 
         performPost("/api/owners", tokenA, clinicAId, request)
                 .andExpect(status().isCreated());

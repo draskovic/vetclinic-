@@ -10,5 +10,7 @@ public record CreateOwnerRequest(
         String address,
         String city,
         String personalId,
-        String note
+        String note,
+        String clientCode
+
 ) {}

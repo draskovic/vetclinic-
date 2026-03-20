@@ -8,5 +8,7 @@ public record UpdateOwnerRequest(
         String address,
         String city,
         String personalId,
-        String note
+        String note,
+        String clientCode
+
 ) {}

@@ -32,6 +32,9 @@ public class Owner extends BaseEntity {
 
     @Column(columnDefinition = "TEXT")
     private String note;
+    
+    @Column(name = "client_code", length = 20)
+    private String clientCode;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "clinic_id", insertable = false, updatable = false)
