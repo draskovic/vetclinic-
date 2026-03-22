@@ -60,7 +60,7 @@ public class OwnerImportService {
                 Owner owner = new Owner();
                 owner.setClinicId(clinicId);
                 owner.setFirstName(req.firstName().trim());
-                owner.setLastName(req.lastName().trim());
+                owner.setLastName(req.lastName() != null ? req.lastName().trim() : "");
                 owner.setPhone(req.phone() != null ? req.phone().trim() : "");
                 owner.setAddress(req.address() != null ? req.address().trim() : null);
                 owner.setCity(req.city() != null ? req.city().trim() : null);

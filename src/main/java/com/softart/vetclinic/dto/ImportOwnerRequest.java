@@ -6,7 +6,7 @@ import java.util.List;
 public record ImportOwnerRequest(
     String clientCode,
     @NotBlank String firstName,
-    @NotBlank String lastName,
+    String lastName,
     String phone,
     String address,
     String city,
