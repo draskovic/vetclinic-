@@ -47,11 +47,13 @@ public interface MedicalRecordRepository extends JpaRepository<MedicalRecord, UU
 
     @EntityGraph(attributePaths = {"pet", "vet"})
     @Query("SELECT m FROM MedicalRecord m WHERE m.clinicId = :clinicId AND m.deleted = false " +
-           "AND (LOWER(m.pet.name) LIKE LOWER(CONCAT('%', :search, '%')) " +
+           "AND (:search = '' OR (LOWER(m.pet.name) LIKE LOWER(CONCAT('%', :search, '%')) " +
            "OR LOWER(m.diagnosis) LIKE LOWER(CONCAT('%', :search, '%')) " +
            "OR LOWER(m.symptoms) LIKE LOWER(CONCAT('%', :search, '%')) " +
            "OR LOWER(m.vet.firstName) LIKE LOWER(CONCAT('%', :search, '%')) " +
-           "OR LOWER(m.vet.lastName) LIKE LOWER(CONCAT('%', :search, '%')))")
+           "OR LOWER(m.vet.lastName) LIKE LOWER(CONCAT('%', :search, '%')) " +
+           "OR LOWER(CONCAT(m.vet.firstName, ' ', m.vet.lastName)) LIKE LOWER(CONCAT('%', :search, '%'))))")
+
     Page<MedicalRecord> searchByClinicId(@Param("clinicId") UUID clinicId, @Param("search") String search, Pageable pageable);
 
 }

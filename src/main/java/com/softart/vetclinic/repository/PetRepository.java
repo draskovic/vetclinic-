@@ -32,14 +32,21 @@ public interface PetRepository extends JpaRepository<Pet, UUID> {
     List<Pet> findByClinicIdAndNameIgnoreCaseAndDeletedFalse(UUID clinicId, String name);
 
     @EntityGraph(attributePaths = {"owner", "species", "breed"})
-    @Query("SELECT p FROM Pet p WHERE p.clinicId = :clinicId AND p.deleted = false " +
-           "AND (:search IS NULL OR LOWER(p.name) LIKE LOWER(CONCAT('%', :search, '%')) " +
+    @Query("SELECT p FROM Pet p " +
+           "LEFT JOIN p.species s " +
+           "LEFT JOIN p.breed b " +
+           "WHERE p.clinicId = :clinicId AND p.deleted = false " +
+           "AND (:search = '' OR (LOWER(p.name) LIKE LOWER(CONCAT('%', :search, '%')) " +
            "OR LOWER(p.owner.firstName) LIKE LOWER(CONCAT('%', :search, '%')) " +
            "OR LOWER(p.owner.lastName) LIKE LOWER(CONCAT('%', :search, '%')) " +
-           "OR LOWER(p.species.name) LIKE LOWER(CONCAT('%', :search, '%')) " +
+           "OR LOWER(CONCAT(p.owner.firstName, ' ', p.owner.lastName)) LIKE LOWER(CONCAT('%', :search, '%')) " +
+           "OR LOWER(s.name) LIKE LOWER(CONCAT('%', :search, '%')) " +
            "OR LOWER(p.patientCode) LIKE LOWER(CONCAT('%', :search, '%')) " +
-           "OR LOWER(p.breed.name) LIKE LOWER(CONCAT('%', :search, '%')))")
-    Page<Pet> searchByClinicId(@Param("clinicId") UUID clinicId, @Param("search") String search, Pageable pageable);
+           "OR LOWER(p.legacyCode) LIKE LOWER(CONCAT('%', :search, '%')) " +
+           "OR LOWER(b.name) LIKE LOWER(CONCAT('%', :search, '%'))))")
+
+    Page<Pet> searchByClinicId(@Param("clinicId") UUID clinicId, @Param("search") String search, Pageable       
+    pageable);
 
     @Query("SELECT MAX(p.patientCode) FROM Pet p WHERE p.clinicId = :clinicId AND p.deleted = false AND p.patientCode LIKE :prefix")
     String findMaxPatientCodeByPrefix(@Param("clinicId") UUID clinicId, @Param("prefix") String prefix);

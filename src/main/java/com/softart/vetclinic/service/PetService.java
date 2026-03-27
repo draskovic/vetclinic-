@@ -1,20 +1,22 @@
 package com.softart.vetclinic.service;
 
-import com.softart.vetclinic.entity.Owner;
-import com.softart.vetclinic.entity.Pet;
-import com.softart.vetclinic.repository.BreedRepository;
-import com.softart.vetclinic.repository.OwnerRepository;
-import com.softart.vetclinic.repository.PetRepository;
-import com.softart.vetclinic.repository.SpeciesRepository;
-import jakarta.persistence.EntityManager;
+import java.time.LocalDate;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
+import com.softart.vetclinic.entity.Pet;
+import com.softart.vetclinic.repository.BreedRepository;
+import com.softart.vetclinic.repository.OwnerRepository;
+import com.softart.vetclinic.repository.PetRepository;
+import com.softart.vetclinic.repository.SpeciesRepository;
+
+import jakarta.persistence.EntityManager;
 
 @Service
 public class PetService extends AbstractCrudService<Pet, PetRepository> {
@@ -111,27 +113,24 @@ public class PetService extends AbstractCrudService<Pet, PetRepository> {
     @Transactional
     public Pet createWithPatientCode(Pet entity, UUID clinicId) {
         if (entity.getPatientCode() == null || entity.getPatientCode().isBlank()) {
-            Owner owner = ownerRepository.findByIdAndClinicIdAndDeletedFalse(entity.getOwnerId(), clinicId)
-                    .orElse(null);
-            if (owner != null && owner.getClientCode() != null && !owner.getClientCode().isBlank()) {
-                entity.setPatientCode(generateNextPatientCode(clinicId, owner.getClientCode()));
-            }
+            entity.setPatientCode(generateNextPatientCode(clinicId));
         }
         return create(entity, clinicId);
     }
 
-    private String generateNextPatientCode(UUID clinicId, String ownerClientCode) {
-        String prefix = ownerClientCode + "-";
+    private String generateNextPatientCode(UUID clinicId) {
+        String year = String.valueOf(LocalDate.now().getYear()).substring(2);
+        String prefix = "P" + year + "-";
         String maxCode = petRepository.findMaxPatientCodeByPrefix(clinicId, prefix + "%");
         if (maxCode == null) {
-            return prefix + "01";
+            return prefix + "0001";
         }
         try {
             String suffix = maxCode.substring(maxCode.lastIndexOf('-') + 1);
             int next = Integer.parseInt(suffix) + 1;
-            return prefix + String.format("%02d", next);
+            return prefix + String.format("%04d", next);
         } catch (NumberFormatException e) {
-            return prefix + "01";
+            return prefix + "0001";
         }
     }
 

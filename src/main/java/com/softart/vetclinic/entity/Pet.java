@@ -62,7 +62,9 @@ public class Pet extends BaseEntity {
     
     @Column(name = "patient_code", length = 20)
     private String patientCode;
-
+    
+    @Column(name = "legacy_code", length = 50)
+    private String legacyCode;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "clinic_id", insertable = false, updatable = false)

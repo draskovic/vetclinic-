@@ -28,6 +28,7 @@ public class OwnerImportService {
     private final PetRepository petRepository;
     private final SpeciesRepository speciesRepository;
     private final BreedRepository breedRepository;
+    private final PetService petService;
 
     // Keš za species/breed unutar jednog importa (da ne pravi duplikate)
     private final Map<String, Species> speciesCache = new HashMap<>();
@@ -68,7 +69,7 @@ public class OwnerImportService {
                 Owner savedOwner = ownerRepository.save(owner);
 
                 
-                // Kreiraj ljubimce
+                // Kreiraj ljubimca sa novim patientCode i legacyCode
                 if (req.pets() != null) {
                     for (ImportPetData petData : req.pets()) {
                         if (petData.name() == null || petData.name().isBlank()) continue;
@@ -91,27 +92,8 @@ public class OwnerImportService {
                         }
 
                      // Odredi početni broj za patientCode
-                        int petCounter = 0;
-                        if (savedOwner.getClientCode() != null && !savedOwner.getClientCode().isBlank()) {
-                            String prefix = savedOwner.getClientCode() + "-";
-                            String maxCode = petRepository.findMaxPatientCodeByPrefix(clinicId, prefix + "%");
-                            if (maxCode != null) {
-                                try {
-                                    String suffix = maxCode.substring(maxCode.lastIndexOf('-') + 1);
-                                    petCounter = Integer.parseInt(suffix);
-                                } catch (NumberFormatException e) {
-                                    petCounter = 0;
-                                }
-                            }
-                        }
-
-                     // Dodeli patientCode
-                        if (savedOwner.getClientCode() != null && !savedOwner.getClientCode().isBlank()) {
-                            petCounter++;
-                            pet.setPatientCode(savedOwner.getClientCode() + "-" + String.format("%02d", petCounter));
-                        }
-
-                        petRepository.save(pet);
+                        pet.setLegacyCode(petData.legacyCode());
+                        petService.createWithPatientCode(pet, clinicId);
                     }
                 }
 

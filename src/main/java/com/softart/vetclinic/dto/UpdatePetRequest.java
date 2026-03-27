@@ -22,6 +22,7 @@ public record UpdatePetRequest(
         String allergies,
         String note,
         String photoUrl,
-        String patientCode
+        String patientCode,
+        String legacyCode
 
 ) {}

@@ -32,6 +32,7 @@ public interface OwnerRepository extends JpaRepository<Owner, UUID> {
     @Query("SELECT o FROM Owner o WHERE o.clinicId = :clinicId AND o.deleted = false " +
     	       "AND (:search = '' OR (LOWER(o.firstName) LIKE LOWER(CONCAT('%', :search, '%')) " +
     	       "OR LOWER(o.lastName) LIKE LOWER(CONCAT('%', :search, '%')) " +
+    	       "OR LOWER(CONCAT(o.firstName, ' ', o.lastName)) LIKE LOWER(CONCAT('%', :search, '%')) " +
     	       "OR LOWER(o.email) LIKE LOWER(CONCAT('%', :search, '%')) " +
     	       "OR LOWER(o.phone) LIKE LOWER(CONCAT('%', :search, '%')) " +
     	       "OR LOWER(o.address) LIKE LOWER(CONCAT('%', :search, '%')) " +

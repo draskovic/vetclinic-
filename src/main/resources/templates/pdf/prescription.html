@@ -216,7 +216,8 @@
             <div class="party-label">Pacijent</div>
             <div class="party-name" th:text="${pet.name}"></div>
 			<div class="party-detail" th:if="${pet.patientCode != null}">Br. kartona: <span th:text="${pet.patientCode}"></span></div>
-            <div class="party-detail" th:if="${speciesName != ''}">Vrsta: <span th:text="${speciesName}"></span></div>
+			<div class="party-detail" th:if="${pet.legacyCode != null}">Stari br.: <span th:text="${pet.legacyCode}"></span></div> 
+			 <div class="party-detail" th:if="${speciesName != ''}">Vrsta: <span th:text="${speciesName}"></span></div>
             <div class="party-detail" th:if="${breedName != ''}">Rasa: <span th:text="${breedName}"></span></div>
             <div class="party-detail" th:if="${pet.gender != null}">Pol: <span th:text="${pet.gender}"></span></div>
             <div class="party-detail" th:if="${pet.dateOfBirth != null}">Datum rođenja: <span th:text="${#temporals.format(pet.dateOfBirth, 'dd.MM.yyyy.')}"></span></div>

@@ -8,3 +8,4 @@ uploads/
 "github api token.txt" 
 logs/
 application-local.yml
+seed-demo-data.sql

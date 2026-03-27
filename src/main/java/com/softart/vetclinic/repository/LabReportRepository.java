@@ -46,14 +46,17 @@ public interface LabReportRepository extends JpaRepository<LabReport, UUID> {
 
     @EntityGraph(attributePaths = {"pet", "pet.owner", "vet"})
     @Query("SELECT l FROM LabReport l WHERE l.clinicId = :clinicId AND l.deleted = false " +
-           "AND (:search IS NULL OR LOWER(l.reportNumber) LIKE LOWER(CONCAT('%', :search, '%')) " +
+           "AND (:search = '' OR (LOWER(l.reportNumber) LIKE LOWER(CONCAT('%', :search, '%')) " +
            "OR LOWER(l.analysisType) LIKE LOWER(CONCAT('%', :search, '%')) " +
            "OR LOWER(l.pet.name) LIKE LOWER(CONCAT('%', :search, '%')) " +
            "OR LOWER(l.pet.owner.firstName) LIKE LOWER(CONCAT('%', :search, '%')) " +
            "OR LOWER(l.pet.owner.lastName) LIKE LOWER(CONCAT('%', :search, '%')) " +
+           "OR LOWER(CONCAT(l.pet.owner.firstName, ' ', l.pet.owner.lastName)) LIKE LOWER(CONCAT('%', :search, '%')) " +
            "OR LOWER(l.vet.firstName) LIKE LOWER(CONCAT('%', :search, '%')) " +
            "OR LOWER(l.vet.lastName) LIKE LOWER(CONCAT('%', :search, '%')) " +
-           "OR LOWER(l.laboratoryName) LIKE LOWER(CONCAT('%', :search, '%')))")
+           "OR LOWER(CONCAT(l.vet.firstName, ' ', l.vet.lastName)) LIKE LOWER(CONCAT('%', :search, '%')) " +
+           "OR LOWER(l.laboratoryName) LIKE LOWER(CONCAT('%', :search, '%'))))")
+
     Page<LabReport> searchByClinicId(@Param("clinicId") UUID clinicId, @Param("search") String search, Pageable pageable);
 
 }

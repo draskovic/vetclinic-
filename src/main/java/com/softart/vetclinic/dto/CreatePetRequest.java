@@ -24,6 +24,7 @@ public record CreatePetRequest(
         String allergies,
         String note,
         String photoUrl,
-        String patientCode
+        String patientCode,
+        String legacyCode
 
 ) {}

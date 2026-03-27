@@ -28,6 +28,7 @@ public record PetResponse(
         String note,
         String photoUrl,
         String patientCode,
+        String legacyCode,
         OffsetDateTime createdAt,
         OffsetDateTime updatedAt
 ) {}

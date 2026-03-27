@@ -63,13 +63,15 @@ public interface AppointmentRepository extends JpaRepository<Appointment, UUID> 
 
     @EntityGraph(attributePaths = {"location", "pet", "owner", "vet"})
     @Query("SELECT a FROM Appointment a WHERE a.clinicId = :clinicId AND a.deleted = false " +
-           "AND (:status IS NULL OR a.status = :status) " +
-           "AND (:search = '' OR (LOWER(a.pet.name) LIKE LOWER(CONCAT('%', :search, '%')) " +
-           "OR LOWER(a.owner.firstName) LIKE LOWER(CONCAT('%', :search, '%')) " +
-           "OR LOWER(a.owner.lastName) LIKE LOWER(CONCAT('%', :search, '%')) " +
-           "OR LOWER(a.vet.firstName) LIKE LOWER(CONCAT('%', :search, '%')) " +
-           "OR LOWER(a.vet.lastName) LIKE LOWER(CONCAT('%', :search, '%')) " +
-           "OR LOWER(a.reason) LIKE LOWER(CONCAT('%', :search, '%'))))")
+    	       "AND (:status IS NULL OR a.status = :status) " +
+    	       "AND (:search = '' OR (LOWER(a.pet.name) LIKE LOWER(CONCAT('%', :search, '%')) " +
+    	       "OR LOWER(a.owner.firstName) LIKE LOWER(CONCAT('%', :search, '%')) " +
+    	       "OR LOWER(a.owner.lastName) LIKE LOWER(CONCAT('%', :search, '%')) " +
+    	       "OR LOWER(CONCAT(a.owner.firstName, ' ', a.owner.lastName)) LIKE LOWER(CONCAT('%', :search, '%')) " +
+    	       "OR LOWER(a.vet.firstName) LIKE LOWER(CONCAT('%', :search, '%')) " +
+    	       "OR LOWER(a.vet.lastName) LIKE LOWER(CONCAT('%', :search, '%')) " +
+    	       "OR LOWER(CONCAT(a.vet.firstName, ' ', a.vet.lastName)) LIKE LOWER(CONCAT('%', :search, '%')) " +
+    	       "OR LOWER(a.reason) LIKE LOWER(CONCAT('%', :search, '%'))))")
     Page<Appointment> searchByClinicIdAndStatus(
             @Param("clinicId") UUID clinicId, 
             @Param("search") String search, 
