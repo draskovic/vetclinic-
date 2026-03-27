@@ -37,7 +37,11 @@ public interface PetRepository extends JpaRepository<Pet, UUID> {
            "OR LOWER(p.owner.firstName) LIKE LOWER(CONCAT('%', :search, '%')) " +
            "OR LOWER(p.owner.lastName) LIKE LOWER(CONCAT('%', :search, '%')) " +
            "OR LOWER(p.species.name) LIKE LOWER(CONCAT('%', :search, '%')) " +
+           "OR LOWER(p.patientCode) LIKE LOWER(CONCAT('%', :search, '%')) " +
            "OR LOWER(p.breed.name) LIKE LOWER(CONCAT('%', :search, '%')))")
     Page<Pet> searchByClinicId(@Param("clinicId") UUID clinicId, @Param("search") String search, Pageable pageable);
+
+    @Query("SELECT MAX(p.patientCode) FROM Pet p WHERE p.clinicId = :clinicId AND p.deleted = false AND p.patientCode LIKE :prefix")
+    String findMaxPatientCodeByPrefix(@Param("clinicId") UUID clinicId, @Param("prefix") String prefix);
 
 }

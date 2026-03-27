@@ -51,7 +51,7 @@ public class PetController {
             @RequestHeader("X-Clinic-Id") UUID clinicId,
             @Valid @RequestBody CreatePetRequest request) {
         var entity = petMapper.toEntity(request);
-        return petMapper.toResponse(petService.create(entity, clinicId));
+        return petMapper.toResponse(petService.createWithPatientCode(entity, clinicId));
     }
 
     @PutMapping("/{id}")

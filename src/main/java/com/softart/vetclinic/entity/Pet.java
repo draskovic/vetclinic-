@@ -59,6 +59,10 @@ public class Pet extends BaseEntity {
 
     @Column(name = "photo_url", length = 500)
     private String photoUrl;
+    
+    @Column(name = "patient_code", length = 20)
+    private String patientCode;
+
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "clinic_id", insertable = false, updatable = false)

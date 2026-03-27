@@ -27,6 +27,7 @@ public record PetResponse(
         String allergies,
         String note,
         String photoUrl,
+        String patientCode,
         OffsetDateTime createdAt,
         OffsetDateTime updatedAt
 ) {}

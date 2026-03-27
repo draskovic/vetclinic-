@@ -1,5 +1,6 @@
 package com.softart.vetclinic.service;
 
+import com.softart.vetclinic.entity.Owner;
 import com.softart.vetclinic.entity.Pet;
 import com.softart.vetclinic.repository.BreedRepository;
 import com.softart.vetclinic.repository.OwnerRepository;
@@ -106,5 +107,33 @@ public class PetService extends AbstractCrudService<Pet, PetRepository> {
     	    }
         return petRepository.searchByClinicId(clinicId, search, pageable);
     }
+    
+    @Transactional
+    public Pet createWithPatientCode(Pet entity, UUID clinicId) {
+        if (entity.getPatientCode() == null || entity.getPatientCode().isBlank()) {
+            Owner owner = ownerRepository.findByIdAndClinicIdAndDeletedFalse(entity.getOwnerId(), clinicId)
+                    .orElse(null);
+            if (owner != null && owner.getClientCode() != null && !owner.getClientCode().isBlank()) {
+                entity.setPatientCode(generateNextPatientCode(clinicId, owner.getClientCode()));
+            }
+        }
+        return create(entity, clinicId);
+    }
+
+    private String generateNextPatientCode(UUID clinicId, String ownerClientCode) {
+        String prefix = ownerClientCode + "-";
+        String maxCode = petRepository.findMaxPatientCodeByPrefix(clinicId, prefix + "%");
+        if (maxCode == null) {
+            return prefix + "01";
+        }
+        try {
+            String suffix = maxCode.substring(maxCode.lastIndexOf('-') + 1);
+            int next = Integer.parseInt(suffix) + 1;
+            return prefix + String.format("%02d", next);
+        } catch (NumberFormatException e) {
+            return prefix + "01";
+        }
+    }
+
 
 }

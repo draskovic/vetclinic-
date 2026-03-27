@@ -25,7 +25,7 @@ class PetControllerTest extends IntegrationTestBase {
                 ownerId, null, null, "Rex",
                 LocalDate.of(2020, 5, 15), Gender.MALE, "Brown",
                 new BigDecimal("25.50"), null, false, false,
-                null, null, null, null);
+                null, null, null, null, null);
 
         performPost("/api/pets", tokenA, clinicAId, request)
                 .andExpect(status().isCreated())
@@ -46,7 +46,7 @@ class PetControllerTest extends IntegrationTestBase {
         var request = new CreatePetRequest(
                 ownerId, speciesId, breedId, "Buddy",
                 null, null, null, null, null,
-                false, false, null, null, null, null);
+                false, false, null, null, null, null, null);
 
         performPost("/api/pets", tokenA, clinicAId, request)
                 .andExpect(status().isCreated())
@@ -61,7 +61,7 @@ class PetControllerTest extends IntegrationTestBase {
         var request = new CreatePetRequest(
                 UUID.randomUUID(), null, null, "Rex",
                 null, null, null, null, null,
-                false, false, null, null, null, null);
+                false, false, null, null, null, null, null);
 
         performPost("/api/pets", tokenA, clinicAId, request)
                 .andExpect(status().isNotFound());
@@ -73,7 +73,7 @@ class PetControllerTest extends IntegrationTestBase {
         var request = new CreatePetRequest(
                 null, null, null, "",
                 null, null, null, null, null,
-                null, null, null, null, null, null);
+                null, null, null, null, null, null, null);
 
         performPost("/api/pets", tokenA, clinicAId, request)
                 .andExpect(status().isBadRequest());
@@ -128,7 +128,7 @@ class PetControllerTest extends IntegrationTestBase {
         var updateRequest = new UpdatePetRequest(
                 null, null, null, "Rex Jr.",
                 null, null, null, null, null,
-                null, null, null, null, null, null);
+                null, null, null, null, null, null, null);
 
         performPut("/api/pets/" + petId, tokenA, clinicAId, updateRequest)
                 .andExpect(status().isOk())

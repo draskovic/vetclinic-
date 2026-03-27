@@ -67,6 +67,7 @@ public class OwnerImportService {
                 owner.setClientCode(req.clientCode() != null ? req.clientCode().trim() : null);
                 Owner savedOwner = ownerRepository.save(owner);
 
+                
                 // Kreiraj ljubimce
                 if (req.pets() != null) {
                     for (ImportPetData petData : req.pets()) {
@@ -87,6 +88,27 @@ public class OwnerImportService {
                                 Breed breed = resolveBreed(clinicId, species.getId(), petData.breed().trim());
                                 pet.setBreedId(breed.getId());
                             }
+                        }
+
+                     // Odredi početni broj za patientCode
+                        int petCounter = 0;
+                        if (savedOwner.getClientCode() != null && !savedOwner.getClientCode().isBlank()) {
+                            String prefix = savedOwner.getClientCode() + "-";
+                            String maxCode = petRepository.findMaxPatientCodeByPrefix(clinicId, prefix + "%");
+                            if (maxCode != null) {
+                                try {
+                                    String suffix = maxCode.substring(maxCode.lastIndexOf('-') + 1);
+                                    petCounter = Integer.parseInt(suffix);
+                                } catch (NumberFormatException e) {
+                                    petCounter = 0;
+                                }
+                            }
+                        }
+
+                     // Dodeli patientCode
+                        if (savedOwner.getClientCode() != null && !savedOwner.getClientCode().isBlank()) {
+                            petCounter++;
+                            pet.setPatientCode(savedOwner.getClientCode() + "-" + String.format("%02d", petCounter));
                         }
 
                         petRepository.save(pet);
