@@ -1,6 +1,8 @@
 package com.softart.vetclinic.controller;
 
 import com.softart.vetclinic.dto.CreateServiceRequest;
+import com.softart.vetclinic.dto.ImportResultResponse;
+import com.softart.vetclinic.dto.ImportServiceRequest;
 import com.softart.vetclinic.dto.ServiceResponse;
 import com.softart.vetclinic.dto.UpdateServiceRequest;
 import com.softart.vetclinic.enums.ServiceCategory;
@@ -9,7 +11,9 @@ import com.softart.vetclinic.service.ServiceService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
@@ -23,12 +27,30 @@ public class ClinicServiceController {
 
     private final ServiceService serviceService;
     private final ServiceMapper serviceMapper;
+    private final com.softart.vetclinic.service.ServiceImportService serviceImportService;
+
 
     @GetMapping
     public Page<ServiceResponse> getAll(
             @RequestHeader("X-Clinic-Id") UUID clinicId,
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) ServiceCategory category,
             Pageable pageable) {
-        return serviceService.findAll(clinicId, pageable).map(serviceMapper::toResponse);
+        if (pageable.getSort().isUnsorted()) {
+            pageable = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(),
+                    Sort.by(Sort.Direction.ASC, "name"));
+        }
+        return serviceService.searchAll(clinicId, search, category, pageable)
+                .map(serviceMapper::toResponse);
+    }
+
+
+    @PostMapping("/import")
+    @ResponseStatus(HttpStatus.CREATED)
+    public ImportResultResponse importServices(
+            @RequestHeader("X-Clinic-Id") UUID clinicId,
+            @RequestBody List<ImportServiceRequest> requests) {
+        return serviceImportService.importServices(clinicId, requests);
     }
 
     @GetMapping("/{id}")

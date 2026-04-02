@@ -7,6 +7,8 @@ import java.math.BigDecimal;
 public record UpdateServiceRequest(
         ServiceCategory category,
         String name,
+        String sku,
+        String unit,
         String description,
         BigDecimal price,
         BigDecimal taxRate,

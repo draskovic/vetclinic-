@@ -92,5 +92,24 @@ public class MedicalRecordService extends AbstractCrudService<MedicalRecord, Med
         }
         return repository.searchByClinicId(clinicId, search, pageable);
     }
+    
+    @Transactional
+    public MedicalRecord createWithRecordCode(MedicalRecord entity, UUID clinicId) {
+        entity.setRecordCode(generateNextRecordCode(clinicId));
+        return create(entity, clinicId);
+    }
+
+    private String generateNextRecordCode(UUID clinicId) {
+        String yearSuffix = String.valueOf(java.time.LocalDate.now().getYear() % 100);
+        String prefix = "I" + yearSuffix + "-";
+        String maxCode = medicalRecordRepository.findMaxRecordCodeByPrefix(clinicId, prefix);
+        int nextNumber = 1;
+        if (maxCode != null) {
+            String numberPart = maxCode.substring(prefix.length());
+            nextNumber = Integer.parseInt(numberPart) + 1;
+        }
+        return prefix + String.format("%04d", nextNumber);
+    }
+
 
 }

@@ -1,34 +1,47 @@
 package com.softart.vetclinic.controller;
 
-import com.softart.vetclinic.dto.CreateMedicalRecordRequest;
-import com.softart.vetclinic.repository.OwnerRepository;
-import com.softart.vetclinic.repository.PetRepository;
-import com.softart.vetclinic.repository.UserRepository;
-import com.softart.vetclinic.entity.MedicalRecord;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
-import com.softart.vetclinic.dto.MedicalRecordResponse;
-import com.softart.vetclinic.dto.UpdateMedicalRecordRequest;
-import com.softart.vetclinic.exception.ResourceNotFoundException;
-import com.softart.vetclinic.mapper.MedicalRecordMapper;
-import com.softart.vetclinic.service.MedicalRecordPdfService;
-import com.softart.vetclinic.service.MedicalRecordService;
-import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseStatus;
+import org.springframework.web.bind.annotation.RestController;
 
-import java.util.List;
-import java.util.UUID;
+import com.softart.vetclinic.dto.CreateMedicalRecordRequest;
+import com.softart.vetclinic.dto.MedicalRecordResponse;
+import com.softart.vetclinic.dto.UpdateMedicalRecordRequest;
+import com.softart.vetclinic.entity.MedicalRecord;
+import com.softart.vetclinic.enums.AppointmentStatus;
+import com.softart.vetclinic.exception.ResourceNotFoundException;
+import com.softart.vetclinic.mapper.MedicalRecordMapper;
+import com.softart.vetclinic.repository.OwnerRepository;
+import com.softart.vetclinic.repository.PetRepository;
+import com.softart.vetclinic.repository.UserRepository;
+import com.softart.vetclinic.service.AppointmentService;
+import com.softart.vetclinic.service.MedicalRecordPdfService;
+import com.softart.vetclinic.service.MedicalRecordService;
+
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequestMapping("/api/medical-records")
@@ -38,11 +51,11 @@ public class MedicalRecordController {
     private final MedicalRecordService medicalRecordService;
     private final MedicalRecordMapper medicalRecordMapper;
     private final MedicalRecordPdfService medicalRecordPdfService;
-
-   
     private final PetRepository petRepository;
     private final UserRepository userRepository;
     private final OwnerRepository ownerRepository;
+    private final AppointmentService appointmentService;
+
 
 
 
@@ -58,6 +71,7 @@ public class MedicalRecordController {
         return new MedicalRecordResponse(
                 r.getId(),
                 r.getAppointmentId(),
+                r.getRecordCode(),
                 r.getPetId(),
                 pet != null ? pet.getName() : "",
                 pet != null ? pet.getOwnerId() : null,
@@ -84,13 +98,26 @@ public class MedicalRecordController {
             @RequestHeader("X-Clinic-Id") UUID clinicId,
             @Valid @RequestBody CreateMedicalRecordRequest request) {
         var entity = medicalRecordMapper.toEntity(request);
-        MedicalRecord r = medicalRecordService.create(entity, clinicId);
+        MedicalRecord r = medicalRecordService.createWithRecordCode(entity, clinicId);
         var pet = petRepository.findById(r.getPetId()).orElse(null);
         var owner = pet != null ? ownerRepository.findById(pet.getOwnerId()).orElse(null) : null;
         var vet = userRepository.findById(r.getVetId()).orElse(null);
+        
+        if (entity.getAppointmentId() != null) {
+            try {
+                appointmentService.update(entity.getAppointmentId(), clinicId,
+                    appointment -> appointment.setStatus(AppointmentStatus.COMPLETED));
+            } catch (Exception e) {
+                // Ne blokiraj kreiranje intervencije ako ažuriranje termina ne uspe
+            }
+        }
+
+
 
         return new MedicalRecordResponse(
-                r.getId(), r.getAppointmentId(), r.getPetId(),
+                r.getId(), r.getAppointmentId(),
+                r.getRecordCode(),
+                r.getPetId(),
                 pet != null ? pet.getName() : "",
                 pet != null ? pet.getOwnerId() : null,
                 owner != null ? owner.getFirstName() + " " + owner.getLastName() : "",
@@ -115,7 +142,8 @@ public class MedicalRecordController {
         var vet = userRepository.findById(r.getVetId()).orElse(null);
 
         return new MedicalRecordResponse(
-                r.getId(), r.getAppointmentId(), r.getPetId(),
+                r.getId(), r.getAppointmentId(),  r.getRecordCode(),
+                r.getPetId(),
                 pet != null ? pet.getName() : "",
                 pet != null ? pet.getOwnerId() : null,
                 owner != null ? owner.getFirstName() + " " + owner.getLastName() : "",
@@ -150,7 +178,8 @@ public class MedicalRecordController {
                 .collect(Collectors.toMap(u -> u.getId(), u -> u.getFirstName() + " " + u.getLastName()));
 
         return records.stream().map(r -> new MedicalRecordResponse(
-                r.getId(), r.getAppointmentId(), r.getPetId(),
+                r.getId(), r.getAppointmentId(),  r.getRecordCode(),
+                r.getPetId(),
                 pet != null ? pet.getName() : "",
                 pet != null ? pet.getOwnerId() : null,
                 owner != null ? owner.getFirstName() + " " + owner.getLastName() : "",
@@ -175,7 +204,7 @@ public class MedicalRecordController {
         var vet = userRepository.findById(r.getVetId()).orElse(null);
 
         return new MedicalRecordResponse(
-                r.getId(), r.getAppointmentId(), r.getPetId(),
+                r.getId(), r.getAppointmentId(),  r.getRecordCode(), r.getPetId(),
                 pet != null ? pet.getName() : "",
                 pet != null ? pet.getOwnerId() : null,
                 owner != null ? owner.getFirstName() + " " + owner.getLastName() : "",
@@ -221,6 +250,7 @@ public class MedicalRecordController {
         return records.stream().map(r -> new MedicalRecordResponse(
                 r.getId(),
                 r.getAppointmentId(),
+                r.getRecordCode(),
                 r.getPetId(),
                 petNames.getOrDefault(r.getPetId(), ""),
                 ownerId,           // <-- novo
@@ -268,6 +298,7 @@ public class MedicalRecordController {
         return page.map(r -> new MedicalRecordResponse(
                 r.getId(),
                 r.getAppointmentId(),
+                r.getRecordCode(),
                 r.getPetId(),
                 petNames.getOrDefault(r.getPetId(), ""),
                 petOwnerMap.get(r.getPetId()),

@@ -52,8 +52,12 @@ public interface MedicalRecordRepository extends JpaRepository<MedicalRecord, UU
            "OR LOWER(m.symptoms) LIKE LOWER(CONCAT('%', :search, '%')) " +
            "OR LOWER(m.vet.firstName) LIKE LOWER(CONCAT('%', :search, '%')) " +
            "OR LOWER(m.vet.lastName) LIKE LOWER(CONCAT('%', :search, '%')) " +
+           "OR LOWER(m.recordCode) LIKE LOWER(CONCAT('%', :search, '%'))" +
            "OR LOWER(CONCAT(m.vet.firstName, ' ', m.vet.lastName)) LIKE LOWER(CONCAT('%', :search, '%'))))")
 
     Page<MedicalRecord> searchByClinicId(@Param("clinicId") UUID clinicId, @Param("search") String search, Pageable pageable);
+    
+    @Query("SELECT MAX(m.recordCode) FROM MedicalRecord m WHERE m.clinicId = :clinicId AND m.recordCode LIKE :prefix% AND m.deleted = false")
+    String findMaxRecordCodeByPrefix(@Param("clinicId") UUID clinicId, @Param("prefix") String prefix);
 
 }

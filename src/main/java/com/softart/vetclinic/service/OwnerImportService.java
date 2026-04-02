@@ -48,14 +48,19 @@ public class OwnerImportService {
             String ownerName = req.firstName() + " " + req.lastName();
             try {
                 // Proveri duplikat po clientCode
-                if (req.clientCode() != null && !req.clientCode().isBlank()) {
-                    Optional<Owner> existing = ownerRepository
-                            .findByClinicIdAndClientCodeAndDeletedFalse(clinicId, req.clientCode());
-                    if (existing.isPresent()) {
-                        skipped++;
-                        continue;
-                    }
-                }
+            	if (req.clientCode() != null && !req.clientCode().isBlank()) {
+            	    Optional<Owner> existingOwner = ownerRepository.findByClinicIdAndClientCodeAndDeletedFalse(clinicId, req.clientCode().trim());
+            	    if (existingOwner.isPresent()) {
+            	        Owner owner = existingOwner.get();
+            	        List<Pet> existingPets = petRepository.findByClinicIdAndOwnerIdAndDeletedFalse(clinicId, owner.getId());
+            	        for (Pet existingPet : existingPets) {
+            	            petService.updateMissingCodes(existingPet, clinicId, req.clientCode().trim());
+            	        }
+            	        skipped++;
+            	        continue;
+            	    }
+            	}
+
 
                 // Kreiraj vlasnika
                 Owner owner = new Owner();

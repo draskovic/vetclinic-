@@ -267,6 +267,7 @@
         <div class="record-title">KARTON</div>
         <div class="record-detail">Datum: <span th:text="${#temporals.format(record.createdAt, 'dd.MM.yyyy. HH:mm')}"></span></div>
         <div class="record-detail">Veterinar: <span th:text="${vetName}"></span></div>
+		<div class="record-detail" th:if="${record.recordCode != null}">Protokol: <span th:text="${record.recordCode}"></span></div>
     </div>
 </div>
 

@@ -8,6 +8,7 @@ import java.util.UUID;
 public record MedicalRecordResponse(
         UUID id,
         UUID appointmentId,
+        String recordCode,
         UUID petId,
         String petName,
         UUID ownerId,

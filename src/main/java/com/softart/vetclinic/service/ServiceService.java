@@ -52,4 +52,10 @@ public class ServiceService extends AbstractCrudService<com.softart.vetclinic.en
     public List<com.softart.vetclinic.entity.Service> findByCategory(UUID clinicId, ServiceCategory category) {
         return serviceRepository.findByClinicIdAndCategoryAndActiveTrue(clinicId, category);
     }
+    
+    public Page<com.softart.vetclinic.entity.Service> searchAll(UUID clinicId, String search, ServiceCategory category, Pageable pageable) {
+        String searchParam = (search == null || search.isBlank()) ? "" : search;
+        return serviceRepository.searchByClinicIdAndCategory(clinicId, searchParam, category, pageable);
+    }
+
 }

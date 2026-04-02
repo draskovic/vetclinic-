@@ -10,6 +10,8 @@ public record ServiceResponse(
         UUID id,
         ServiceCategory category,
         String name,
+        String sku,
+        String unit,
         String description,
         BigDecimal price,
         BigDecimal taxRate,

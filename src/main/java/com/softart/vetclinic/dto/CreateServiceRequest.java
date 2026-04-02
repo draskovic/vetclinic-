@@ -9,6 +9,8 @@ import java.math.BigDecimal;
 public record CreateServiceRequest(
         @NotNull ServiceCategory category,
         @NotBlank String name,
+        String sku,
+        String unit,
         String description,
         @NotNull BigDecimal price,
         BigDecimal taxRate,

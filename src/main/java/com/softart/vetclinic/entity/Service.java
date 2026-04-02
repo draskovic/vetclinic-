@@ -20,6 +20,13 @@ public class Service extends BaseEntity {
 
     @Column(nullable = false, length = 200)
     private String name;
+    
+    @Column(name = "sku", length = 20)
+    private String sku;
+
+    @Column(name = "unit", length = 20)
+    private String unit;
+
 
     @Column(columnDefinition = "TEXT")
     private String description;

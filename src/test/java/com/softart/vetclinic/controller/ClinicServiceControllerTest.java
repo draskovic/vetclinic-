@@ -18,7 +18,7 @@ class ClinicServiceControllerTest extends IntegrationTestBase {
     @Test
     @DisplayName("POST /api/services - create success")
     void create_success() throws Exception {
-        var request = new CreateServiceRequest(ServiceCategory.EXAMINATION, "General Checkup",
+        var request = new CreateServiceRequest(ServiceCategory.EXAMINATION, "General Checkup",null, null,
                 "Full body examination", new BigDecimal("50.00"), new BigDecimal("20.00"), 30, true);
 
         performPost("/api/services", tokenA, clinicAId, request)
@@ -34,7 +34,7 @@ class ClinicServiceControllerTest extends IntegrationTestBase {
     void create_duplicateName() throws Exception {
         seedService(clinicAId, "EXAMINATION", "Checkup", new BigDecimal("30.00"));
 
-        var request = new CreateServiceRequest(ServiceCategory.EXAMINATION, "Checkup",
+        var request = new CreateServiceRequest(ServiceCategory.EXAMINATION, "Checkup",null,null,
                 null, new BigDecimal("40.00"), null, null, null);
 
         performPost("/api/services", tokenA, clinicAId, request)
@@ -44,7 +44,7 @@ class ClinicServiceControllerTest extends IntegrationTestBase {
     @Test
     @DisplayName("POST /api/services - blank name returns 400")
     void create_blankName() throws Exception {
-        var request = new CreateServiceRequest(ServiceCategory.EXAMINATION, "",
+        var request = new CreateServiceRequest(ServiceCategory.EXAMINATION, "",null,null,
                 null, new BigDecimal("50.00"), null, null, null);
 
         performPost("/api/services", tokenA, clinicAId, request)
@@ -54,7 +54,7 @@ class ClinicServiceControllerTest extends IntegrationTestBase {
     @Test
     @DisplayName("POST /api/services - null category returns 400")
     void create_nullCategory() throws Exception {
-        var request = new CreateServiceRequest(null, "Checkup",
+        var request = new CreateServiceRequest(null, "Checkup",null,null,
                 null, new BigDecimal("50.00"), null, null, null);
 
         performPost("/api/services", tokenA, clinicAId, request)
@@ -96,7 +96,7 @@ class ClinicServiceControllerTest extends IntegrationTestBase {
     void update_success() throws Exception {
         UUID serviceId = seedService(clinicAId, "EXAMINATION", "Checkup", new BigDecimal("30.00"));
 
-        var updateRequest = new UpdateServiceRequest(null, "Advanced Checkup",
+        var updateRequest = new UpdateServiceRequest(null, "Advanced Checkup",null,null,
                 null, new BigDecimal("60.00"), null, null, null);
 
         performPut("/api/services/" + serviceId, tokenA, clinicAId, updateRequest)

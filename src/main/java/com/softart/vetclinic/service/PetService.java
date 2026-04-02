@@ -111,6 +111,24 @@ public class PetService extends AbstractCrudService<Pet, PetRepository> {
     }
     
     @Transactional
+    public Pet updateMissingCodes(Pet pet, UUID clinicId, String legacyCode) {
+        boolean changed = false;
+        if (pet.getPatientCode() == null || pet.getPatientCode().isBlank()) {
+            pet.setPatientCode(generateNextPatientCode(clinicId));
+            changed = true;
+        }
+        if ((pet.getLegacyCode() == null || pet.getLegacyCode().isBlank()) 
+                && legacyCode != null && !legacyCode.isBlank()) {
+            pet.setLegacyCode(legacyCode);
+            changed = true;
+        }
+        if (changed) {
+            return petRepository.save(pet);
+        }
+        return pet;
+    }
+
+    @Transactional
     public Pet createWithPatientCode(Pet entity, UUID clinicId) {
         if (entity.getPatientCode() == null || entity.getPatientCode().isBlank()) {
             entity.setPatientCode(generateNextPatientCode(clinicId));
