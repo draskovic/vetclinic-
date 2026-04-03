@@ -78,4 +78,18 @@ public class PetController {
         return petService.findByOwner(clinicId, ownerId).stream()
                 .map(petMapper::toResponse).toList();
     }
+    
+    @PutMapping("/{id}/profile-photo")
+    public PetResponse setProfilePhoto(
+            @RequestHeader("X-Clinic-Id") UUID clinicId,
+            @PathVariable UUID id,
+            @RequestBody java.util.Map<String, UUID> body) {
+        UUID documentId = body.get("documentId");
+        if (documentId == null) {
+            throw new IllegalArgumentException("documentId is required");
+        }
+        return petMapper.toResponse(
+                petService.update(id, clinicId, existing -> existing.setPhotoUrl(documentId.toString())));
+    }
+
 }

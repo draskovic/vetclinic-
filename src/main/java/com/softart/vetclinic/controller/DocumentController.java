@@ -142,5 +142,19 @@ public class DocumentController {
         String token = documentService.generateUploadToken(petId, clinicId, principal.userId());
         return ResponseEntity.ok(Map.of("token", token));
     }
+    
+    @PostMapping("/upload-with-file")
+    @ResponseStatus(HttpStatus.CREATED)
+    public DocumentResponse uploadWithFile(
+            @RequestHeader("X-Clinic-Id") UUID clinicId,
+            @RequestParam("file") MultipartFile file,
+            @RequestParam("petId") UUID petId,
+            @RequestParam(value = "description", required = false) String description,
+            Authentication authentication) {
+        JwtPrincipal principal = (JwtPrincipal) authentication.getPrincipal();
+        Document document = documentService.createWithFile(clinicId, petId, principal.userId(), file, description);
+        return documentMapper.toResponse(document);
+    }
+
 
 }

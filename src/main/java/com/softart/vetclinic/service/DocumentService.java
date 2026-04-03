@@ -197,4 +197,26 @@ public class DocumentService extends AbstractCrudService<Document, DocumentRepos
         return info;
     }
 
+    @Transactional
+    public Document createWithFile(UUID clinicId, UUID petId, UUID uploadedBy, MultipartFile file, String description) {
+        Document document = new Document();
+        document.setClinicId(clinicId);
+        document.setPetId(petId);
+        document.setUploadedBy(uploadedBy);
+        document.setDescription(description);
+        document.setDeleted(false);
+
+        String mimeType = file.getContentType();
+        if (mimeType != null && mimeType.startsWith("image/")) {
+            document.setFileType(FileType.IMAGE);
+        } else if ("application/pdf".equals(mimeType)) {
+            document.setFileType(FileType.PDF);
+        } else {
+            document.setFileType(FileType.OTHER);
+        }
+
+        fileStorageService.attachFile(document, file, "documents/" + clinicId);
+        return repository.save(document);
+    }
+
 }
