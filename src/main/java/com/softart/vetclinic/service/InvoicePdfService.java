@@ -34,6 +34,8 @@ public class InvoicePdfService {
     private final OwnerRepository ownerRepository;
     private final ClinicRepository clinicRepository;
     private final TemplateEngine templateEngine;
+    private final ClinicLogoHelper clinicLogoHelper;
+
 
     private static final Map<InvoiceStatus, String> STATUS_LABELS = Map.of(
             InvoiceStatus.DRAFT, "Nacrt",
@@ -68,6 +70,8 @@ public class InvoicePdfService {
         context.setVariable("clinic", clinic);
         context.setVariable("items", items);
         context.setVariable("statusLabel", STATUS_LABELS.getOrDefault(invoice.getStatus(), invoice.getStatus().name()));
+        context.setVariable("logoDataUri", clinicLogoHelper.toDataUri(clinic));
+
 
         // 3. Render HTML
         String html = templateEngine.process("invoice", context);

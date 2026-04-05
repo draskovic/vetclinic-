@@ -31,6 +31,8 @@ public class PrescriptionPdfService {
     private final SpeciesRepository speciesRepository;
     private final BreedRepository breedRepository;
     private final TemplateEngine templateEngine;
+    private final ClinicLogoHelper clinicLogoHelper;
+
 
     public PrescriptionPdfService(PrescriptionService prescriptionService,
                                    PetService petService,
@@ -38,7 +40,8 @@ public class PrescriptionPdfService {
                                    OwnerRepository ownerRepository,
                                    SpeciesRepository speciesRepository,
                                    BreedRepository breedRepository,
-                                   TemplateEngine templateEngine) {
+                                   TemplateEngine templateEngine,
+                                   ClinicLogoHelper clinicLogoHelper) {
         this.prescriptionService = prescriptionService;
         this.petService = petService;
         this.clinicRepository = clinicRepository;
@@ -46,6 +49,7 @@ public class PrescriptionPdfService {
         this.speciesRepository = speciesRepository;
         this.breedRepository = breedRepository;
         this.templateEngine = templateEngine;
+        this.clinicLogoHelper = clinicLogoHelper;
     }
 
     @Transactional(readOnly = true)
@@ -74,6 +78,8 @@ public class PrescriptionPdfService {
             context.setVariable("vetName", vetName);
             context.setVariable("speciesName", speciesName);
             context.setVariable("breedName", breedName);
+            context.setVariable("logoDataUri", clinicLogoHelper.toDataUri(clinic));
+
 
             String html = templateEngine.process("prescription", context);
 

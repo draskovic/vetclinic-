@@ -32,6 +32,8 @@ public class VaccinationPdfService {
     private final SpeciesRepository speciesRepository;
     private final BreedRepository breedRepository;
     private final TemplateEngine templateEngine;
+    private final ClinicLogoHelper clinicLogoHelper;
+
 
     public VaccinationPdfService(VaccinationService vaccinationService,
                                   PetService petService,
@@ -39,7 +41,8 @@ public class VaccinationPdfService {
                                   OwnerRepository ownerRepository,
                                   SpeciesRepository speciesRepository,
                                   BreedRepository breedRepository,
-                                  TemplateEngine templateEngine) {
+                                  TemplateEngine templateEngine,
+                                  ClinicLogoHelper clinicLogoHelper) {
         this.vaccinationService = vaccinationService;
         this.petService = petService;
         this.clinicRepository = clinicRepository;
@@ -47,6 +50,7 @@ public class VaccinationPdfService {
         this.speciesRepository = speciesRepository;
         this.breedRepository = breedRepository;
         this.templateEngine = templateEngine;
+        this.clinicLogoHelper = clinicLogoHelper;
     }
 
     @Transactional(readOnly = true)
@@ -72,6 +76,7 @@ public class VaccinationPdfService {
             context.setVariable("vaccinations", vaccinations);
             context.setVariable("speciesName", speciesName);
             context.setVariable("breedName", breedName);
+            context.setVariable("logoDataUri", clinicLogoHelper.toDataUri(clinic));
 
             String html = templateEngine.process("vaccination-list", context);
 

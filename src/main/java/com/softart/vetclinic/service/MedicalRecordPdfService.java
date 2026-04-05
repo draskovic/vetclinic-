@@ -42,6 +42,8 @@ public class MedicalRecordPdfService {
     private final OwnerRepository ownerRepository;
     private final SpeciesRepository speciesRepository;
     private final BreedRepository breedRepository;
+    private final ClinicLogoHelper clinicLogoHelper;
+
 
 
     public MedicalRecordPdfService(MedicalRecordService medicalRecordService,
@@ -53,7 +55,8 @@ public class MedicalRecordPdfService {
                                     SpeciesRepository speciesRepository,
                                     BreedRepository breedRepository,
                                     TreatmentService treatmentService,
-                                    LabReportService labReportService) {
+                                    LabReportService labReportService,
+                                    ClinicLogoHelper clinicLogoHelper) {
         this.medicalRecordService = medicalRecordService;
         this.prescriptionService = prescriptionService;
         this.vaccinationService = vaccinationService;
@@ -64,6 +67,7 @@ public class MedicalRecordPdfService {
         this.breedRepository = breedRepository;
         this.treatmentService = treatmentService;
         this.labReportService = labReportService;
+        this.clinicLogoHelper = clinicLogoHelper;
     }
 
     @Transactional(readOnly = true)
@@ -102,8 +106,7 @@ public class MedicalRecordPdfService {
             context.setVariable("breedName", breedName);
             context.setVariable("treatments", treatments);
             context.setVariable("labReports", labReports);
-
-
+            context.setVariable("logoDataUri", clinicLogoHelper.toDataUri(clinic));
 
             String html = templateEngine.process("medical-record", context);
 

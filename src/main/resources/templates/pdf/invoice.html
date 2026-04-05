@@ -3,10 +3,14 @@
 <head>
     <meta charset="UTF-8"/>
     <style>
-        @page {
-            size: A4;
-            margin: 25mm 20mm;
-        }
+		@page {
+		    size: A4;
+		    margin: 8mm 20mm 20mm 20mm;
+		    @bottom-center {
+		        content: element(footer);
+		    }
+		}
+
 
         body {
             font-family: 'DejaVu Sans', sans-serif;
@@ -25,6 +29,12 @@
             float: left;
             width: 55%;
         }
+		
+		.clinic-logo {
+		    height: 50px;
+		    margin-bottom: 8px;
+		}
+
 
         .invoice-info {
             float: right;
@@ -226,6 +236,7 @@
 <!-- HEADER -->
 <div class="header">
     <div class="clinic-info">
+		<img th:if="${logoDataUri}" th:src="${logoDataUri}" class="clinic-logo" style="height: 50px;" />
         <div class="clinic-name" th:text="${clinic.name}">VetCare Beograd</div>
         <div class="clinic-detail" th:if="${clinic.address}" th:text="${clinic.address}"></div>
         <div class="clinic-detail">
@@ -235,6 +246,9 @@
         <div class="clinic-detail" th:if="${clinic.phone}">Tel: <span th:text="${clinic.phone}"></span></div>
         <div class="clinic-detail" th:if="${clinic.email}" th:text="${clinic.email}"></div>
         <div class="clinic-detail" th:if="${clinic.taxId}">PIB: <span th:text="${clinic.taxId}"></span></div>
+		<div class="clinic-detail" th:if="${clinic.registrationNumber}">Matični br: <span th:text="${clinic.registrationNumber}"></span></div>
+		<div class="clinic-detail" th:if="${clinic.activityCode}">Šifra delatnosti: <span th:text="${clinic.activityCode}"></span></div>
+		<div class="clinic-detail" th:if="${clinic.veterinaryLicenseNumber}">Br. licence: <span th:text="${clinic.veterinaryLicenseNumber}"></span></div>
     </div>
     <div class="invoice-info">
         <div class="invoice-title">FAKTURA</div>
@@ -252,13 +266,16 @@
 <!-- PARTIES -->
 <table class="parties-table">
     <tr>
-        <td>
-            <div class="party-label">Izdavalac</div>
-            <div class="party-name" th:text="${clinic.name}">VetCare Beograd</div>
-            <div class="party-detail" th:if="${clinic.address}" th:text="${clinic.address}"></div>
-            <div class="party-detail" th:if="${clinic.city}" th:text="${clinic.city}"></div>
-            <div class="party-detail" th:if="${clinic.taxId}">PIB: <span th:text="${clinic.taxId}"></span></div>
-        </td>
+		<td>
+		    <div class="party-label">Izdavalac</div>
+		    <div class="party-name" th:text="${clinic.name}">VetCare Beograd</div>
+		    <div class="party-detail" th:if="${clinic.address}" th:text="${clinic.address}"></div>
+		    <div class="party-detail" th:if="${clinic.city}" th:text="${clinic.city}"></div>
+		    <div class="party-detail" th:if="${clinic.taxId}">PIB: <span th:text="${clinic.taxId}"></span></div>
+		    <div class="party-detail" th:if="${clinic.registrationNumber}">Mat. br: <span th:text="${clinic.registrationNumber}"></span></div>
+		    <div class="party-detail" th:if="${clinic.bankAccount}">Račun: <span th:text="${clinic.bankAccount}"></span></div>
+		</td>
+
         <td>
             <div class="party-label">Primalac</div>
             <div class="party-name" th:text="${owner.firstName + ' ' + owner.lastName}"></div>
@@ -320,6 +337,11 @@
     </table>
 </div>
 
+<div th:if="${!clinic.vatPayer}" style="clear: both; margin-top: 20px; padding: 8px; font-size: 9pt; color: #666; font-style: italic;">
+    Napomena: Obveznik nije u sistemu PDV-a (PDV nije obračunat).
+</div>
+
+
 <!-- NOTE -->
 <div class="note-section" th:if="${invoice.note != null and !invoice.note.isEmpty()}">
     <div class="note-label">Napomena</div>
@@ -329,7 +351,9 @@
 <!-- FOOTER -->
 <div class="footer">
     <span th:text="${clinic.name}"></span> | <span th:text="${clinic.email}"></span> | <span th:text="${clinic.phone}"></span>
+    <span th:if="${clinic.bankAccount}"> | Tekući račun: <span th:text="${clinic.bankAccount}"></span></span>
 </div>
+
 
 </body>
 </html>

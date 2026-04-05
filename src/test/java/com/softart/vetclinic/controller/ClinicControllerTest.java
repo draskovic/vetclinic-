@@ -22,7 +22,7 @@ class ClinicControllerTest extends IntegrationTestBase {
     @DisplayName("POST /api/clinics - create success")
     void create_success() throws Exception {
         var request = new CreateClinicRequest("New Clinic", "12345678",
-                "new@clinic.test", "+381333333333", "Main St 1", "Nis", "Serbia",
+                "new@clinic.test", "+381333333333", "Main St 1", "Nis", "Serbia",null, null, null, null, null,
                 null, SubscriptionPlan.BASIC, null, true, "{}");
 
         performPost("/api/clinics", tokenA, clinicAId, request)
@@ -36,7 +36,7 @@ class ClinicControllerTest extends IntegrationTestBase {
     @DisplayName("POST /api/clinics - blank name returns 400")
     void create_blankName() throws Exception {
         var request = new CreateClinicRequest("", null, null, null, null, null, null,
-                null, null, null, null, null);
+                null, null, null, null, null, null, null, null, null, null);
 
         performPost("/api/clinics", tokenA, clinicAId, request)
                 .andExpect(status().isBadRequest());
@@ -70,7 +70,7 @@ class ClinicControllerTest extends IntegrationTestBase {
     @Test
     @DisplayName("PUT /api/clinics/{id} - update success")
     void update_success() throws Exception {
-        var updateRequest = new UpdateClinicRequest("Clinic A Updated", null, null, null,
+        var updateRequest = new UpdateClinicRequest("Clinic A Updated", null, null, null,null, null, null, null,null,
                 null, null, null, null, null, null, null, null);
 
         performPut("/api/clinics/" + clinicAId, tokenA, clinicAId, updateRequest)
@@ -82,7 +82,7 @@ class ClinicControllerTest extends IntegrationTestBase {
     @DisplayName("DELETE /api/clinics/{id} - soft delete success")
     void delete_success() throws Exception {
         // Create a clinic to delete (don't delete the ones we need for auth)
-        var request = new CreateClinicRequest("Temp Clinic", null, null, null, null, null, null,
+        var request = new CreateClinicRequest("Temp Clinic", null, null, null, null, null, null,null, null, null, null, null,
                 null, SubscriptionPlan.BASIC, null, true, "{}");
 
         String response = performPost("/api/clinics", tokenA, clinicAId, request)

@@ -42,6 +42,22 @@ public class Clinic {
 
     @Column(length = 100)
     private String country = "Serbia";
+    
+    @Column(name = "registration_number", length = 20)
+    private String registrationNumber;
+
+    @Column(name = "activity_code", length = 10)
+    private String activityCode;
+
+    @Column(name = "bank_account", length = 50)
+    private String bankAccount;
+
+    @Column(name = "vat_payer", nullable = false)
+    private Boolean vatPayer = false;
+
+    @Column(name = "veterinary_license_number", length = 50)
+    private String veterinaryLicenseNumber;
+
 
     @Column(name = "logo_url", length = 500)
     private String logoUrl;

@@ -5,7 +5,7 @@
     <style>
         @page {
             size: A4;
-            margin: 15mm 20mm 20mm 20mm;
+            margin: 8mm 20mm 20mm 20mm;
             @bottom-center {
                 content: element(footer);
             }
@@ -37,6 +37,11 @@
             float: left;
             width: 55%;
         }
+		.clinic-logo {
+		    height: 50px;
+		    margin-bottom: 8px;
+		}
+
 
         .record-info {
             float: right;
@@ -191,6 +196,7 @@
 <!-- HEADER -->
 <div class="header">
     <div class="clinic-info">
+		<img th:if="${logoDataUri}" th:src="${logoDataUri}" class="clinic-logo" style="height: 50px;" />
         <div class="clinic-name" th:text="${clinic.name}"></div>
         <div class="clinic-detail" th:if="${clinic.address}" th:text="${clinic.address}"></div>
         <div class="clinic-detail">
@@ -199,6 +205,9 @@
         </div>
         <div class="clinic-detail" th:if="${clinic.phone}">Tel: <span th:text="${clinic.phone}"></span></div>
         <div class="clinic-detail" th:if="${clinic.email}" th:text="${clinic.email}"></div>
+		<div class="clinic-detail" th:if="${clinic.taxId}">PIB: <span th:text="${clinic.taxId}"></span></div>
+		<div class="clinic-detail" th:if="${clinic.registrationNumber}">Matični br: <span th:text="${clinic.registrationNumber}"></span></div>
+		<div class="clinic-detail" th:if="${clinic.veterinaryLicenseNumber}">Br. licence: <span th:text="${clinic.veterinaryLicenseNumber}"></span></div>
     </div>
     <div class="record-info">
         <div class="record-title">RECEPT</div>
@@ -215,17 +224,18 @@
         <td>
             <div class="party-label">Pacijent</div>
             <div class="party-name" th:text="${pet.name}"></div>
-			<div class="party-detail" th:if="${pet.patientCode != null}">Br. kartona: <span th:text="${pet.patientCode}"></span></div>
+			<div class="party-detail" th:if="${pet.patientCode != null}">Br. protokola: <span th:text="${pet.patientCode}"></span></div>
 			<div class="party-detail" th:if="${pet.legacyCode != null}">Stari br.: <span th:text="${pet.legacyCode}"></span></div> 
 			 <div class="party-detail" th:if="${speciesName != ''}">Vrsta: <span th:text="${speciesName}"></span></div>
             <div class="party-detail" th:if="${breedName != ''}">Rasa: <span th:text="${breedName}"></span></div>
             <div class="party-detail" th:if="${pet.gender != null}">Pol: <span th:text="${pet.gender}"></span></div>
             <div class="party-detail" th:if="${pet.dateOfBirth != null}">Datum rođenja: <span th:text="${#temporals.format(pet.dateOfBirth, 'dd.MM.yyyy.')}"></span></div>
-        </td>
+			<div class="party-detail" th:if="${pet.weightKg != null}">Masa: <span th:text="${pet.weightKg} + ' kg'"></span></div>
+			<div class="party-detail" th:if="${pet.microchipNumber != null}">Mikročip: <span th:text="${pet.microchipNumber}"></span></div>
+			</td>
         <td>
             <div class="party-label">Vlasnik</div>
             <div class="party-name" th:text="${owner.firstName + ' ' + owner.lastName}"></div>
-			<div th:if="${owner.clientCode != null}" th:text="'Br. kartona: ' + ${owner.clientCode}" style="font-size: 9pt; color: #555;"></div>
             <div class="party-detail" th:if="${owner.phone}" th:text="'Tel: ' + ${owner.phone}"></div>
             <div class="party-detail" th:if="${owner.email}" th:text="${owner.email}"></div>
             <div class="party-detail" th:if="${owner.address}" th:text="${owner.address}"></div>
@@ -235,7 +245,7 @@
 </table>
 
 <!-- PRESCRIPTION DETAILS -->
-<div class="rx-symbol">℞</div>
+<div class="rx-symbol">Rp.</div>
 <div class="med-name" th:text="${prescription.medicationName}"></div>
 
 <table class="details-table">
@@ -243,6 +253,11 @@
         <td class="label">Doziranje:</td>
         <td class="value" th:text="${prescription.dosage}"></td>
     </tr>
+	<tr>
+	    <td class="label">Napomena:</td>
+	    <td class="value"><em>Da ad originalem</em></td>
+	</tr>
+
     <tr>
         <td class="label">Učestalost:</td>
         <td class="value" th:text="${prescription.frequency}"></td>
