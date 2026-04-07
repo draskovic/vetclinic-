@@ -22,8 +22,15 @@ CREATE TRIGGER set_updated_at BEFORE UPDATE ON treatment_protocol
 
 ALTER TABLE treatment_protocol ENABLE ROW LEVEL SECURITY;
 CREATE POLICY tenant_isolation ON treatment_protocol
-    USING (clinic_id = current_setting('app.current_clinic_id')::UUID);
-GRANT ALL ON treatment_protocol TO vetapp_user;
+    FOR ALL USING (clinic_id = NULLIF(current_setting('app.current_clinic_id', true), '')::uuid);
+
+DO $$
+BEGIN
+    IF EXISTS (SELECT FROM pg_roles WHERE rolname = 'vetapp_user') THEN
+        EXECUTE 'GRANT ALL ON treatment_protocol TO vetapp_user';
+    END IF;
+END $$;
+
 
 -- Stavke protokola (usluge u protokolu)
 CREATE TABLE treatment_protocol_item (
@@ -49,5 +56,11 @@ CREATE TRIGGER set_updated_at BEFORE UPDATE ON treatment_protocol_item
 
 ALTER TABLE treatment_protocol_item ENABLE ROW LEVEL SECURITY;
 CREATE POLICY tenant_isolation ON treatment_protocol_item
-    USING (clinic_id = current_setting('app.current_clinic_id')::UUID);
-GRANT ALL ON treatment_protocol_item TO vetapp_user;
+    FOR ALL USING (clinic_id = NULLIF(current_setting('app.current_clinic_id', true), '')::uuid);
+
+DO $$
+BEGIN
+    IF EXISTS (SELECT FROM pg_roles WHERE rolname = 'vetapp_user') THEN
+        EXECUTE 'GRANT ALL ON treatment_protocol_item TO vetapp_user';
+    END IF;
+END $$;

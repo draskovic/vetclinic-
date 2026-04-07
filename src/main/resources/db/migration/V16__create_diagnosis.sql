@@ -24,5 +24,12 @@ CREATE TRIGGER set_updated_at BEFORE UPDATE ON diagnosis
 
 ALTER TABLE diagnosis ENABLE ROW LEVEL SECURITY;
 CREATE POLICY tenant_isolation ON diagnosis
-    USING (clinic_id = current_setting('app.current_clinic_id')::UUID);
-GRANT ALL ON diagnosis TO vetapp_user;
+    FOR ALL USING (clinic_id = NULLIF(current_setting('app.current_clinic_id', true), '')::uuid);
+
+DO $$
+BEGIN
+    IF EXISTS (SELECT FROM pg_roles WHERE rolname = 'vetapp_user') THEN
+        EXECUTE 'GRANT ALL ON diagnosis TO vetapp_user';
+    END IF;
+END $$;
+
