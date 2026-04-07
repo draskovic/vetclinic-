@@ -13,7 +13,11 @@ import java.util.UUID;
 @Getter
 public class CustomUserDetails implements UserDetails {
 
-    private final UUID userId;
+    /**
+	 * 
+	 */
+	private static final long serialVersionUID = 1L;
+	private final UUID userId;
     private final UUID clinicId;
     private final String email;
     private final String passwordHash;

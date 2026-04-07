@@ -2,7 +2,8 @@ package com.softart.vetclinic.exception;
 
 public class DuplicateResourceException extends RuntimeException {
 
-    private final String entityName;
+    private static final long serialVersionUID = 1L;
+	private final String entityName;
     private final String fieldName;
     private final Object fieldValue;
 
