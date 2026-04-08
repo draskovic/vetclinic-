@@ -341,13 +341,17 @@
     </div>
 </div>
 
-<!-- DIAGNOSIS -->
-<div th:if="${record.diagnosis != null and !record.diagnosis.isEmpty()}">
-    <div class="section-title">Dijagnoza</div>
-    <div class="text-block">
-        <div class="text-block-content" th:text="${record.diagnosis}"></div>
-    </div>
+<!-- DIAGNOSES -->
+<div th:if="${diagnoses != null and !diagnoses.isEmpty()}">
+    <div class="section-title">Dijagnoze</div>
+    <table class="items">
+        <tr th:each="d : ${diagnoses}">
+            <td th:if="${d.code != null}" th:text="${d.code}" style="width: 60px; font-weight: bold;"></td>
+            <td th:text="${d.name}"></td>
+        </tr>
+    </table>
 </div>
+
 
 <!-- EXAMINATION NOTES -->
 <div th:if="${record.examinationNotes != null and !record.examinationNotes.isEmpty()}">

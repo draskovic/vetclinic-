@@ -40,5 +40,6 @@ public interface InvoiceMapper {
     @Mapping(target = "appointment", ignore = true)
     @Mapping(target = "owner", ignore = true)
     @Mapping(target = "location", ignore = true)
+    @Mapping(target = "medicalRecordId", ignore = true)
     void updateEntity(UpdateInvoiceRequest dto, @MappingTarget Invoice entity);
 }

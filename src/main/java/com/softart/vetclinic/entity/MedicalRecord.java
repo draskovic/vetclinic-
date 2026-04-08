@@ -28,9 +28,6 @@ public class MedicalRecord extends BaseEntity {
     @Column(name = "record_code", length = 20)
     private String recordCode;
 
-    @Column(columnDefinition = "TEXT")
-    private String diagnosis;
-
     @Column(name = "examination_notes", columnDefinition = "TEXT")
     private String examinationNotes;
 

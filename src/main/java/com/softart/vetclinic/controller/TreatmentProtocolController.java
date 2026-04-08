@@ -110,12 +110,23 @@ public class TreatmentProtocolController {
                 .map(sid -> serviceRepository.findByIdAndClinicIdAndDeletedFalse(sid, clinicId).orElse(null))
                 .filter(Objects::nonNull)
                 .collect(Collectors.toMap(s -> s.getId(), s -> s));
+        
+        // 3b. Dohvati postojeće usluge na intervenciji — sprečava dupliranje
+        List<Treatment> existingTreatments = treatmentService.findByMedicalRecord(clinicId, request.medicalRecordId());
+        Set<UUID> existingServiceIds = existingTreatments.stream()
+                .map(Treatment::getServiceId)
+                .collect(Collectors.toSet());
 
-        // 4. Kreiraj treatment za svaku stavku
+
+        // 4. Kreiraj treatment za svaku stavku (preskoči ako usluga već postoji).
         List<Treatment> createdTreatments = new ArrayList<>();
         for (var item : items) {
             var service = serviceMap.get(item.getServiceId());
             if (service == null) continue;
+            
+            // Preskoči stavku koja već postoji
+            if (existingServiceIds.contains(item.getServiceId())) continue;
+
 
             var treatment = new Treatment();
             treatment.setMedicalRecordId(request.medicalRecordId());
@@ -138,11 +149,22 @@ public class TreatmentProtocolController {
                 if (status == com.softart.vetclinic.enums.InvoiceStatus.DRAFT
                     || status == com.softart.vetclinic.enums.InvoiceStatus.ISSUED
                     || status == com.softart.vetclinic.enums.InvoiceStatus.OVERDUE) {
+                	
+                    // Dohvati postojeće stavke fakture po serviceId
+                    var existingInvoiceItems = invoiceItemRepository.findByClinicIdAndInvoiceIdAndDeletedFalseOrderBySortOrderAsc(clinicId, inv.getId());
+                    Set<UUID> existingInvoiceServiceIds = existingInvoiceItems.stream()
+                            .map(ii -> ii.getServiceId())
+                            .filter(Objects::nonNull)
+                            .collect(Collectors.toSet());
+
+
 
                     for (int i = 0; i < items.size(); i++) {
                         var item = items.get(i);
                         var service = serviceMap.get(item.getServiceId());
                         if (service == null) continue;
+                        // Sprečava dupliranje stavki fakture
+                        if (existingInvoiceServiceIds.contains(item.getServiceId())) continue;
 
                         var invoiceItem = new com.softart.vetclinic.entity.InvoiceItem();
                         invoiceItem.setClinicId(clinicId);

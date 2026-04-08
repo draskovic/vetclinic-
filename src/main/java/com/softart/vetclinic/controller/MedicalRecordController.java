@@ -6,6 +6,15 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import java.util.ArrayList;
+import com.softart.vetclinic.dto.DiagnosisResponse;
+import com.softart.vetclinic.entity.Diagnosis;
+import com.softart.vetclinic.entity.MedicalRecordDiagnosis;
+import com.softart.vetclinic.mapper.DiagnosisMapper;
+import com.softart.vetclinic.repository.DiagnosisRepository;
+import com.softart.vetclinic.repository.MedicalRecordDiagnosisRepository;
+import org.springframework.transaction.annotation.Transactional;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -55,9 +64,9 @@ public class MedicalRecordController {
     private final UserRepository userRepository;
     private final OwnerRepository ownerRepository;
     private final AppointmentService appointmentService;
-
-
-
+    private final MedicalRecordDiagnosisRepository medicalRecordDiagnosisRepository;
+    private final DiagnosisRepository diagnosisRepository;
+    private final DiagnosisMapper diagnosisMapper;
 
     @GetMapping("/{id}")
     public MedicalRecordResponse getById(
@@ -79,7 +88,7 @@ public class MedicalRecordController {
                 r.getVetId(),
                 vet != null ? vet.getFirstName() + " " + vet.getLastName() : "",
                 r.getSymptoms(),
-                r.getDiagnosis(),
+                resolveDiagnoses(clinicId, r.getId()),
                 r.getExaminationNotes(),
                 r.getWeightKg(),
                 r.getTemperatureC(),
@@ -103,6 +112,17 @@ public class MedicalRecordController {
         var owner = pet != null ? ownerRepository.findById(pet.getOwnerId()).orElse(null) : null;
         var vet = userRepository.findById(r.getVetId()).orElse(null);
         
+        // Sačuvaj dijagnoze u junction tabeli
+        if (request.diagnosisIds() != null) {
+            for (UUID diagId : request.diagnosisIds()) {
+                MedicalRecordDiagnosis mrd = new MedicalRecordDiagnosis();
+                mrd.setClinicId(clinicId);
+                mrd.setMedicalRecordId(r.getId());
+                mrd.setDiagnosisId(diagId);
+                medicalRecordDiagnosisRepository.save(mrd);
+            }
+        }
+
         if (entity.getAppointmentId() != null) {
             try {
                 appointmentService.update(entity.getAppointmentId(), clinicId,
@@ -123,7 +143,7 @@ public class MedicalRecordController {
                 owner != null ? owner.getFirstName() + " " + owner.getLastName() : "",
                 r.getVetId(),
                 vet != null ? vet.getFirstName() + " " + vet.getLastName() : "",
-                r.getSymptoms(), r.getDiagnosis(), r.getExaminationNotes(),
+                r.getSymptoms(),  resolveDiagnoses(clinicId, r.getId()), r.getExaminationNotes(),
                 r.getWeightKg(), r.getTemperatureC(), r.getHeartRate(),
                 r.getFollowUpRecommended(), r.getFollowUpDate(),
                 r.getCreatedAt(), r.getUpdatedAt()
@@ -132,11 +152,24 @@ public class MedicalRecordController {
 
 
     @PutMapping("/{id}")
+    @Transactional
     public MedicalRecordResponse update(
             @RequestHeader("X-Clinic-Id") UUID clinicId,
             @PathVariable UUID id,
             @Valid @RequestBody UpdateMedicalRecordRequest request) {
         MedicalRecord r = medicalRecordService.update(id, clinicId, existing -> medicalRecordMapper.updateEntity(request, existing));
+        // Replace-all dijagnoze
+        if (request.diagnosisIds() != null) {
+            medicalRecordDiagnosisRepository.deleteByClinicIdAndMedicalRecordId(clinicId, id);
+            for (UUID diagId : request.diagnosisIds()) {
+                MedicalRecordDiagnosis mrd = new MedicalRecordDiagnosis();
+                mrd.setClinicId(clinicId);
+                mrd.setMedicalRecordId(id);
+                mrd.setDiagnosisId(diagId);
+                medicalRecordDiagnosisRepository.save(mrd);
+            }
+        }
+
         var pet = petRepository.findById(r.getPetId()).orElse(null);
         var owner = pet != null ? ownerRepository.findById(pet.getOwnerId()).orElse(null) : null;
         var vet = userRepository.findById(r.getVetId()).orElse(null);
@@ -149,7 +182,7 @@ public class MedicalRecordController {
                 owner != null ? owner.getFirstName() + " " + owner.getLastName() : "",
                 r.getVetId(),
                 vet != null ? vet.getFirstName() + " " + vet.getLastName() : "",
-                r.getSymptoms(), r.getDiagnosis(), r.getExaminationNotes(),
+                r.getSymptoms(), resolveDiagnoses(clinicId, r.getId()), r.getExaminationNotes(),
                 r.getWeightKg(), r.getTemperatureC(), r.getHeartRate(),
                 r.getFollowUpRecommended(), r.getFollowUpDate(),
                 r.getCreatedAt(), r.getUpdatedAt()
@@ -176,6 +209,10 @@ public class MedicalRecordController {
         Set<UUID> vetIds = records.stream().map(MedicalRecord::getVetId).collect(Collectors.toSet());
         Map<UUID, String> vetNames = userRepository.findAllById(vetIds).stream()
                 .collect(Collectors.toMap(u -> u.getId(), u -> u.getFirstName() + " " + u.getLastName()));
+        
+        List<UUID> recordIds = records.stream().map(MedicalRecord::getId).toList();
+        Map<UUID, List<DiagnosisResponse>> diagnosesMap = resolveDiagnosesBatch(clinicId, recordIds);
+
 
         return records.stream().map(r -> new MedicalRecordResponse(
                 r.getId(), r.getAppointmentId(),  r.getRecordCode(),
@@ -185,7 +222,9 @@ public class MedicalRecordController {
                 owner != null ? owner.getFirstName() + " " + owner.getLastName() : "",
                 r.getVetId(),
                 vetNames.getOrDefault(r.getVetId(), ""),
-                r.getSymptoms(), r.getDiagnosis(), r.getExaminationNotes(),
+                r.getSymptoms(), 
+                diagnosesMap.getOrDefault(r.getId(), List.of()),
+                r.getExaminationNotes(),
                 r.getWeightKg(), r.getTemperatureC(), r.getHeartRate(),
                 r.getFollowUpRecommended(), r.getFollowUpDate(),
                 r.getCreatedAt(), r.getUpdatedAt()
@@ -210,7 +249,7 @@ public class MedicalRecordController {
                 owner != null ? owner.getFirstName() + " " + owner.getLastName() : "",
                 r.getVetId(),
                 vet != null ? vet.getFirstName() + " " + vet.getLastName() : "",
-                r.getSymptoms(), r.getDiagnosis(), r.getExaminationNotes(),
+                r.getSymptoms(), resolveDiagnoses(clinicId, r.getId()), r.getExaminationNotes(),
                 r.getWeightKg(), r.getTemperatureC(), r.getHeartRate(),
                 r.getFollowUpRecommended(), r.getFollowUpDate(),
                 r.getCreatedAt(), r.getUpdatedAt()
@@ -246,6 +285,10 @@ public class MedicalRecordController {
         Set<UUID> vetIds = records.stream().map(MedicalRecord::getVetId).collect(Collectors.toSet());
         Map<UUID, String> vetNames = userRepository.findAllById(vetIds).stream()
                 .collect(Collectors.toMap(u -> u.getId(), u -> u.getFirstName() + " " + u.getLastName()));
+        
+        List<UUID> recordIds = records.stream().map(MedicalRecord::getId).toList();
+        Map<UUID, List<DiagnosisResponse>> diagnosesMap = resolveDiagnosesBatch(clinicId, recordIds);
+
 
         return records.stream().map(r -> new MedicalRecordResponse(
                 r.getId(),
@@ -258,7 +301,7 @@ public class MedicalRecordController {
                 r.getVetId(),
                 vetNames.getOrDefault(r.getVetId(), ""),
                 r.getSymptoms(),
-                r.getDiagnosis(),
+                diagnosesMap.getOrDefault(r.getId(), List.of()),
                 r.getExaminationNotes(),
                 r.getWeightKg(),
                 r.getTemperatureC(),
@@ -295,6 +338,9 @@ public class MedicalRecordController {
         Map<UUID, String> vetNames = userRepository.findAllById(vetIds).stream()
                 .collect(Collectors.toMap(u -> u.getId(), u -> u.getFirstName() + " " + u.getLastName()));
 
+        List<UUID> recordIds = page.getContent().stream().map(MedicalRecord::getId).toList();
+        Map<UUID, List<DiagnosisResponse>> diagnosesMap = resolveDiagnosesBatch(clinicId, recordIds);
+
         return page.map(r -> new MedicalRecordResponse(
                 r.getId(),
                 r.getAppointmentId(),
@@ -306,7 +352,7 @@ public class MedicalRecordController {
                 r.getVetId(),
                 vetNames.getOrDefault(r.getVetId(), ""),
                 r.getSymptoms(),
-                r.getDiagnosis(),
+                diagnosesMap.getOrDefault(r.getId(), List.of()),
                 r.getExaminationNotes(),
                 r.getWeightKg(),
                 r.getTemperatureC(),
@@ -318,5 +364,28 @@ public class MedicalRecordController {
         ));
     }
 
+    private List<DiagnosisResponse> resolveDiagnoses(UUID clinicId, UUID medicalRecordId) {
+        List<MedicalRecordDiagnosis> mrdList = medicalRecordDiagnosisRepository
+                .findByClinicIdAndMedicalRecordId(clinicId, medicalRecordId);
+        if (mrdList.isEmpty()) return List.of();
+        List<UUID> diagIds = mrdList.stream().map(MedicalRecordDiagnosis::getDiagnosisId).toList();
+        List<Diagnosis> diagnoses = diagnosisRepository.findAllById(diagIds);
+        return diagnoses.stream().map(diagnosisMapper::toResponse).toList();
+    }
+
+    private Map<UUID, List<DiagnosisResponse>> resolveDiagnosesBatch(UUID clinicId, List<UUID> medicalRecordIds) {
+        if (medicalRecordIds.isEmpty()) return Map.of();
+        List<MedicalRecordDiagnosis> allMrd = medicalRecordDiagnosisRepository
+                .findByClinicIdAndMedicalRecordIdIn(clinicId, medicalRecordIds);
+        if (allMrd.isEmpty()) return Map.of();
+        Set<UUID> diagIds = allMrd.stream().map(MedicalRecordDiagnosis::getDiagnosisId).collect(Collectors.toSet());
+        Map<UUID, Diagnosis> diagMap = diagnosisRepository.findAllById(new ArrayList<>(diagIds))
+                .stream().collect(Collectors.toMap(Diagnosis::getId, d -> d));
+        return allMrd.stream().collect(Collectors.groupingBy(
+                MedicalRecordDiagnosis::getMedicalRecordId,
+                Collectors.mapping(mrd -> diagnosisMapper.toResponse(diagMap.get(mrd.getDiagnosisId())),
+                        Collectors.toList())
+        ));
+    }
 
 }

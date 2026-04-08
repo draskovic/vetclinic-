@@ -11,6 +11,8 @@ import org.thymeleaf.TemplateEngine;
 import org.thymeleaf.context.Context;
 import org.xhtmlrenderer.pdf.ITextRenderer;
 import com.softart.vetclinic.repository.ClinicRepository;
+import com.softart.vetclinic.repository.DiagnosisRepository;
+import com.softart.vetclinic.repository.MedicalRecordDiagnosisRepository;
 import com.softart.vetclinic.exception.ResourceNotFoundException;
 
 import com.softart.vetclinic.repository.OwnerRepository;
@@ -43,7 +45,8 @@ public class MedicalRecordPdfService {
     private final SpeciesRepository speciesRepository;
     private final BreedRepository breedRepository;
     private final ClinicLogoHelper clinicLogoHelper;
-
+    private final MedicalRecordDiagnosisRepository medicalRecordDiagnosisRepository;
+    private final DiagnosisRepository diagnosisRepository;
 
 
     public MedicalRecordPdfService(MedicalRecordService medicalRecordService,
@@ -56,7 +59,9 @@ public class MedicalRecordPdfService {
                                     BreedRepository breedRepository,
                                     TreatmentService treatmentService,
                                     LabReportService labReportService,
-                                    ClinicLogoHelper clinicLogoHelper) {
+                                    ClinicLogoHelper clinicLogoHelper,
+                                    MedicalRecordDiagnosisRepository medicalRecordDiagnosisRepository,
+                                    DiagnosisRepository diagnosisRepository) {
         this.medicalRecordService = medicalRecordService;
         this.prescriptionService = prescriptionService;
         this.vaccinationService = vaccinationService;
@@ -68,6 +73,9 @@ public class MedicalRecordPdfService {
         this.treatmentService = treatmentService;
         this.labReportService = labReportService;
         this.clinicLogoHelper = clinicLogoHelper;
+        this.medicalRecordDiagnosisRepository = medicalRecordDiagnosisRepository;
+        this.diagnosisRepository = diagnosisRepository;
+        
     }
 
     @Transactional(readOnly = true)
@@ -91,6 +99,13 @@ public class MedicalRecordPdfService {
             List<Vaccination> vaccinations = vaccinationService.findByMedicalRecord(clinicId, medicalRecordId);
             List<Treatment> treatments = treatmentService.findByMedicalRecord(clinicId, medicalRecordId);
             List<LabReport> labReports = labReportService.findByMedicalRecord(clinicId, medicalRecordId);
+            
+            List<MedicalRecordDiagnosis> mrdList = medicalRecordDiagnosisRepository
+                    .findByClinicIdAndMedicalRecordId(clinicId, medicalRecordId);
+            List<Diagnosis> diagnoses = mrdList.isEmpty() ? List.of()
+                    : diagnosisRepository.findAllById(mrdList.stream()
+                        .map(MedicalRecordDiagnosis::getDiagnosisId).toList());
+
 
 
             Context context = new Context();
@@ -106,6 +121,7 @@ public class MedicalRecordPdfService {
             context.setVariable("breedName", breedName);
             context.setVariable("treatments", treatments);
             context.setVariable("labReports", labReports);
+            context.setVariable("diagnoses", diagnoses);
             context.setVariable("logoDataUri", clinicLogoHelper.toDataUri(clinic));
 
             String html = templateEngine.process("medical-record", context);

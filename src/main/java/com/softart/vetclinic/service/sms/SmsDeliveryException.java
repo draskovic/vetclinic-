@@ -2,7 +2,12 @@ package com.softart.vetclinic.service.sms;
 
 public class SmsDeliveryException extends RuntimeException {
 
-    public SmsDeliveryException(String message) {
+    /**
+	 * 
+	 */
+	private static final long serialVersionUID = 1L;
+
+	public SmsDeliveryException(String message) {
         super(message);
     }
 

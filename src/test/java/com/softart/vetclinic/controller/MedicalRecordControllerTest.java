@@ -31,13 +31,14 @@ class MedicalRecordControllerTest extends IntegrationTestBase {
         seedPrerequisites();
 
         var request = new CreateMedicalRecordRequest(null, petId, userAId,
-                "Vomiting", "Gastritis", "Physical exam normal", new BigDecimal("5.2"),
+                "Vomiting", null, "Physical exam normal", new BigDecimal("5.2"),
                 new BigDecimal("38.5"), 80, false, null);
+
 
         performPost("/api/medical-records", tokenA, clinicAId, request)
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").isNotEmpty())
-                .andExpect(jsonPath("$.diagnosis").value("Gastritis"));
+                .andExpect(jsonPath("$.diagnoses").isEmpty());
     }
 
     @Test

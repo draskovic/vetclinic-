@@ -3,6 +3,7 @@ package com.softart.vetclinic.dto;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.util.List;
 import java.util.UUID;
 
 public record MedicalRecordResponse(
@@ -16,7 +17,7 @@ public record MedicalRecordResponse(
         UUID vetId,
         String vetName,
         String symptoms,
-        String diagnosis,
+        List<DiagnosisResponse> diagnoses,
         String examinationNotes,
         BigDecimal weightKg,
         BigDecimal temperatureC,

@@ -37,5 +37,7 @@ public interface TreatmentProtocolItemMapper {
     @Mapping(target = "clinic", ignore = true)
     @Mapping(target = "protocol", ignore = true)
     @Mapping(target = "service", ignore = true)
+    @Mapping(target = "protocolId", ignore = true)
+    @Mapping(target = "serviceId", ignore = true)
     void updateEntity(UpdateTreatmentProtocolItemRequest dto, @MappingTarget TreatmentProtocolItem entity);
 }

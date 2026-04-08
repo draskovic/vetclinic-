@@ -2,7 +2,12 @@ package com.softart.vetclinic.service.email;
 
 public class EmailDeliveryException extends RuntimeException {
 
-    public EmailDeliveryException(String message) {
+    /**
+	 * 
+	 */
+	private static final long serialVersionUID = 1L;
+
+	public EmailDeliveryException(String message) {
         super(message);
     }
 

@@ -4,6 +4,7 @@ import jakarta.validation.constraints.NotNull;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
 
 public record CreateMedicalRecordRequest(
@@ -11,7 +12,7 @@ public record CreateMedicalRecordRequest(
         @NotNull UUID petId,
         @NotNull UUID vetId,
         String symptoms,
-        String diagnosis,
+        List<UUID> diagnosisIds,
         String examinationNotes,
         BigDecimal weightKg,
         BigDecimal temperatureC,

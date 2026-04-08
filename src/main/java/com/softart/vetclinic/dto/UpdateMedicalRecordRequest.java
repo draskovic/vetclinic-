@@ -2,6 +2,7 @@ package com.softart.vetclinic.dto;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
 
 public record UpdateMedicalRecordRequest(
@@ -9,7 +10,7 @@ public record UpdateMedicalRecordRequest(
         UUID petId,
         UUID vetId,
         String symptoms,
-        String diagnosis,
+        List<UUID> diagnosisIds,
         String examinationNotes,
         BigDecimal weightKg,
         BigDecimal temperatureC,
