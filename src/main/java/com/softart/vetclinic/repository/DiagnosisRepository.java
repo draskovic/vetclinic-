@@ -22,6 +22,12 @@ public interface DiagnosisRepository extends JpaRepository<Diagnosis, UUID> {
     boolean existsByIdAndClinicIdAndDeletedFalse(UUID id, UUID clinicId);
 
     boolean existsByClinicIdAndNameAndDeletedFalse(UUID clinicId, String name);
+    
+    boolean existsByClinicIdAndCodeAndDeletedFalse(UUID clinicId, String code);
+
+    @Query("SELECT MAX(d.code) FROM Diagnosis d WHERE d.clinicId = :clinicId AND d.code LIKE :prefix% AND d.deleted = false")
+    String findMaxCodeByPrefix(@Param("clinicId") UUID clinicId, @Param("prefix") String prefix);
+
 
     @Query("SELECT d FROM Diagnosis d WHERE d.clinicId = :clinicId AND d.deleted = false " +
            "AND (:search = '' OR (LOWER(d.name) LIKE LOWER(CONCAT('%', :search, '%')) " +

@@ -1,9 +1,14 @@
 package com.softart.vetclinic.controller;
 
 import com.softart.vetclinic.dto.CreateDiagnosisRequest;
+import com.softart.vetclinic.dto.ImportDiagnosisRequest;
+import com.softart.vetclinic.dto.ImportResultResponse;
+import java.util.List;
+
 import com.softart.vetclinic.dto.DiagnosisResponse;
 import com.softart.vetclinic.dto.UpdateDiagnosisRequest;
 import com.softart.vetclinic.mapper.DiagnosisMapper;
+import com.softart.vetclinic.service.DiagnosisImportService;
 import com.softart.vetclinic.service.DiagnosisService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -23,6 +28,8 @@ public class DiagnosisController {
 
     private final DiagnosisService diagnosisService;
     private final DiagnosisMapper diagnosisMapper;
+    private final DiagnosisImportService diagnosisImportService;
+
 
     @GetMapping
     public Page<DiagnosisResponse> getAll(
@@ -49,6 +56,15 @@ public class DiagnosisController {
         return diagnosisService.searchActive(clinicId, search, pageable)
                 .map(diagnosisMapper::toResponse);
     }
+    
+    @PostMapping("/import")
+    @ResponseStatus(HttpStatus.CREATED)
+    public ImportResultResponse importDiagnoses(
+            @RequestHeader("X-Clinic-Id") UUID clinicId,
+            @RequestBody List<ImportDiagnosisRequest> requests) {
+        return diagnosisImportService.importDiagnoses(clinicId, requests);
+    }
+
 
     @GetMapping("/{id}")
     public DiagnosisResponse getById(
