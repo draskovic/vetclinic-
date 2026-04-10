@@ -26,7 +26,13 @@ CREATE INDEX idx_sii_item    ON service_inventory_item(clinic_id, inventory_item
 ALTER TABLE service_inventory_item ENABLE ROW LEVEL SECURITY;
 CREATE POLICY tenant_isolation ON service_inventory_item
     USING (clinic_id = NULLIF(current_setting('app.current_clinic_id', true), '')::uuid);
-GRANT ALL ON service_inventory_item TO vetapp_user;
+DO $$
+BEGIN
+    IF EXISTS (SELECT FROM pg_roles WHERE rolname = 'vetapp_user') THEN
+        EXECUTE 'GRANT ALL ON service_inventory_item TO vetapp_user';
+    END IF;
+END $$;
+
 
 -- Trigger za updated_at
 CREATE TRIGGER trg_sii_updated_at

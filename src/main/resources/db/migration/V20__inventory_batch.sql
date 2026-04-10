@@ -37,7 +37,13 @@ CREATE INDEX idx_batch_expiry ON inventory_batch(clinic_id, expiry_date);
 ALTER TABLE inventory_batch ENABLE ROW LEVEL SECURITY;
 CREATE POLICY tenant_isolation ON inventory_batch
     USING (clinic_id = NULLIF(current_setting('app.current_clinic_id', true), '')::uuid);
-GRANT ALL ON inventory_batch TO vetapp_user;
+DO $$
+BEGIN
+    IF EXISTS (SELECT FROM pg_roles WHERE rolname = 'vetapp_user') THEN
+        EXECUTE 'GRANT ALL ON inventory_batch TO vetapp_user';
+    END IF;
+END $$;
+
 
 -- Trigger za updated_at
 CREATE TRIGGER trg_inventory_batch_updated_at
