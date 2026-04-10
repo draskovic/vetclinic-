@@ -28,6 +28,9 @@ public class InventoryTransaction extends BaseEntity {
 
     @Column(name = "reference_id")
     private UUID referenceId;
+    
+    @Column(name = "batch_id")
+    private UUID batchId;
 
     @Column(name = "performed_by")
     private UUID performedBy;

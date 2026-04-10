@@ -7,6 +7,7 @@ import com.softart.vetclinic.repository.DiagnosisRepository;
 import com.softart.vetclinic.repository.InvoiceItemRepository;
 import com.softart.vetclinic.repository.InvoiceRepository;
 import com.softart.vetclinic.repository.ServiceRepository;
+import com.softart.vetclinic.service.InventoryDeductionService;
 import com.softart.vetclinic.service.TreatmentProtocolItemService;
 import com.softart.vetclinic.service.TreatmentProtocolService;
 import com.softart.vetclinic.service.TreatmentService;
@@ -36,6 +37,8 @@ public class TreatmentProtocolController {
     private final ServiceRepository serviceRepository;
     private final InvoiceRepository invoiceRepository;
     private final InvoiceItemRepository invoiceItemRepository;
+    private final InventoryDeductionService inventoryDeductionService;
+
 
     @GetMapping
     public Page<TreatmentProtocolResponse> getAll(
@@ -188,6 +191,18 @@ public class TreatmentProtocolController {
 
                     // Recalculate JEDNOM na kraju
                     recalculateInvoiceTotals(clinicId, inv.getId());
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        // 5b. Auto-dedukcija inventara za sve kreirane usluge
+        try {
+            for (var t : createdTreatments) {
+                if (t.getServiceId() != null) {
+                    inventoryDeductionService.deductForTreatment(
+                            clinicId, t.getServiceId(), t.getId(), request.vetId());
                 }
             }
         } catch (Exception e) {

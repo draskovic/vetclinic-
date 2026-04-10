@@ -21,6 +21,7 @@ public record InventoryItemResponse(
         BigDecimal sellPrice,
         LocalDate expiryDate,
         Boolean active,
+        Boolean trackBatches,
         OffsetDateTime createdAt,
         OffsetDateTime updatedAt
 ) {}

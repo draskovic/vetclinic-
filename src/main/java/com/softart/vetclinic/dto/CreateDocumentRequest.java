@@ -1,10 +1,10 @@
 package com.softart.vetclinic.dto;
 
-import com.softart.vetclinic.enums.FileType;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
-
 import java.util.UUID;
+
+import com.softart.vetclinic.enums.FileType;
+
+import jakarta.validation.constraints.NotNull;
 
 public record CreateDocumentRequest(
         UUID petId,

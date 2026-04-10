@@ -1,18 +1,19 @@
 package com.softart.vetclinic.controller;
 
-import com.softart.vetclinic.IntegrationTestBase;
-import com.softart.vetclinic.dto.LoginRequest;
-import com.softart.vetclinic.dto.RefreshTokenRequest;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-import org.springframework.http.MediaType;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
-import static org.hamcrest.Matchers.*;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.springframework.http.MediaType;
+
+import com.softart.vetclinic.IntegrationTestBase;
+import com.softart.vetclinic.dto.LoginRequest;
+import com.softart.vetclinic.dto.RefreshTokenRequest;
 
 class AuthControllerTest extends IntegrationTestBase {
 

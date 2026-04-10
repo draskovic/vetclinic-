@@ -41,4 +41,12 @@ public interface InventoryItemRepository extends JpaRepository<InventoryItem, UU
             Pageable pageable);
 
 
+    @Query("SELECT i FROM InventoryItem i WHERE i.clinicId = :clinicId AND i.deleted = false " +
+            "AND i.active = true AND i.reorderLevel IS NOT NULL AND i.quantityOnHand <= i.reorderLevel")
+     List<InventoryItem> findLowStock(@Param("clinicId") UUID clinicId);
+
+     @Query("SELECT COUNT(i) FROM InventoryItem i WHERE i.clinicId = :clinicId AND i.deleted = false " +
+            "AND i.active = true AND i.reorderLevel IS NOT NULL AND i.quantityOnHand <= i.reorderLevel")
+     long countLowStock(@Param("clinicId") UUID clinicId);
+
 }

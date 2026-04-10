@@ -1,16 +1,19 @@
 package com.softart.vetclinic.mapper;
 
-import com.softart.vetclinic.dto.CreateInventoryItemRequest;
-import com.softart.vetclinic.dto.InventoryItemResponse;
-import com.softart.vetclinic.dto.UpdateInventoryItemRequest;
-import com.softart.vetclinic.entity.InventoryItem;
+import com.softart.vetclinic.dto.CreateInventoryBatchRequest;
+import com.softart.vetclinic.dto.InventoryBatchResponse;
+import com.softart.vetclinic.dto.UpdateInventoryBatchRequest;
+import com.softart.vetclinic.entity.InventoryBatch;
 import org.mapstruct.*;
 
 @Mapper(componentModel = "spring")
-public interface InventoryItemMapper {
+public interface InventoryBatchMapper {
 
-	@Mapping(target = "locationName", ignore = true)
-	InventoryItemResponse toResponse(InventoryItem entity);
+    @Mapping(target = "inventoryItemName", ignore = true)
+    @Mapping(target = "inventoryItemUnit", ignore = true)
+    @Mapping(target = "daysUntilExpiry", ignore = true)
+    @Mapping(target = "status", ignore = true)
+    InventoryBatchResponse toResponse(InventoryBatch entity);
 
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "clinicId", ignore = true)
@@ -20,18 +23,20 @@ public interface InventoryItemMapper {
     @Mapping(target = "deletedAt", ignore = true)
     @Mapping(target = "version", ignore = true)
     @Mapping(target = "clinic", ignore = true)
-    @Mapping(target = "location", ignore = true)
-    InventoryItem toEntity(CreateInventoryItemRequest dto);
+    @Mapping(target = "inventoryItem", ignore = true)
+    InventoryBatch toEntity(CreateInventoryBatchRequest dto);
 
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "clinicId", ignore = true)
+    @Mapping(target = "inventoryItemId", ignore = true)
+    @Mapping(target = "quantityOnHand", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
     @Mapping(target = "deleted", ignore = true)
     @Mapping(target = "deletedAt", ignore = true)
     @Mapping(target = "version", ignore = true)
     @Mapping(target = "clinic", ignore = true)
-    @Mapping(target = "location", ignore = true)
-    void updateEntity(UpdateInventoryItemRequest dto, @MappingTarget InventoryItem entity);
+    @Mapping(target = "inventoryItem", ignore = true)
+    void updateEntity(UpdateInventoryBatchRequest dto, @MappingTarget InventoryBatch entity);
 }

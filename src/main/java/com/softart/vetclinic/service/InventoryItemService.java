@@ -56,5 +56,16 @@ public class InventoryItemService extends AbstractCrudService<InventoryItem, Inv
                 category,
                 pageable);
     }
+    
+    @Transactional(readOnly = true)
+    public List<InventoryItem> findLowStock(UUID clinicId) {
+        return ((InventoryItemRepository) repository).findLowStock(clinicId);
+    }
+
+    @Transactional(readOnly = true)
+    public long countLowStock(UUID clinicId) {
+        return ((InventoryItemRepository) repository).countLowStock(clinicId);
+    }
+
 
 }

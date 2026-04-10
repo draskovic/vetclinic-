@@ -116,4 +116,17 @@ public class InventoryTransactionService extends AbstractCrudService<InventoryTr
     public List<InventoryTransaction> findByItem(UUID clinicId, UUID inventoryItemId) {
         return inventoryTransactionRepository.findByClinicIdAndInventoryItemIdAndDeletedFalse(clinicId, inventoryItemId);
     }
+    
+    @Transactional(readOnly = true)
+    public Page<InventoryTransaction> searchAll(UUID clinicId, String search,
+                                                 InventoryTransactionType type,
+                                                 UUID inventoryItemId, Pageable pageable) {
+        if ((search == null || search.isBlank()) && type == null && inventoryItemId == null) {
+            return findAll(clinicId, pageable);
+        }
+        return inventoryTransactionRepository.searchAll(clinicId,
+                search == null || search.isBlank() ? "" : search,
+                type, inventoryItemId, pageable);
+    }
+
 }

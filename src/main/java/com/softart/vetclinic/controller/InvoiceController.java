@@ -118,10 +118,11 @@ public class InvoiceController {
     public ResponseEntity<InvoiceResponse> getByMedicalRecord(
             @RequestHeader("X-Clinic-Id") UUID clinicId,
             @PathVariable UUID medicalRecordId) {
+        // Vraća 200 OK sa null telom kada intervencija nema fakturu — to nije "not found"
+        // nego validan business state ("još nije fakturisano"). Frontend proverava na null.
         return invoiceRepository.findByMedicalRecordIdAndDeletedFalse(medicalRecordId)
-                .map(invoice -> invoiceMapper.toResponse(invoiceService.findById(invoice.getId(), clinicId)))
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+                .map(invoice -> ResponseEntity.ok(invoiceMapper.toResponse(invoiceService.findById(invoice.getId(), clinicId))))
+                .orElse(ResponseEntity.ok(null));
     }
 
 

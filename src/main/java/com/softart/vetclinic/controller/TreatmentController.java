@@ -1,9 +1,13 @@
 package com.softart.vetclinic.controller;
 
 import com.softart.vetclinic.dto.CreateTreatmentRequest;
+
 import com.softart.vetclinic.dto.TreatmentResponse;
 import com.softart.vetclinic.dto.UpdateTreatmentRequest;
 import com.softart.vetclinic.mapper.TreatmentMapper;
+import com.softart.vetclinic.repository.InvoiceItemRepository;
+import com.softart.vetclinic.repository.InvoiceRepository;
+import com.softart.vetclinic.service.InventoryDeductionService;
 import com.softart.vetclinic.service.TreatmentService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -22,9 +26,11 @@ public class TreatmentController {
 
     private final TreatmentService treatmentService;
     private final TreatmentMapper treatmentMapper;
-    private final com.softart.vetclinic.repository.InvoiceRepository invoiceRepository;
-    private final com.softart.vetclinic.repository.InvoiceItemRepository invoiceItemRepository;
+    private final InvoiceRepository invoiceRepository;
+    private final InvoiceItemRepository invoiceItemRepository;
     private final com.softart.vetclinic.repository.ServiceRepository serviceRepository;
+    private final InventoryDeductionService inventoryDeductionService;
+
 
 
     @GetMapping
@@ -100,6 +106,17 @@ public class TreatmentController {
             // Ne blokirati kreiranje usluge ako dodavanje na fakturu ne uspe
             e.printStackTrace();
         }
+        
+        // Auto-dedukcija inventara
+        try {
+        	if (result.getServiceId() != null) {
+        		inventoryDeductionService.deductForTreatment(
+        				clinicId, result.getServiceId(), result.getId(), entity.getVetId());
+        	}
+        } catch (Exception ex) {
+        	ex.printStackTrace();
+        }
+
 
         return treatmentMapper.toResponse(result);
     }
@@ -149,6 +166,14 @@ public class TreatmentController {
         } catch (Exception e) {
             e.printStackTrace();
         }
+        
+        // Auto-reverzija inventara
+        try {
+            inventoryDeductionService.reverseForTreatment(clinicId, id);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+
     }
 
 

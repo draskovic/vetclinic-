@@ -1,15 +1,19 @@
 package com.softart.vetclinic.repository;
 
-import com.softart.vetclinic.entity.InventoryTransaction;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
+import com.softart.vetclinic.entity.InventoryTransaction;
+import com.softart.vetclinic.enums.InventoryTransactionType;
 
 @Repository
 public interface InventoryTransactionRepository extends JpaRepository<InventoryTransaction, UUID> {
@@ -26,4 +30,21 @@ public interface InventoryTransactionRepository extends JpaRepository<InventoryT
 
     @EntityGraph(attributePaths = {"inventoryItem", "performedByUser"})
     List<InventoryTransaction> findByClinicIdAndInventoryItemIdAndDeletedFalse(UUID clinicId, UUID inventoryItemId);
+    
+    List<InventoryTransaction> findByClinicIdAndReferenceTypeAndReferenceIdAndDeletedFalse(
+            UUID clinicId, String referenceType, UUID referenceId);
+    
+    @Query("SELECT t FROM InventoryTransaction t LEFT JOIN t.inventoryItem i " +
+            "WHERE t.clinicId = :clinicId AND t.deleted = false " +
+            "AND (:type IS NULL OR t.type = :type) " +
+            "AND (:inventoryItemId IS NULL OR t.inventoryItemId = :inventoryItemId) " +
+            "AND (:search = '' OR (LOWER(i.name) LIKE LOWER(CONCAT('%', :search, '%')) " +
+            "OR LOWER(t.note) LIKE LOWER(CONCAT('%', :search, '%'))))")
+     Page<InventoryTransaction> searchAll(@Param("clinicId") UUID clinicId,
+                                          @Param("search") String search,
+                                          @Param("type") InventoryTransactionType type,
+                                          @Param("inventoryItemId") UUID inventoryItemId,
+                                          Pageable pageable);
+
+
 }

@@ -17,5 +17,6 @@ public record UpdateInventoryItemRequest(
         BigDecimal costPrice,
         BigDecimal sellPrice,
         LocalDate expiryDate,
-        Boolean active
+        Boolean active,
+        Boolean trackBatches
 ) {}

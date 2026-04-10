@@ -55,4 +55,8 @@ public class InventoryItem extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "location_id", insertable = false, updatable = false)
     private ClinicLocation location;
+    
+    @Column(name = "track_batches", nullable = false)
+    private Boolean trackBatches = false;
+
 }
