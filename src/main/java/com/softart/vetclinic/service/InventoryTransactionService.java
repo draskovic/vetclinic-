@@ -13,6 +13,7 @@ import com.softart.vetclinic.enums.InventoryTransactionType;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import com.softart.vetclinic.exception.BadRequestException;
 
 @Service
 public class InventoryTransactionService extends AbstractCrudService<InventoryTransaction, InventoryTransactionRepository> {
@@ -53,7 +54,19 @@ public class InventoryTransactionService extends AbstractCrudService<InventoryTr
                 inventoryItemRepository.existsByIdAndClinicIdAndDeletedFalse(entity.getInventoryItemId(), entity.getClinicId()),
                 "InventoryItem", "id", entity.getInventoryItemId()
         );
+        validateReason(entity);
     }
+
+    private void validateReason(InventoryTransaction entity) {
+        InventoryTransactionType type = entity.getType();
+        if ((type == InventoryTransactionType.ADJUSTMENT || type == InventoryTransactionType.EXPIRED)
+                && entity.getReason() == null) {
+            throw new BadRequestException(
+                    "Razlog (reason) je obavezan za transakcije tipa " + type.name()
+            );
+        }
+    }
+
     
     @Override
     @Transactional
@@ -85,6 +98,7 @@ public class InventoryTransactionService extends AbstractCrudService<InventoryTr
 
         // Primeni update (ovo menja existing objekat)
         InventoryTransaction saved = super.update(id, clinicId, updater);
+        validateReason(saved);
 
         // Poništi staru transakciju
         inventoryItemRepository.findByIdAndClinicIdAndDeletedFalse(oldItemId, clinicId)

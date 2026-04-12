@@ -1,6 +1,7 @@
 package com.softart.vetclinic.entity;
 
 import com.softart.vetclinic.enums.InventoryTransactionType;
+import com.softart.vetclinic.enums.AdjustmentReason;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -31,6 +32,10 @@ public class InventoryTransaction extends BaseEntity {
     
     @Column(name = "batch_id")
     private UUID batchId;
+    
+    @Enumerated(EnumType.STRING)
+    @Column(length = 50)
+    private AdjustmentReason reason;
 
     @Column(name = "performed_by")
     private UUID performedBy;

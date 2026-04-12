@@ -20,5 +20,7 @@ public record CreateInventoryItemRequest(
         BigDecimal sellPrice,
         LocalDate expiryDate,
         Boolean active,
-        Boolean trackBatches
+        Boolean trackBatches,
+        BigDecimal initialQuantity
 ) {}
+

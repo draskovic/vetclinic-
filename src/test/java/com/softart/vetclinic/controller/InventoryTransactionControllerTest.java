@@ -27,7 +27,7 @@ class InventoryTransactionControllerTest extends IntegrationTestBase {
 
         var request = new CreateInventoryTransactionRequest(itemId,
                 InventoryTransactionType.IN, new BigDecimal("50"),
-                null, null, userAId, "Restocking");
+                null, null, userAId, "Restocking",null);
 
         performPost("/api/inventory-transactions", tokenA, clinicAId, request)
                 .andExpect(status().isCreated())
@@ -39,7 +39,7 @@ class InventoryTransactionControllerTest extends IntegrationTestBase {
     @DisplayName("POST /api/inventory-transactions - missing required fields returns 400")
     void create_missingRequired() throws Exception {
         var request = new CreateInventoryTransactionRequest(null, null, null,
-                null, null, null, null);
+                null, null, null, null, null);
 
         performPost("/api/inventory-transactions", tokenA, clinicAId, request)
                 .andExpect(status().isBadRequest());

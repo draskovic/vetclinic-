@@ -23,6 +23,7 @@ public interface InventoryTransactionMapper {
     @Mapping(target = "clinic", ignore = true)
     @Mapping(target = "inventoryItem", ignore = true)
     @Mapping(target = "performedByUser", ignore = true)
+    @Mapping(target = "batchId", ignore = true)
     InventoryTransaction toEntity(CreateInventoryTransactionRequest dto);
 
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
@@ -36,5 +37,6 @@ public interface InventoryTransactionMapper {
     @Mapping(target = "clinic", ignore = true)
     @Mapping(target = "inventoryItem", ignore = true)
     @Mapping(target = "performedByUser", ignore = true)
+    @Mapping(target = "batchId", ignore = true)
     void updateEntity(UpdateInventoryTransactionRequest dto, @MappingTarget InventoryTransaction entity);
 }

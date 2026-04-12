@@ -76,9 +76,10 @@ public class InventoryItemController {
             @RequestHeader("X-Clinic-Id") UUID clinicId,
             @Valid @RequestBody CreateInventoryItemRequest request) {
         var entity = inventoryItemMapper.toEntity(request);
-        return enrichOne(inventoryItemMapper.toResponse(inventoryItemService.create(entity, clinicId)));
-
+        var saved = inventoryItemService.createWithInitialQuantity(entity, clinicId, request.initialQuantity());
+        return enrichOne(inventoryItemMapper.toResponse(saved));
     }
+
 
     @PutMapping("/{id}")
     public InventoryItemResponse update(

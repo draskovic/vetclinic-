@@ -1,10 +1,12 @@
 package com.softart.vetclinic.dto;
 
-import com.softart.vetclinic.enums.InventoryTransactionType;
-import jakarta.validation.constraints.NotNull;
-
 import java.math.BigDecimal;
 import java.util.UUID;
+
+import com.softart.vetclinic.enums.InventoryTransactionType;
+import com.softart.vetclinic.enums.AdjustmentReason;
+
+import jakarta.validation.constraints.NotNull;
 
 public record CreateInventoryTransactionRequest(
         @NotNull UUID inventoryItemId,
@@ -13,5 +15,7 @@ public record CreateInventoryTransactionRequest(
         String referenceType,
         UUID referenceId,
         UUID performedBy,
-        String note
+        String note,
+        AdjustmentReason reason
 ) {}
+
