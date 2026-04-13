@@ -2,6 +2,7 @@ package com.softart.vetclinic.controller;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -144,6 +145,70 @@ public class MedicalRecordController {
                 r.getVetId(),
                 vet != null ? vet.getFirstName() + " " + vet.getLastName() : "",
                 r.getSymptoms(),  resolveDiagnoses(clinicId, r.getId()), r.getExaminationNotes(),
+                r.getWeightKg(), r.getTemperatureC(), r.getHeartRate(),
+                r.getFollowUpRecommended(), r.getFollowUpDate(),
+                r.getCreatedAt(), r.getUpdatedAt()
+        );
+    }
+
+    @PostMapping("/start-from-appointment/{appointmentId}")
+    @Transactional
+    public MedicalRecordResponse startFromAppointment(
+            @RequestHeader("X-Clinic-Id") UUID clinicId,
+            @PathVariable UUID appointmentId) {
+
+        // Ako već postoji intervencija za ovaj termin, vrati je
+        Optional<MedicalRecord> existing = medicalRecordService.findByAppointment(appointmentId);
+        if (existing.isPresent()) {
+            MedicalRecord r = existing.get();
+            var pet = petRepository.findById(r.getPetId()).orElse(null);
+            var owner = pet != null ? ownerRepository.findById(pet.getOwnerId()).orElse(null) : null;
+            var vet = userRepository.findById(r.getVetId()).orElse(null);
+            return new MedicalRecordResponse(
+                    r.getId(), r.getAppointmentId(), r.getRecordCode(),
+                    r.getPetId(), pet != null ? pet.getName() : "",
+                    pet != null ? pet.getOwnerId() : null,
+                    owner != null ? owner.getFirstName() + " " + owner.getLastName() : "",
+                    r.getVetId(), vet != null ? vet.getFirstName() + " " + vet.getLastName() : "",
+                    r.getSymptoms(), resolveDiagnoses(clinicId, r.getId()), r.getExaminationNotes(),
+                    r.getWeightKg(), r.getTemperatureC(), r.getHeartRate(),
+                    r.getFollowUpRecommended(), r.getFollowUpDate(),
+                    r.getCreatedAt(), r.getUpdatedAt()
+            );
+        }
+
+        // Dohvati termin
+        var appointment = appointmentService.findById(appointmentId, clinicId);
+
+        // Kreiraj draft MedicalRecord
+        MedicalRecord entity = new MedicalRecord();
+        entity.setAppointmentId(appointmentId);
+        entity.setPetId(appointment.getPetId());
+        entity.setVetId(appointment.getVetId());
+        entity.setSymptoms(appointment.getReason());
+        entity.setFollowUpRecommended(false);
+
+        MedicalRecord r = medicalRecordService.createWithRecordCode(entity, clinicId);
+
+        // Promeni status termina na IN_PROGRESS
+        try {
+            appointmentService.update(appointmentId, clinicId,
+                a -> a.setStatus(AppointmentStatus.IN_PROGRESS));
+        } catch (Exception e) {
+            // Ne blokiraj kreiranje
+        }
+
+        var pet = petRepository.findById(r.getPetId()).orElse(null);
+        var owner = pet != null ? ownerRepository.findById(pet.getOwnerId()).orElse(null) : null;
+        var vet = userRepository.findById(r.getVetId()).orElse(null);
+
+        return new MedicalRecordResponse(
+                r.getId(), r.getAppointmentId(), r.getRecordCode(),
+                r.getPetId(), pet != null ? pet.getName() : "",
+                pet != null ? pet.getOwnerId() : null,
+                owner != null ? owner.getFirstName() + " " + owner.getLastName() : "",
+                r.getVetId(), vet != null ? vet.getFirstName() + " " + vet.getLastName() : "",
+                r.getSymptoms(), resolveDiagnoses(clinicId, r.getId()), r.getExaminationNotes(),
                 r.getWeightKg(), r.getTemperatureC(), r.getHeartRate(),
                 r.getFollowUpRecommended(), r.getFollowUpDate(),
                 r.getCreatedAt(), r.getUpdatedAt()
@@ -317,12 +382,15 @@ public class MedicalRecordController {
     public Page<MedicalRecordResponse> getAll(
             @RequestHeader("X-Clinic-Id") UUID clinicId,
             @RequestParam(required = false) String search,
+            @RequestParam(required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE_TIME) java.time.OffsetDateTime dateFrom,
+            @RequestParam(required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE_TIME) java.time.OffsetDateTime dateTo,
+            @RequestParam(required = false) UUID vetId,
             Pageable pageable) {
         if (pageable.getSort().isUnsorted()) {
             pageable = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(),
                     Sort.by(Sort.Direction.DESC, "createdAt"));
         }
-        Page<MedicalRecord> page = medicalRecordService.searchAll(clinicId, search, pageable);
+        Page<MedicalRecord> page = medicalRecordService.searchAll(clinicId, search, dateFrom, dateTo, vetId, pageable);
 
         Set<UUID> petIds = page.getContent().stream().map(MedicalRecord::getPetId).collect(Collectors.toSet());
         Map<UUID, String> petNames = petRepository.findAllById(petIds).stream()

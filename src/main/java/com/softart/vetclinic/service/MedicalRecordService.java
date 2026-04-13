@@ -1,18 +1,20 @@
 package com.softart.vetclinic.service;
 
-import com.softart.vetclinic.entity.MedicalRecord;
-import com.softart.vetclinic.repository.AppointmentRepository;
-import com.softart.vetclinic.repository.MedicalRecordRepository;
-import com.softart.vetclinic.repository.PetRepository;
-import com.softart.vetclinic.repository.UserRepository;
+import java.time.OffsetDateTime;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
+import com.softart.vetclinic.entity.MedicalRecord;
+import com.softart.vetclinic.repository.AppointmentRepository;
+import com.softart.vetclinic.repository.MedicalRecordRepository;
+import com.softart.vetclinic.repository.PetRepository;
+import com.softart.vetclinic.repository.UserRepository;
 
 @Service
 public class MedicalRecordService extends AbstractCrudService<MedicalRecord, MedicalRecordRepository> {
@@ -92,6 +94,23 @@ public class MedicalRecordService extends AbstractCrudService<MedicalRecord, Med
         }
         return repository.searchByClinicId(clinicId, search, pageable);
     }
+    
+    public Page<MedicalRecord> searchAll(UUID clinicId, String search,
+            OffsetDateTime dateFrom, OffsetDateTime dateTo, UUID vetId, Pageable pageable) {
+        String s = (search == null || search.isBlank()) ? "" : search;
+        if (dateFrom != null && dateTo != null) {
+            return repository.searchWithDateFilter(clinicId, s, dateFrom, dateTo, pageable);
+        }
+        if (vetId != null) {
+            return repository.searchWithVetFilter(clinicId, s, vetId, pageable);
+        }
+        if (s.isEmpty()) {
+            return findAllByClinicId(clinicId, pageable);
+        }
+        return repository.searchByClinicId(clinicId, s, pageable);
+    }
+
+
     
     @Transactional
     public MedicalRecord createWithRecordCode(MedicalRecord entity, UUID clinicId) {
