@@ -1,7 +1,9 @@
 package com.softart.vetclinic.controller;
 
 import com.softart.vetclinic.dto.*;
+import com.softart.vetclinic.entity.Clinic;
 import com.softart.vetclinic.enums.AppointmentType;
+import com.softart.vetclinic.repository.ClinicRepository;
 import com.softart.vetclinic.service.PublicBookingService;
 import com.softart.vetclinic.service.SlotAvailabilityService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -11,6 +13,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import com.softart.vetclinic.service.FileStorageService;
+import org.springframework.core.io.Resource;
+import org.springframework.http.MediaType;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -25,6 +30,8 @@ public class PublicBookingController {
 
     private final PublicBookingService bookingService;
     private final SlotAvailabilityService slotAvailabilityService;
+    private final ClinicRepository clinicRepository;
+    private final FileStorageService fileStorageService;
 
     @GetMapping("/{clinicId}/info")
     public ResponseEntity<BookingClinicInfoResponse> getClinicInfo(@PathVariable UUID clinicId) {
@@ -95,5 +102,31 @@ public class PublicBookingController {
             return forwarded.split(",")[0].trim();
         }
         return request.getRemoteAddr();
+    }
+    
+    @GetMapping("/{clinicId}/logo")
+    public ResponseEntity<Resource> getClinicLogo(@PathVariable UUID clinicId) {
+        Clinic clinic = clinicRepository.findById(clinicId)
+                .orElseThrow(() -> new IllegalArgumentException("Klinika nije pronađena"));
+        
+        if (clinic.getLogoUrl() == null || clinic.getLogoUrl().isBlank()) {
+            return ResponseEntity.notFound().build();
+        }
+        
+        try {
+            Resource resource = fileStorageService.load(clinic.getLogoUrl());
+            String contentType = "image/png";
+            String path = clinic.getLogoUrl().toLowerCase();
+            if (path.endsWith(".jpg") || path.endsWith(".jpeg")) contentType = "image/jpeg";
+            else if (path.endsWith(".gif")) contentType = "image/gif";
+            else if (path.endsWith(".webp")) contentType = "image/webp";
+            
+            return ResponseEntity.ok()
+                    .contentType(MediaType.parseMediaType(contentType))
+                    .header("Cache-Control", "public, max-age=3600")
+                    .body(resource);
+        } catch (Exception e) {
+            return ResponseEntity.notFound().build();
+        }
     }
 }

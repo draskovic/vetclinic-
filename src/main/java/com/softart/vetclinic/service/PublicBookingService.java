@@ -81,7 +81,7 @@ public class PublicBookingService {
                 clinic.getPhone(),
                 clinic.getAddress(),
                 clinic.getCity(),
-                clinic.getLogoUrl(),
+                clinic.getLogoUrl() != null ? "/public/booking/" + clinicId + "/logo" : null,
                 locations,
                 allowedTypes,
                 settings.getSlotDurationMinutes(),
