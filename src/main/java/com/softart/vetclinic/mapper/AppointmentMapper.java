@@ -28,6 +28,8 @@ public interface AppointmentMapper {
     @Mapping(target = "owner", ignore = true)
     @Mapping(target = "vet", ignore = true)
     @Mapping(target = "followUpAppointment", ignore = true)
+    @Mapping(target = "cancellationToken", ignore = true)
+    @Mapping(target = "bookingSource", ignore = true)
     Appointment toEntity(CreateAppointmentRequest dto);
 
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
@@ -44,5 +46,7 @@ public interface AppointmentMapper {
     @Mapping(target = "owner", ignore = true)
     @Mapping(target = "vet", ignore = true)
     @Mapping(target = "followUpAppointment", ignore = true)
+    @Mapping(target = "cancellationToken", ignore = true)
+    @Mapping(target = "bookingSource", ignore = true)
     void updateEntity(UpdateAppointmentRequest dto, @MappingTarget Appointment entity);
 }

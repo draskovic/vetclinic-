@@ -2,6 +2,8 @@ package com.softart.vetclinic.entity;
 
 import com.softart.vetclinic.enums.AppointmentStatus;
 import com.softart.vetclinic.enums.AppointmentType;
+import com.softart.vetclinic.enums.BookingSource;
+
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -48,6 +50,13 @@ public class Appointment extends BaseEntity {
 
     @Column(name = "follow_up_to")
     private UUID followUpTo;
+    
+    @Column(name = "cancellation_token", length = 100, unique = true)
+    private String cancellationToken;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "booking_source", nullable = false, length = 20)
+    private BookingSource bookingSource = BookingSource.CLINIC;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "clinic_id", insertable = false, updatable = false)

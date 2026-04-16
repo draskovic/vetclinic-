@@ -20,4 +20,7 @@ public interface ClinicLocationRepository extends JpaRepository<ClinicLocation, 
     Page<ClinicLocation> findByClinicIdAndDeletedFalse(UUID clinicId, Pageable pageable);
 
     boolean existsByIdAndClinicIdAndDeletedFalse(UUID id, UUID clinicId);
+    
+    List<ClinicLocation> findByClinicIdAndDeletedFalseAndActiveTrue(UUID clinicId);
+
 }

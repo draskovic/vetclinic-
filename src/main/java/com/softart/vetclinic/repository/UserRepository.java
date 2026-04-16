@@ -32,4 +32,6 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     List<User> findByClinicIdAndFirstNameIgnoreCaseAndLastNameIgnoreCaseAndDeletedFalse(
             UUID clinicId, String firstName, String lastName);
 
+    List<User> findByClinicIdAndDeletedFalseAndActiveTrue(UUID clinicId);
+
 }

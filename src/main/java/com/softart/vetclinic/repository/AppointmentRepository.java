@@ -78,5 +78,16 @@ public interface AppointmentRepository extends JpaRepository<Appointment, UUID> 
             @Param("status") AppointmentStatus status, 
             Pageable pageable);
     
+    // Za slot availability — termini za lokaciju na određeni dan (bez CANCELLED i NO_SHOW)
+    List<Appointment> findByClinicIdAndLocationIdAndDeletedFalseAndStatusNotInAndStartTimeBetween(
+            UUID clinicId, UUID locationId, List<AppointmentStatus> excludedStatuses,
+            OffsetDateTime from, OffsetDateTime to);
+
+    // Za otkazivanje po tokenu
+    Optional<Appointment> findByCancellationTokenAndDeletedFalse(String cancellationToken);
+
+    // Za dashboard badge — broj PENDING termina
+    long countByClinicIdAndDeletedFalseAndStatus(UUID clinicId, AppointmentStatus status);
+
 
 }

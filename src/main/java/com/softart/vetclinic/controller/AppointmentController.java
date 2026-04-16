@@ -1,25 +1,41 @@
 package com.softart.vetclinic.controller;
 
-import com.softart.vetclinic.dto.AppointmentResponse;
-import com.softart.vetclinic.dto.CreateAppointmentRequest;
-import com.softart.vetclinic.dto.UpdateAppointmentRequest;
-import com.softart.vetclinic.enums.AppointmentStatus;
-import com.softart.vetclinic.mapper.AppointmentMapper;
-import com.softart.vetclinic.service.AppointmentService;
-import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.format.annotation.DateTimeFormat;
-import org.springframework.http.HttpStatus;
-import org.springframework.web.bind.annotation.*;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Sort;
-
-
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseStatus;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.softart.vetclinic.config.tenant.ClinicContextHolder;
+import com.softart.vetclinic.dto.AppointmentResponse;
+import com.softart.vetclinic.dto.CreateAppointmentRequest;
+import com.softart.vetclinic.dto.UpdateAppointmentRequest;
+import com.softart.vetclinic.entity.Appointment;
+import com.softart.vetclinic.enums.AppointmentStatus;
+import com.softart.vetclinic.exception.BadRequestException;
+import com.softart.vetclinic.mapper.AppointmentMapper;
+import com.softart.vetclinic.repository.AppointmentRepository;
+import com.softart.vetclinic.service.AppointmentService;
+
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequestMapping("/api/appointments")
@@ -28,6 +44,7 @@ public class AppointmentController {
 
     private final AppointmentService appointmentService;
     private final AppointmentMapper appointmentMapper;
+    private final AppointmentRepository appointmentRepository;
 
     @GetMapping
     public Page<AppointmentResponse> getAll(
@@ -110,6 +127,37 @@ public class AppointmentController {
             @PathVariable UUID ownerId) {
         return appointmentService.findByOwner(clinicId, ownerId).stream()
                 .map(appointmentMapper::toResponse).toList();
+    }
+
+    @PostMapping("/{id}/approve")
+    public ResponseEntity<AppointmentResponse> approve(@PathVariable UUID id) {
+        UUID clinicId = ClinicContextHolder.get();
+        Appointment saved = appointmentService.update(id, clinicId, a -> {
+            if (a.getStatus() != AppointmentStatus.PENDING) {
+                throw new BadRequestException("Samo termini sa statusom 'Na čekanju' mogu biti odobreni");
+            }
+            a.setStatus(AppointmentStatus.CONFIRMED);
+        });
+        return ResponseEntity.ok(appointmentMapper.toResponse(saved));
+    }
+
+    @PostMapping("/{id}/reject")
+    public ResponseEntity<Void> reject(@PathVariable UUID id) {
+        UUID clinicId = ClinicContextHolder.get();
+        appointmentService.update(id, clinicId, a -> {
+            if (a.getStatus() != AppointmentStatus.PENDING) {
+                throw new BadRequestException("Samo termini sa statusom 'Na čekanju' mogu biti odbijeni");
+            }
+            a.setStatus(AppointmentStatus.CANCELLED);
+        });
+        return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/count-pending")
+    public ResponseEntity<Long> countPending() {
+        UUID clinicId = ClinicContextHolder.get();
+        long count = appointmentRepository.countByClinicIdAndDeletedFalseAndStatus(clinicId, AppointmentStatus.PENDING);
+        return ResponseEntity.ok(count);
     }
 
 }
