@@ -28,10 +28,17 @@ import com.softart.vetclinic.dto.AppointmentResponse;
 import com.softart.vetclinic.dto.CreateAppointmentRequest;
 import com.softart.vetclinic.dto.UpdateAppointmentRequest;
 import com.softart.vetclinic.entity.Appointment;
+import com.softart.vetclinic.entity.Notification;
 import com.softart.vetclinic.enums.AppointmentStatus;
+import com.softart.vetclinic.enums.NotificationChannel;
+import com.softart.vetclinic.enums.NotificationStatus;
+import com.softart.vetclinic.enums.NotificationType;
+import com.softart.vetclinic.enums.RecipientType;
 import com.softart.vetclinic.exception.BadRequestException;
 import com.softart.vetclinic.mapper.AppointmentMapper;
 import com.softart.vetclinic.repository.AppointmentRepository;
+import com.softart.vetclinic.repository.NotificationRepository;
+import com.softart.vetclinic.repository.PetRepository;
 import com.softart.vetclinic.service.AppointmentService;
 
 import jakarta.validation.Valid;
@@ -45,6 +52,8 @@ public class AppointmentController {
     private final AppointmentService appointmentService;
     private final AppointmentMapper appointmentMapper;
     private final AppointmentRepository appointmentRepository;
+    private final NotificationRepository notificationRepository;
+    private final PetRepository petRepository;
 
     @GetMapping
     public Page<AppointmentResponse> getAll(
@@ -138,18 +147,60 @@ public class AppointmentController {
             }
             a.setStatus(AppointmentStatus.CONFIRMED);
         });
+
+        String petName = petRepository.findByIdAndClinicIdAndDeletedFalse(saved.getPetId(), clinicId)
+                .map(p -> p.getName())
+                .orElse("vašeg ljubimca");
+
+        Notification notif = new Notification();
+        notif.setClinicId(clinicId);
+        notif.setRecipientType(RecipientType.OWNER);
+        notif.setRecipientId(saved.getOwnerId());
+        notif.setType(NotificationType.BOOKING_CONFIRMED);
+        notif.setChannel(NotificationChannel.SMS);
+        notif.setTitle("Termin potvrđen");
+        notif.setMessage(String.format(
+            "Poštovani, Vaš termin za %s je potvrđen za %s. Pozdrav.",
+            petName, saved.getStartTime().toLocalDate()));
+        notif.setScheduledAt(OffsetDateTime.now());
+        notif.setStatus(NotificationStatus.PENDING);
+        notif.setReferenceType("APPOINTMENT");
+        notif.setReferenceId(saved.getId());
+        notificationRepository.save(notif);
+
         return ResponseEntity.ok(appointmentMapper.toResponse(saved));
     }
-
+    
     @PostMapping("/{id}/reject")
     public ResponseEntity<Void> reject(@PathVariable UUID id) {
         UUID clinicId = ClinicContextHolder.get();
-        appointmentService.update(id, clinicId, a -> {
+        Appointment cancelled = appointmentService.update(id, clinicId, a -> {
             if (a.getStatus() != AppointmentStatus.PENDING) {
                 throw new BadRequestException("Samo termini sa statusom 'Na čekanju' mogu biti odbijeni");
             }
             a.setStatus(AppointmentStatus.CANCELLED);
         });
+
+        String petName = petRepository.findByIdAndClinicIdAndDeletedFalse(cancelled.getPetId(), clinicId)
+                .map(p -> p.getName())
+                .orElse("vašeg ljubimca");
+
+        Notification notif = new Notification();
+        notif.setClinicId(clinicId);
+        notif.setRecipientType(RecipientType.OWNER);
+        notif.setRecipientId(cancelled.getOwnerId());
+        notif.setType(NotificationType.BOOKING_CANCELLED);
+        notif.setChannel(NotificationChannel.SMS);
+        notif.setTitle("Termin odbijen");
+        notif.setMessage(String.format(
+            "Poštovani, nažalost, vaš termin za %s zakazan %s nije potvrđen. Kontaktirajte nas za novo zakazivanje.",
+            petName, cancelled.getStartTime().toLocalDate()));
+        notif.setScheduledAt(OffsetDateTime.now());
+        notif.setStatus(NotificationStatus.PENDING);
+        notif.setReferenceType("APPOINTMENT");
+        notif.setReferenceId(cancelled.getId());
+        notificationRepository.save(notif);
+
         return ResponseEntity.ok().build();
     }
 
