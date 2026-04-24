@@ -9,8 +9,10 @@ import org.mapstruct.*;
 @Mapper(componentModel = "spring")
 public interface InventoryTransactionMapper {
 
-    @Mapping(target = "inventoryItemName", source = "inventoryItem.name")
-    @Mapping(target = "performedByName", expression = "java(entity.getPerformedByUser() != null ? entity.getPerformedByUser().getFirstName() + \" \" + entity.getPerformedByUser().getLastName() : null)")
+	@Mapping(target = "inventoryItemName", source = "inventoryItem.name")
+	@Mapping(target = "performedByName", expression = "java(entity.getPerformedByUser() != null ? entity.getPerformedByUser().getFirstName() + \" \" + entity.getPerformedByUser().getLastName() : null)")
+	@Mapping(target = "batchDeleted", ignore = true)    // ← NOVO
+	@Mapping(target = "batchNumber", ignore = true)
     InventoryTransactionResponse toResponse(InventoryTransaction entity);
 
     @Mapping(target = "id", ignore = true)
@@ -24,6 +26,8 @@ public interface InventoryTransactionMapper {
     @Mapping(target = "inventoryItem", ignore = true)
     @Mapping(target = "performedByUser", ignore = true)
     @Mapping(target = "batchId", ignore = true)
+    @Mapping(target = "reversalOfTransactionId", ignore = true)
+    @Mapping(target = "reversed", ignore = true)
     InventoryTransaction toEntity(CreateInventoryTransactionRequest dto);
 
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
@@ -38,5 +42,7 @@ public interface InventoryTransactionMapper {
     @Mapping(target = "inventoryItem", ignore = true)
     @Mapping(target = "performedByUser", ignore = true)
     @Mapping(target = "batchId", ignore = true)
+    @Mapping(target = "reversalOfTransactionId", ignore = true)
+    @Mapping(target = "reversed", ignore = true)
     void updateEntity(UpdateInventoryTransactionRequest dto, @MappingTarget InventoryTransaction entity);
 }

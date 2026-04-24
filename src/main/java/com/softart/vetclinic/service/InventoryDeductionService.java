@@ -1,5 +1,14 @@
 package com.softart.vetclinic.service;
 
+import java.math.BigDecimal;
+import java.time.OffsetDateTime;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.softart.vetclinic.entity.InventoryBatch;
 import com.softart.vetclinic.entity.InventoryItem;
 import com.softart.vetclinic.entity.InventoryTransaction;
@@ -9,16 +18,9 @@ import com.softart.vetclinic.repository.InventoryBatchRepository;
 import com.softart.vetclinic.repository.InventoryItemRepository;
 import com.softart.vetclinic.repository.InventoryTransactionRepository;
 import com.softart.vetclinic.repository.ServiceInventoryItemRepository;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-import java.math.BigDecimal;
-import java.time.OffsetDateTime;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -42,8 +44,8 @@ public class InventoryDeductionService {
         if (mappings.isEmpty()) return;
 
         for (ServiceInventoryItem mapping : mappings) {
-            Optional<InventoryItem> itemOpt = itemRepo.findByIdAndClinicIdAndDeletedFalse(
-                    mapping.getInventoryItemId(), clinicId);
+        	Optional<InventoryItem> itemOpt = itemRepo.findByIdAndClinicIdAndDeletedFalseForUpdate(
+        	        mapping.getInventoryItemId(), clinicId);
             if (itemOpt.isEmpty()) continue;
 
             InventoryItem item = itemOpt.get();
@@ -63,24 +65,28 @@ public class InventoryDeductionService {
      * Stari flow iz Faze 1A — direktna dedukcija sa quantityOnHand.
      */
     private void deductDirectly(UUID clinicId, InventoryItem item, BigDecimal needed,
-                                UUID treatmentId, UUID performedBy) {
-        InventoryTransaction tx = new InventoryTransaction();
-        tx.setClinicId(clinicId);
-        tx.setInventoryItemId(item.getId());
-        tx.setType(InventoryTransactionType.OUT);
-        tx.setQuantity(needed);
-        tx.setReferenceType("TREATMENT");
-        tx.setReferenceId(treatmentId);
-        tx.setPerformedBy(performedBy);
-        tx.setNote("Auto-dedukcija za uslugu");
-        txRepo.save(tx);
-
-        item.setQuantityOnHand(item.getQuantityOnHand().subtract(needed));
-        itemRepo.save(item);
-        if (item.getQuantityOnHand().signum() < 0) {
-            log.warn("Inventar artikal {} ima negativnu količinu: {}", item.getName(), item.getQuantityOnHand());
-        }
-    }
+            UUID treatmentId, UUID performedBy) {
+		// Atomska provera — pošto je item dohvaćen sa PESSIMISTIC_WRITE lockom,
+		// drugi thread-ovi čekaju do commit-a ove transakcije.
+    	if (item.getQuantityOnHand().compareTo(needed) < 0) {
+    	    log.warn("Negativan lager za {}: ima {}, traži se {} — dozvoljeno",
+    	             item.getName(), item.getQuantityOnHand(), needed);
+    	}
+		
+		InventoryTransaction tx = new InventoryTransaction();
+		tx.setClinicId(clinicId);
+		tx.setInventoryItemId(item.getId());
+		tx.setType(InventoryTransactionType.OUT);
+		tx.setQuantity(needed);
+		tx.setReferenceType("TREATMENT");
+		tx.setReferenceId(treatmentId);
+		tx.setPerformedBy(performedBy);
+		tx.setNote("Auto-dedukcija za uslugu");
+		txRepo.save(tx);
+		
+		item.setQuantityOnHand(item.getQuantityOnHand().subtract(needed));
+		itemRepo.save(item);
+	}
 
     /**
      * FIFO dedukcija po lotovima — najpre se troše lotovi sa najbližim rokom.
@@ -89,9 +95,11 @@ public class InventoryDeductionService {
      */
     private void deductFromBatches(UUID clinicId, InventoryItem item, BigDecimal needed,
                                    UUID treatmentId, UUID performedBy) {
-        List<InventoryBatch> batches = batchRepo.findActiveByItemFifo(clinicId, item.getId());
-        BigDecimal remaining = needed;
-
+    	// 20260421: NOVO da bi se sprečilo skidanje istog leka kad 10 korisnika istovremeno skida sa lagera:
+    	List<InventoryBatch> batches = batchRepo.findActiveByItemFifoForUpdate(clinicId, item.getId());
+    	// 20260421: ovo je kraj promene.
+    	
+    	BigDecimal remaining = needed;
         for (InventoryBatch batch : batches) {
             if (remaining.compareTo(BigDecimal.ZERO) <= 0) break;
 

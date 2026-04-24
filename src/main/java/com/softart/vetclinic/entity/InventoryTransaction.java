@@ -33,6 +33,12 @@ public class InventoryTransaction extends BaseEntity {
     @Column(name = "batch_id")
     private UUID batchId;
     
+    @Column(name = "reversal_of_transaction_id")
+    private UUID reversalOfTransactionId;
+
+    @Column(name = "is_reversed", nullable = false)
+    private boolean reversed;
+    
     @Enumerated(EnumType.STRING)
     @Column(length = 50)
     private AdjustmentReason reason;

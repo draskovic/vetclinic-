@@ -15,6 +15,7 @@ public record CreateInventoryTransactionRequest(
         String referenceType,
         UUID referenceId,
         UUID performedBy,
+        UUID batchId,
         String note,
         AdjustmentReason reason
 ) {}

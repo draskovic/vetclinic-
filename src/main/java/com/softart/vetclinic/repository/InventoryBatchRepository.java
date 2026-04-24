@@ -1,16 +1,21 @@
 package com.softart.vetclinic.repository;
 
-import com.softart.vetclinic.entity.InventoryBatch;
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.Collection;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
+import com.softart.vetclinic.entity.InventoryBatch;
+
+import jakarta.persistence.LockModeType;
 
 @Repository
 public interface InventoryBatchRepository extends JpaRepository<InventoryBatch, UUID> {
@@ -68,4 +73,30 @@ public interface InventoryBatchRepository extends JpaRepository<InventoryBatch, 
     // Duplikat provera (jedinstveno po (clinic, item, batchNumber))
     Optional<InventoryBatch> findByClinicIdAndInventoryItemIdAndBatchNumberAndDeletedFalse(
             UUID clinicId, UUID inventoryItemId, String batchNumber);
+    
+    // InventoryBatchRepository.java — dodati novu metodu:
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT b FROM InventoryBatch b " +
+           "WHERE b.clinicId = :clinicId " +
+           "AND b.inventoryItemId = :itemId " +
+           "AND b.deleted = false " +
+           "AND b.quantityOnHand > 0 " +
+           "ORDER BY CASE WHEN b.expiryDate IS NULL THEN 1 ELSE 0 END, b.expiryDate ASC")
+    List<InventoryBatch> findActiveByItemFifoForUpdate(@Param("clinicId") UUID clinicId,
+                                                        @Param("itemId") UUID itemId);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT b FROM InventoryBatch b WHERE b.id = :id AND b.clinicId = :clinicId AND b.deleted = false")
+    Optional<InventoryBatch> findByIdAndClinicIdAndDeletedFalseForUpdate(
+            @Param("id") UUID id,
+            @Param("clinicId") UUID clinicId);
+    
+    @Query("SELECT b.id FROM InventoryBatch b " +
+    	       "WHERE b.id IN :ids AND b.clinicId = :clinicId AND b.deleted = false")
+    	java.util.Set<UUID> findActiveIdsByIdInAndClinicId(@Param("ids") java.util.Collection<UUID> ids,
+    	                                                    @Param("clinicId") UUID clinicId);
+    
+    @Query("SELECT b.id, b.batchNumber FROM InventoryBatch b WHERE b.id IN :ids AND b.clinicId = :clinicId")
+    List<Object[]> findBatchNumbersByIdInAndClinicId(@Param("ids") Collection<UUID> ids,
+                                                      @Param("clinicId") UUID clinicId);
 }

@@ -11,6 +11,7 @@ public record InventoryTransactionResponse(
         UUID id,
         UUID inventoryItemId,
         String inventoryItemName,
+        UUID batchId,
         InventoryTransactionType type,
         BigDecimal quantity,
         String referenceType,
@@ -19,6 +20,10 @@ public record InventoryTransactionResponse(
         String performedByName,
         String note,
         AdjustmentReason reason,
+        UUID reversalOfTransactionId,      // ← NOVO
+        boolean reversed,                   // ← NOVO
+        String batchNumber,
+        boolean batchDeleted,               // ← NOVO (popunjava kontroler)
         OffsetDateTime createdAt,
         OffsetDateTime updatedAt
 ) {}

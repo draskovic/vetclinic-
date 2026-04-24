@@ -13,6 +13,7 @@ public record UpdateInventoryTransactionRequest(
         String referenceType,
         UUID referenceId,
         UUID performedBy,
+        UUID batchId,
         String note,
         AdjustmentReason reason
 ) {}
