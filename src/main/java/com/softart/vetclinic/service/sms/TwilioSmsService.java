@@ -1,13 +1,15 @@
 package com.softart.vetclinic.service.sms;
 
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+
 import com.twilio.Twilio;
 import com.twilio.exception.ApiException;
 import com.twilio.rest.api.v2010.account.Message;
 import com.twilio.type.PhoneNumber;
+
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Service;
 
 @Service
 @Slf4j
@@ -51,30 +53,42 @@ public class TwilioSmsService implements SmsService {
 
 
     @Override
-    public String sendSms(String toPhoneNumber, String messageBody) {
+    public String sendSms(String toPhoneNumber, String messageBody, String countryCode) {
         if (!enabled) {
             log.info("[SMS DISABLED] Simulacija slanja na {}: {}", toPhoneNumber, messageBody);
             return "DISABLED-" + System.currentTimeMillis();
         }
 
+        String normalized = normalizeToE164(toPhoneNumber, countryCode);
+        log.info("Normalizovan broj: {} -> {}", toPhoneNumber, normalized);
+
         try {
             Message message = Message.creator(
-                    new PhoneNumber(toPhoneNumber),
+                    new PhoneNumber(normalized),
                     new PhoneNumber(fromNumber),
                     messageBody
             ).create();
 
-            log.info("SMS uspesno poslat na {} (SID: {})", toPhoneNumber, message.getSid());
+            log.info("SMS uspesno poslat na {} (SID: {})", normalized, message.getSid());
             return message.getSid();
         } catch (ApiException e) {
             log.error("Twilio API greska pri slanju SMS na {}: {} (code: {})",
-                    toPhoneNumber, e.getMessage(), e.getCode());
+                    normalized, e.getMessage(), e.getCode());
             throw new SmsDeliveryException(
                     "Twilio error [code=" + e.getCode() + "]: " + e.getMessage(), e);
         } catch (Exception e) {
-            log.error("Neocekivana greska pri slanju SMS na {}: {}", toPhoneNumber, e.getMessage());
+            log.error("Neocekivana greska pri slanju SMS na {}: {}", normalized, e.getMessage());
             throw new SmsDeliveryException("Greska pri slanju SMS: " + e.getMessage(), e);
         }
     }
-
+    private String normalizeToE164(String phone, String countryCode) {
+        if (phone == null) return null;
+        String raw = phone.replaceAll("[\\s\\-()]+", "");
+        if (raw.startsWith("+")) return raw;
+        if (raw.startsWith("00")) return "+" + raw.substring(2);
+        String digitsOnly = countryCode.startsWith("+") ? countryCode.substring(1) : countryCode;
+        if (raw.startsWith("0")) return countryCode + raw.substring(1);
+        if (raw.startsWith(digitsOnly)) return "+" + raw;
+        return countryCode + raw;
+    }
 }

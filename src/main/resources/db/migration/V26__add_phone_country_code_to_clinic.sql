@@ -1,0 +1,2 @@
+ALTER TABLE clinic
+ADD COLUMN phone_country_code VARCHAR(8) NOT NULL DEFAULT '+381';

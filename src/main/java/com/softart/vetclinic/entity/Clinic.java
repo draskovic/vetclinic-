@@ -43,6 +43,9 @@ public class Clinic {
     @Column(length = 100)
     private String country = "Serbia";
     
+    @Column(name = "phone_country_code", nullable = false, length = 8)
+    private String phoneCountryCode = "+381";
+    
     @Column(name = "registration_number", length = 20)
     private String registrationNumber;
 

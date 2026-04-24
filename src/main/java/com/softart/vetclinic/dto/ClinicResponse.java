@@ -14,6 +14,7 @@ public record ClinicResponse(
         String address,
         String city,
         String country,
+        String phoneCountryCode,
         String registrationNumber,
         String activityCode,
         String bankAccount,

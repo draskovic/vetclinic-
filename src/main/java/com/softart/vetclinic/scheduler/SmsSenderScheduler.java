@@ -31,6 +31,7 @@ public class SmsSenderScheduler {
     private final NotificationRepository notificationRepository;
     private final OwnerRepository ownerRepository;
     private final SmsService smsService;
+    private final com.softart.vetclinic.repository.ClinicRepository clinicRepository;
 
     /**
      * Svakih 5 minuta pokusava da posalje PENDING SMS notifikacije
@@ -71,7 +72,12 @@ public class SmsSenderScheduler {
                     continue;
                 }
 
-                smsService.sendSms(phoneNumber, notification.getMessage());
+                String countryCode = clinicRepository.findById(notification.getClinicId())
+                        .map(c -> c.getPhoneCountryCode())
+                        .orElse("+381");
+
+                smsService.sendSms(phoneNumber, notification.getMessage(), countryCode);
+               
 
                 notification.setStatus(NotificationStatus.SENT);
                 notification.setSentAt(OffsetDateTime.now());
