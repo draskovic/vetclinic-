@@ -9,3 +9,4 @@ uploads/
 logs/
 application-local.yml
 seed-demo-data.sql
+CHANGELOG.md
