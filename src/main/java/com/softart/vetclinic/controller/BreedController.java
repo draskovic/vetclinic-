@@ -1,9 +1,11 @@
 package com.softart.vetclinic.controller;
 
 import com.softart.vetclinic.dto.BreedResponse;
+import com.softart.vetclinic.dto.ImportResultResponse;
 import com.softart.vetclinic.dto.CreateBreedRequest;
 import com.softart.vetclinic.dto.UpdateBreedRequest;
 import com.softart.vetclinic.mapper.BreedMapper;
+import com.softart.vetclinic.service.BreedSeedService;
 import com.softart.vetclinic.service.BreedService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -22,6 +24,7 @@ public class BreedController {
 
     private final BreedService breedService;
     private final BreedMapper breedMapper;
+    private final BreedSeedService breedSeedService;
 
     @GetMapping
     public Page<BreedResponse> getAll(
@@ -69,5 +72,13 @@ public class BreedController {
             @PathVariable UUID speciesId) {
         return breedService.findBySpecies(clinicId, speciesId).stream()
                 .map(breedMapper::toResponse).toList();
+    }
+
+    @PostMapping("/seed-default-dogs")
+    @ResponseStatus(HttpStatus.CREATED)	
+    public ImportResultResponse seedDefaultDogs(
+            @RequestHeader("X-Clinic-Id") UUID clinicId,
+            @RequestParam UUID speciesId) {
+        return breedSeedService.seedDogBreeds(clinicId, speciesId);
     }
 }
