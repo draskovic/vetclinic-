@@ -13,5 +13,6 @@ public record UpdatePrescriptionRequest(
         Integer durationDays,
         LocalDate startDate,
         LocalDate endDate,
-        String instructions
+        String instructions,
+        UUID inventoryItemId
 ) {}

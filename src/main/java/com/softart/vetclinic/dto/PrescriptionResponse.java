@@ -18,6 +18,8 @@ public record PrescriptionResponse(
         LocalDate startDate,
         LocalDate endDate,
         String instructions,
+        UUID inventoryItemId,
+        String inventoryItemName,
         OffsetDateTime createdAt,
         OffsetDateTime updatedAt
 ) {}

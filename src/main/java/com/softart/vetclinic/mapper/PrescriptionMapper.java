@@ -11,6 +11,7 @@ public interface PrescriptionMapper {
 
     @Mapping(target = "petName", source = "pet.name")
     @Mapping(target = "vetName", expression = "java(entity.getVet() != null ? entity.getVet().getFirstName() + \" \" + entity.getVet().getLastName() : null)")
+    @Mapping(target = "inventoryItemName", source = "inventoryItem.name")
     PrescriptionResponse toResponse(Prescription entity);
 
     @Mapping(target = "id", ignore = true)
@@ -24,6 +25,7 @@ public interface PrescriptionMapper {
     @Mapping(target = "medicalRecord", ignore = true)
     @Mapping(target = "pet", ignore = true)
     @Mapping(target = "vet", ignore = true)
+    @Mapping(target = "inventoryItem", ignore = true)
     Prescription toEntity(CreatePrescriptionRequest dto);
 
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
@@ -38,5 +40,6 @@ public interface PrescriptionMapper {
     @Mapping(target = "medicalRecord", ignore = true)
     @Mapping(target = "pet", ignore = true)
     @Mapping(target = "vet", ignore = true)
+    @Mapping(target = "inventoryItem", ignore = true)
     void updateEntity(UpdatePrescriptionRequest dto, @MappingTarget Prescription entity);
 }

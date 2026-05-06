@@ -41,6 +41,9 @@ public class Prescription extends BaseEntity {
 
     @Column(columnDefinition = "TEXT")
     private String instructions;
+    
+    @Column(name = "inventory_item_id")
+    private UUID inventoryItemId;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "clinic_id", insertable = false, updatable = false)
@@ -57,4 +60,8 @@ public class Prescription extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "vet_id", insertable = false, updatable = false)
     private User vet;
+    
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "inventory_item_id", insertable = false, updatable = false)
+    private InventoryItem inventoryItem;
 }

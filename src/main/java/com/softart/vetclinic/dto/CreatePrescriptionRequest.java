@@ -16,5 +16,6 @@ public record CreatePrescriptionRequest(
         Integer durationDays,
         @NotNull LocalDate startDate,
         LocalDate endDate,
-        String instructions
+        String instructions,
+        UUID inventoryItemId
 ) {}

@@ -30,7 +30,7 @@ class PrescriptionControllerTest extends IntegrationTestBase {
 
         var request = new CreatePrescriptionRequest(recordId, petId, userAId,
                 "Amoxicillin", "500mg", "Twice daily", 7,
-                LocalDate.of(2026, 2, 10), LocalDate.of(2026, 2, 17), "Take with food");
+                LocalDate.of(2026, 2, 10), LocalDate.of(2026, 2, 17), "Take with food", null);
 
         performPost("/api/prescriptions", tokenA, clinicAId, request)
                 .andExpect(status().isCreated())
@@ -42,7 +42,7 @@ class PrescriptionControllerTest extends IntegrationTestBase {
     @DisplayName("POST /api/prescriptions - missing required fields returns 400")
     void create_missingRequired() throws Exception {
         var request = new CreatePrescriptionRequest(null, null, null,
-                "", "", "", null, null, null, null);
+                "", "", "", null, null, null, null, null);
 
         performPost("/api/prescriptions", tokenA, clinicAId, request)
                 .andExpect(status().isBadRequest());

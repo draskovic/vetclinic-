@@ -16,20 +16,20 @@ public interface PrescriptionRepository extends JpaRepository<Prescription, UUID
 
     List<Prescription> findByMedicalRecordId(UUID medicalRecordId);
 
-    @EntityGraph(attributePaths = {"pet", "vet"})
+    @EntityGraph(attributePaths = {"pet", "vet", "inventoryItem"})
     List<Prescription> findByClinicIdAndPetId(UUID clinicId, UUID petId);
 
-    @EntityGraph(attributePaths = {"pet", "vet"})
+    @EntityGraph(attributePaths = {"pet", "vet", "inventoryItem"})
     Optional<Prescription> findByIdAndClinicIdAndDeletedFalse(UUID id, UUID clinicId);
 
-    @EntityGraph(attributePaths = {"pet", "vet"})
+    @EntityGraph(attributePaths = {"pet", "vet", "inventoryItem"})
     Page<Prescription> findByClinicIdAndDeletedFalse(UUID clinicId, Pageable pageable);
 
     boolean existsByIdAndClinicIdAndDeletedFalse(UUID id, UUID clinicId);
 
-    @EntityGraph(attributePaths = {"pet", "vet"})
+    @EntityGraph(attributePaths = {"pet", "vet", "inventoryItem"})
     List<Prescription> findByClinicIdAndMedicalRecordIdAndDeletedFalse(UUID clinicId, UUID medicalRecordId);
 
-    @EntityGraph(attributePaths = {"pet", "vet"})
+    @EntityGraph(attributePaths = {"pet", "vet", "inventoryItem"})
     List<Prescription> findByClinicIdAndPetIdAndDeletedFalse(UUID clinicId, UUID petId);
 }
