@@ -76,6 +76,6 @@ public class MedicationAdministrationService extends AbstractCrudService<Medicat
 
     @Transactional(readOnly = true)
     public List<MedicationAdministration> findByPet(UUID clinicId, UUID petId) {
-        return repository.findByClinicIdAndPetIdAndDeletedFalse(clinicId, petId);
+    	return repository.findByClinicIdAndPetIdAndDeletedFalseOrderByAdministeredDateDesc(clinicId, petId);
     }
 }

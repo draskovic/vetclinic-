@@ -27,5 +27,5 @@ public interface MedicationAdministrationRepository extends JpaRepository<Medica
     List<MedicationAdministration> findByClinicIdAndMedicalRecordIdAndDeletedFalseOrderByAdministeredDateDesc(UUID clinicId, UUID medicalRecordId);
 
     @EntityGraph(attributePaths = {"pet", "vet", "inventoryItem"})
-    List<MedicationAdministration> findByClinicIdAndPetIdAndDeletedFalse(UUID clinicId, UUID petId);
+    List<MedicationAdministration> findByClinicIdAndPetIdAndDeletedFalseOrderByAdministeredDateDesc(UUID clinicId, UUID petId);
 }
