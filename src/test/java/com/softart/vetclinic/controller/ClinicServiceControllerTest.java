@@ -19,7 +19,7 @@ class ClinicServiceControllerTest extends IntegrationTestBase {
     @DisplayName("POST /api/services - create success")
     void create_success() throws Exception {
         var request = new CreateServiceRequest(ServiceCategory.EXAMINATION, "General Checkup",null, null,
-                "Full body examination", new BigDecimal("50.00"), new BigDecimal("20.00"), 30, true);
+                "Full body examination", new BigDecimal("50.00"), null, 30, true);
 
         performPost("/api/services", tokenA, clinicAId, request)
                 .andExpect(status().isCreated())

@@ -3,6 +3,7 @@ package com.softart.vetclinic.dto;
 import com.softart.vetclinic.enums.ServiceCategory;
 
 import java.math.BigDecimal;
+import java.util.UUID;
 
 public record UpdateServiceRequest(
         ServiceCategory category,
@@ -11,7 +12,7 @@ public record UpdateServiceRequest(
         String unit,
         String description,
         BigDecimal price,
-        BigDecimal taxRate,
+        UUID taxRateId,
         Integer durationMinutes,
         Boolean active
 ) {}

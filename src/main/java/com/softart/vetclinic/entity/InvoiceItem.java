@@ -27,8 +27,14 @@ public class InvoiceItem extends BaseEntity {
     @Column(name = "unit_price", nullable = false, precision = 12, scale = 2)
     private BigDecimal unitPrice;
 
-    @Column(name = "tax_rate", nullable = false, precision = 5, scale = 2)
-    private BigDecimal taxRate = new BigDecimal("20.00");
+    @Column(name = "tax_rate_id", nullable = false)
+    private UUID taxRateId;
+
+    @Column(name = "tax_rate_label", nullable = false, length = 2)
+    private String taxRateLabel;
+
+    @Column(name = "tax_rate_percent", nullable = false, precision = 5, scale = 2)
+    private BigDecimal taxRatePercent;
 
     @Column(name = "discount_percent", nullable = false, precision = 5, scale = 2)
     private BigDecimal discountPercent = BigDecimal.ZERO;

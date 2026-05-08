@@ -12,7 +12,7 @@ public record CreateInvoiceItemRequest(
         @NotBlank String description,
         BigDecimal quantity,
         @NotNull BigDecimal unitPrice,
-        BigDecimal taxRate,
+        UUID taxRateId,
         BigDecimal discountPercent,
         @NotNull BigDecimal lineTotal,
         Integer sortOrder

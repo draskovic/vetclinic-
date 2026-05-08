@@ -9,6 +9,8 @@ import org.mapstruct.*;
 @Mapper(componentModel = "spring")
 public interface ServiceMapper {
 
+    @Mapping(target = "taxRateLabel", ignore = true)
+    @Mapping(target = "taxRatePercent", ignore = true)
     ServiceResponse toResponse(Service entity);
 
     @Mapping(target = "id", ignore = true)

@@ -22,6 +22,8 @@ public interface InvoiceItemMapper {
     @Mapping(target = "clinic", ignore = true)
     @Mapping(target = "invoice", ignore = true)
     @Mapping(target = "service", ignore = true)
+    @Mapping(target = "taxRateLabel", ignore = true)
+    @Mapping(target = "taxRatePercent", ignore = true)
     InvoiceItem toEntity(CreateInvoiceItemRequest dto);
 
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
@@ -35,5 +37,7 @@ public interface InvoiceItemMapper {
     @Mapping(target = "clinic", ignore = true)
     @Mapping(target = "invoice", ignore = true)
     @Mapping(target = "service", ignore = true)
+    @Mapping(target = "taxRateLabel", ignore = true)
+    @Mapping(target = "taxRatePercent", ignore = true)
     void updateEntity(UpdateInvoiceItemRequest dto, @MappingTarget InvoiceItem entity);
 }

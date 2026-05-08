@@ -8,9 +8,13 @@ import java.util.UUID;
 import com.softart.vetclinic.dto.ImportResultResponse;
 import com.softart.vetclinic.dto.ImportResultResponse.ImportError;
 import com.softart.vetclinic.dto.ImportServiceRequest;
+import com.softart.vetclinic.entity.Clinic;
 import com.softart.vetclinic.entity.Service;
+import com.softart.vetclinic.entity.TaxRate;
 import com.softart.vetclinic.enums.ServiceCategory;
+import com.softart.vetclinic.repository.ClinicRepository;
 import com.softart.vetclinic.repository.ServiceRepository;
+import com.softart.vetclinic.repository.TaxRateRepository;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -21,16 +25,19 @@ import lombok.extern.slf4j.Slf4j;
 public class ServiceImportService {
 
     private final ServiceRepository serviceRepository;
+    private final TaxRateRepository taxRateRepository;
+    private final ClinicRepository clinicRepository;
 
-    
     public ImportResultResponse importServices(UUID clinicId, List<ImportServiceRequest> requests) {
         int created = 0;
         int skipped = 0;
         List<ImportError> errors = new ArrayList<>();
 
+        // Default poreska stopa za ovu kliniku (jednom za ceo import — ne menja se po stavci)
+        UUID defaultTaxRateId = resolveDefaultTaxRateId(clinicId);
+
         for (ImportServiceRequest req : requests) {
             try {
-                // Duplikat zaštita po SKU
                 if (req.sku() != null && !req.sku().isBlank()) {
                     if (serviceRepository.findByClinicIdAndSkuAndDeletedFalse(clinicId, req.sku().trim()).isPresent()) {
                         skipped++;
@@ -38,7 +45,6 @@ public class ServiceImportService {
                     }
                 }
 
-             // Duplikat zaštita po imenu
                 if (serviceRepository.existsByClinicIdAndNameAndDeletedFalse(clinicId, req.name().trim())) {
                     skipped++;
                     continue;
@@ -51,7 +57,7 @@ public class ServiceImportService {
                 service.setUnit(req.unit() != null ? req.unit().trim() : null);
                 service.setPrice(req.price() != null ? req.price() : BigDecimal.ZERO);
                 service.setCategory(req.category() != null ? req.category() : ServiceCategory.OTHER);
-                service.setTaxRate(new BigDecimal("20.00"));
+                service.setTaxRateId(defaultTaxRateId);
                 service.setActive(true);
 
                 serviceRepository.save(service);
@@ -66,5 +72,19 @@ public class ServiceImportService {
                 requests.size(), created, skipped, errors.size());
 
         return new ImportResultResponse(requests.size(), created, skipped, errors);
+    }
+
+    /**
+     * Vraća default tax_rate_id za zadatu kliniku.
+     * vat_payer=true → Ђ (opšta 20%); vat_payer=false ili null → А (neobveznik 0%).
+     */
+    private UUID resolveDefaultTaxRateId(UUID clinicId) {
+        Clinic clinic = clinicRepository.findById(clinicId)
+                .orElseThrow(() -> new IllegalStateException("Klinika ne postoji: " + clinicId));
+        String label = Boolean.TRUE.equals(clinic.getVatPayer()) ? "Ђ" : "А";
+        TaxRate taxRate = taxRateRepository.findByCountryCodeAndLabel("RS", label)
+                .orElseThrow(() -> new IllegalStateException(
+                        "Default TaxRate '" + label + "' (RS) nije pronađen u šifarniku"));
+        return taxRate.getId();
     }
 }

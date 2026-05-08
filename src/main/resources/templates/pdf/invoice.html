@@ -292,26 +292,31 @@
 <!-- ITEMS TABLE -->
 <table class="items">
     <thead>
-        <tr>
-            <th style="width: 5%">#</th>
-            <th style="width: 35%">Opis</th>
-            <th class="right" style="width: 10%">Količina</th>
-            <th class="right" style="width: 15%">Jed. cena</th>
-            <th class="right" style="width: 10%">PDV %</th>
-            <th class="right" style="width: 10%">Popust %</th>
-            <th class="right" style="width: 15%">Ukupno</th>
-        </tr>
+		<tr>
+		    <th style="width: 4%">#</th>
+		    <th style="width: 30%">Opis</th>
+		    <th class="right" style="width: 7%">Kol.</th>
+		    <th class="right" style="width: 12%">Jed. cena</th>
+		    <th class="right" style="width: 12%">PDV</th>
+		    <th class="right" style="width: 12%">Iznos PDV</th>
+		    <th class="right" style="width: 8%">Popust</th>
+		    <th class="right" style="width: 15%">Ukupno</th>
+		</tr>
     </thead>
     <tbody>
-        <tr th:each="item, iter : ${items}">
-            <td th:text="${iter.index + 1}">1</td>
-            <td th:text="${item.description}">Pregled</td>
-            <td class="right" th:text="${#numbers.formatDecimal(item.quantity, 1, 0)}">1</td>
-            <td class="right" th:text="${#numbers.formatDecimal(item.unitPrice, 1, 2)}">0.00</td>
-            <td class="right" th:text="${#numbers.formatDecimal(item.taxRate, 1, 0) + '%'}">20%</td>
-            <td class="right" th:text="${item.discountPercent > 0 ? #numbers.formatDecimal(item.discountPercent, 1, 0) + '%' : '-'}">-</td>
-            <td class="right" th:text="${#numbers.formatDecimal(item.lineTotal, 1, 2)}">0.00</td>
-        </tr>
+		<tr th:each="item, iter : ${items}">
+		    <td th:text="${iter.index + 1}">1</td>
+		    <td th:text="${item.description}">Pregled</td>
+		    <td class="right" th:text="${#numbers.formatDecimal(item.quantity, 1, 0)}">1</td>
+		    <td class="right" th:text="${#numbers.formatDecimal(item.unitPrice, 1, 2)}">0.00</td>
+		    <td class="right" style="white-space: nowrap;"
+		        th:text="${item.taxRateLabel + ' (' + #numbers.formatDecimal(item.taxRatePercent, 1, 0) + '%)'}">Ђ (20%)</td>
+		    <td class="right"
+		        th:with="taxAmt=${item.unitPrice * item.quantity * (100 - item.discountPercent) / 100 * item.taxRatePercent / 100}"
+		        th:text="${#numbers.formatDecimal(taxAmt, 1, 2)}">0.00</td>
+		    <td class="right" th:text="${item.discountPercent > 0 ? #numbers.formatDecimal(item.discountPercent, 1, 0) + '%' : '-'}">-</td>
+		    <td class="right" th:text="${#numbers.formatDecimal(item.lineTotal, 1, 2)}">0.00</td>
+		</tr>
     </tbody>
 </table>
 

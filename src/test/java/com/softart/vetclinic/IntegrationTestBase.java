@@ -195,8 +195,11 @@ public abstract class IntegrationTestBase {
 
     protected UUID seedService(UUID clinicId, String category, String name, java.math.BigDecimal price) {
         UUID id = UUID.randomUUID();
-        jdbc.update("INSERT INTO service (id, clinic_id, category, name, price, tax_rate, active, created_at, updated_at, deleted, version) " +
-                "VALUES (?, ?, ?, ?, ?, 20.00, true, NOW(), NOW(), false, 0)", id, clinicId, category, name, price);
+        jdbc.update("INSERT INTO service (id, clinic_id, category, name, price, tax_rate_id, active, created_at, updated_at, deleted, version) " +
+                "VALUES (?, ?, ?, ?, ?, " +
+                "(SELECT id FROM tax_rate WHERE country_code='RS' AND label='Ђ' LIMIT 1), " +
+                "true, NOW(), NOW(), false, 0)",
+                id, clinicId, category, name, price);
         return id;
     }
 

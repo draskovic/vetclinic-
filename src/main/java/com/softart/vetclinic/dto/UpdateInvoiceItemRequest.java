@@ -9,7 +9,7 @@ public record UpdateInvoiceItemRequest(
         String description,
         BigDecimal quantity,
         BigDecimal unitPrice,
-        BigDecimal taxRate,
+        UUID taxRateId,
         BigDecimal discountPercent,
         BigDecimal lineTotal,
         Integer sortOrder

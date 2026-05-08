@@ -27,7 +27,7 @@ class InvoiceItemControllerTest extends IntegrationTestBase {
         seedPrerequisites();
 
         var request = new CreateInvoiceItemRequest(invoiceId, null, "General Checkup",
-                new BigDecimal("1"), new BigDecimal("50.00"), BigDecimal.ZERO, BigDecimal.ZERO,
+                new BigDecimal("1"), new BigDecimal("50.00"), null, BigDecimal.ZERO,
                 new BigDecimal("50.00"), 1);
 
         performPost("/api/invoice-items", tokenA, clinicAId, request)
@@ -101,8 +101,12 @@ class InvoiceItemControllerTest extends IntegrationTestBase {
 
     private UUID seedInvoiceItem(UUID clinicId, UUID invoiceId, String description, BigDecimal unitPrice) {
         UUID id = UUID.randomUUID();
-        jdbc.update("INSERT INTO invoice_item (id, clinic_id, invoice_id, description, quantity, unit_price, tax_rate, discount_percent, line_total, sort_order, created_at, updated_at, deleted, version) " +
-                "VALUES (?, ?, ?, ?, 1, ?, 20.00, 0, ?, 0, NOW(), NOW(), false, 0)",
+        jdbc.update("INSERT INTO invoice_item (id, clinic_id, invoice_id, description, quantity, unit_price, " +
+                "tax_rate_id, tax_rate_label, tax_rate_percent, " +
+                "discount_percent, line_total, sort_order, created_at, updated_at, deleted, version) " +
+                "VALUES (?, ?, ?, ?, 1, ?, " +
+                "(SELECT id FROM tax_rate WHERE country_code='RS' AND label='Ђ' LIMIT 1), 'Ђ', 20.00, " +
+                "0, ?, 0, NOW(), NOW(), false, 0)",
                 id, clinicId, invoiceId, description, unitPrice, unitPrice);
         return id;
     }

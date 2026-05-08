@@ -1,12 +1,17 @@
 package com.softart.vetclinic.controller;
 
 import com.softart.vetclinic.dto.*;
+import com.softart.vetclinic.entity.Clinic;
+import com.softart.vetclinic.entity.InvoiceItem;
+import com.softart.vetclinic.entity.TaxRate;
 import com.softart.vetclinic.entity.Treatment;
 import com.softart.vetclinic.mapper.TreatmentProtocolMapper;
+import com.softart.vetclinic.repository.ClinicRepository;
 import com.softart.vetclinic.repository.DiagnosisRepository;
 import com.softart.vetclinic.repository.InvoiceItemRepository;
 import com.softart.vetclinic.repository.InvoiceRepository;
 import com.softart.vetclinic.repository.ServiceRepository;
+import com.softart.vetclinic.repository.TaxRateRepository;
 import com.softart.vetclinic.service.InventoryDeductionService;
 import com.softart.vetclinic.service.TreatmentProtocolItemService;
 import com.softart.vetclinic.service.TreatmentProtocolService;
@@ -38,6 +43,8 @@ public class TreatmentProtocolController {
     private final InvoiceRepository invoiceRepository;
     private final InvoiceItemRepository invoiceItemRepository;
     private final InventoryDeductionService inventoryDeductionService;
+    private final TaxRateRepository taxRateRepository;
+    private final ClinicRepository clinicRepository;
 
 
     @GetMapping
@@ -51,7 +58,6 @@ public class TreatmentProtocolController {
         }
         var page = protocolService.searchAll(clinicId, search, pageable);
 
-        // Batch-fetch diagnosis names
         var diagnosisIds = page.getContent().stream()
                 .map(p -> p.getDiagnosisId())
                 .filter(Objects::nonNull)
@@ -97,39 +103,29 @@ public class TreatmentProtocolController {
             @RequestHeader("X-Clinic-Id") UUID clinicId,
             @Valid @RequestBody ApplyProtocolRequest request) {
 
-        // 1. Dohvati protokol i ne dodaje se nikakvoj referenci, jer se ta referenca nigde ne koristi.
-    	// Koristi se samo za validaciju da li protokol postoji.
         protocolService.findById(request.protocolId(), clinicId);
 
-        // 2. Dohvati stavke protokola
         var items = protocolItemService.findByProtocol(clinicId, request.protocolId());
         if (items.isEmpty()) {
             return List.of();
         }
 
-        // 3. Batch-fetch usluge
         var serviceIds = items.stream().map(i -> i.getServiceId()).distinct().toList();
         Map<UUID, com.softart.vetclinic.entity.Service> serviceMap = serviceIds.stream()
                 .map(sid -> serviceRepository.findByIdAndClinicIdAndDeletedFalse(sid, clinicId).orElse(null))
                 .filter(Objects::nonNull)
                 .collect(Collectors.toMap(s -> s.getId(), s -> s));
-        
-        // 3b. Dohvati postojeće usluge na intervenciji — sprečava dupliranje
+
         List<Treatment> existingTreatments = treatmentService.findByMedicalRecord(clinicId, request.medicalRecordId());
         Set<UUID> existingServiceIds = existingTreatments.stream()
                 .map(Treatment::getServiceId)
                 .collect(Collectors.toSet());
 
-
-        // 4. Kreiraj treatment za svaku stavku (preskoči ako usluga već postoji).
         List<Treatment> createdTreatments = new ArrayList<>();
         for (var item : items) {
             var service = serviceMap.get(item.getServiceId());
             if (service == null) continue;
-            
-            // Preskoči stavku koja već postoji
             if (existingServiceIds.contains(item.getServiceId())) continue;
-
 
             var treatment = new Treatment();
             treatment.setMedicalRecordId(request.medicalRecordId());
@@ -143,7 +139,7 @@ public class TreatmentProtocolController {
             createdTreatments.add(treatmentService.create(treatment, clinicId));
         }
 
-        // 5. Auto-fakturisanje (sve stavke odjednom, recalculate jednom na kraju)
+        // Auto-fakturisanje
         try {
             var invoice = invoiceRepository.findByMedicalRecordIdAndDeletedFalse(request.medicalRecordId());
             if (invoice.isPresent()) {
@@ -152,24 +148,20 @@ public class TreatmentProtocolController {
                 if (status == com.softart.vetclinic.enums.InvoiceStatus.DRAFT
                     || status == com.softart.vetclinic.enums.InvoiceStatus.ISSUED
                     || status == com.softart.vetclinic.enums.InvoiceStatus.OVERDUE) {
-                	
-                    // Dohvati postojeće stavke fakture po serviceId
+
                     var existingInvoiceItems = invoiceItemRepository.findByClinicIdAndInvoiceIdAndDeletedFalseOrderBySortOrderAsc(clinicId, inv.getId());
                     Set<UUID> existingInvoiceServiceIds = existingInvoiceItems.stream()
                             .map(ii -> ii.getServiceId())
                             .filter(Objects::nonNull)
                             .collect(Collectors.toSet());
 
-
-
                     for (int i = 0; i < items.size(); i++) {
                         var item = items.get(i);
                         var service = serviceMap.get(item.getServiceId());
                         if (service == null) continue;
-                        // Sprečava dupliranje stavki fakture
                         if (existingInvoiceServiceIds.contains(item.getServiceId())) continue;
 
-                        var invoiceItem = new com.softart.vetclinic.entity.InvoiceItem();
+                        var invoiceItem = new InvoiceItem();
                         invoiceItem.setClinicId(clinicId);
                         invoiceItem.setInvoiceId(inv.getId());
                         invoiceItem.setServiceId(item.getServiceId());
@@ -177,19 +169,18 @@ public class TreatmentProtocolController {
                         invoiceItem.setQuantity(BigDecimal.valueOf(item.getQuantity()));
                         invoiceItem.setDiscountPercent(BigDecimal.ZERO);
                         invoiceItem.setUnitPrice(service.getPrice());
-                        invoiceItem.setTaxRate(service.getTaxRate());
 
-                        // Izračunaj lineTotal
+                        applyTaxRateSnapshot(invoiceItem, service.getTaxRateId(), clinicId);
+
                         var baseAmount = invoiceItem.getUnitPrice().multiply(invoiceItem.getQuantity());
                         var discountAmt = baseAmount.multiply(invoiceItem.getDiscountPercent().divide(BigDecimal.valueOf(100)));
                         var netAmount = baseAmount.subtract(discountAmt);
-                        var taxAmt = netAmount.multiply(invoiceItem.getTaxRate().divide(BigDecimal.valueOf(100)));
+                        var taxAmt = netAmount.multiply(invoiceItem.getTaxRatePercent().divide(BigDecimal.valueOf(100)));
                         invoiceItem.setLineTotal(netAmount.add(taxAmt));
 
                         invoiceItemRepository.save(invoiceItem);
                     }
 
-                    // Recalculate JEDNOM na kraju
                     recalculateInvoiceTotals(clinicId, inv.getId());
                 }
             }
@@ -197,7 +188,7 @@ public class TreatmentProtocolController {
             e.printStackTrace();
         }
 
-        // 5b. Auto-dedukcija inventara za sve kreirane usluge
+        // Auto-dedukcija inventara
         try {
             for (var t : createdTreatments) {
                 if (t.getServiceId() != null) {
@@ -209,7 +200,6 @@ public class TreatmentProtocolController {
             e.printStackTrace();
         }
 
-        // 6. Vrati response sa service imenima
         return createdTreatments.stream().map(t -> {
             var service = serviceMap.get(t.getServiceId());
             return new TreatmentResponse(
@@ -276,6 +266,26 @@ public class TreatmentProtocolController {
         protocolService.softDelete(id, clinicId);
     }
 
+    private void applyTaxRateSnapshot(InvoiceItem entity, UUID serviceTaxRateId, UUID clinicId) {
+        UUID taxRateId = serviceTaxRateId != null ? serviceTaxRateId : resolveDefaultTaxRateId(clinicId);
+        TaxRate tr = taxRateRepository.findByIdAndDeletedFalse(taxRateId)
+                .orElseThrow(() -> new IllegalStateException(
+                        "TaxRate sa id " + taxRateId + " nije pronađen"));
+        entity.setTaxRateId(tr.getId());
+        entity.setTaxRateLabel(tr.getLabel());
+        entity.setTaxRatePercent(tr.getPercent());
+    }
+
+    private UUID resolveDefaultTaxRateId(UUID clinicId) {
+        Clinic clinic = clinicRepository.findById(clinicId)
+                .orElseThrow(() -> new IllegalStateException("Klinika ne postoji: " + clinicId));
+        String label = Boolean.TRUE.equals(clinic.getVatPayer()) ? "Ђ" : "А";
+        return taxRateRepository.findByCountryCodeAndLabel("RS", label)
+                .orElseThrow(() -> new IllegalStateException(
+                        "Default TaxRate '" + label + "' (RS) nije pronađen u šifarniku"))
+                .getId();
+    }
+
     private void recalculateInvoiceTotals(UUID clinicId, UUID invoiceId) {
         var items = invoiceItemRepository.findByClinicIdAndInvoiceIdAndDeletedFalseOrderBySortOrderAsc(clinicId, invoiceId);
         var subtotal = BigDecimal.ZERO;
@@ -286,7 +296,7 @@ public class TreatmentProtocolController {
             var base = item.getUnitPrice().multiply(item.getQuantity());
             var discount = base.multiply(item.getDiscountPercent().divide(BigDecimal.valueOf(100)));
             var net = base.subtract(discount);
-            var tax = net.multiply(item.getTaxRate().divide(BigDecimal.valueOf(100)));
+            var tax = net.multiply(item.getTaxRatePercent().divide(BigDecimal.valueOf(100)));
 
             subtotal = subtotal.add(net);
             taxAmount = taxAmount.add(tax);
