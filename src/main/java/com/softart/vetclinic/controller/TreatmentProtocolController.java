@@ -1,6 +1,7 @@
 package com.softart.vetclinic.controller;
 
 import com.softart.vetclinic.dto.*;
+
 import com.softart.vetclinic.entity.Clinic;
 import com.softart.vetclinic.entity.InvoiceItem;
 import com.softart.vetclinic.entity.TaxRate;
@@ -16,6 +17,7 @@ import com.softart.vetclinic.service.InventoryDeductionService;
 import com.softart.vetclinic.service.TreatmentProtocolItemService;
 import com.softart.vetclinic.service.TreatmentProtocolService;
 import com.softart.vetclinic.service.TreatmentService;
+import com.softart.vetclinic.util.InvoiceItemTotals;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -171,12 +173,7 @@ public class TreatmentProtocolController {
                         invoiceItem.setUnitPrice(service.getPrice());
 
                         applyTaxRateSnapshot(invoiceItem, service.getTaxRateId(), clinicId);
-
-                        var baseAmount = invoiceItem.getUnitPrice().multiply(invoiceItem.getQuantity());
-                        var discountAmt = baseAmount.multiply(invoiceItem.getDiscountPercent().divide(BigDecimal.valueOf(100)));
-                        var netAmount = baseAmount.subtract(discountAmt);
-                        var taxAmt = netAmount.multiply(invoiceItem.getTaxRatePercent().divide(BigDecimal.valueOf(100)));
-                        invoiceItem.setLineTotal(netAmount.add(taxAmt));
+                        invoiceItem.setLineTotal(InvoiceItemTotals.computeLineTotal(invoiceItem));
 
                         invoiceItemRepository.save(invoiceItem);
                     }
@@ -301,6 +298,12 @@ public class TreatmentProtocolController {
             subtotal = subtotal.add(net);
             taxAmount = taxAmount.add(tax);
             discountAmount = discountAmount.add(discount);
+
+            BigDecimal expectedLineTotal = InvoiceItemTotals.computeLineTotal(item);
+            if (item.getLineTotal() == null || item.getLineTotal().compareTo(expectedLineTotal) != 0) {
+                item.setLineTotal(expectedLineTotal);
+                invoiceItemRepository.save(item);
+            }
         }
 
         var invoice = invoiceRepository.findByIdAndClinicIdAndDeletedFalse(invoiceId, clinicId)

@@ -1,6 +1,7 @@
 package com.softart.vetclinic.controller;
 
 import java.math.BigDecimal;
+
 import java.util.List;
 import java.util.UUID;
 
@@ -32,6 +33,7 @@ import com.softart.vetclinic.repository.InvoiceRepository;
 import com.softart.vetclinic.repository.ServiceRepository;
 import com.softart.vetclinic.repository.TaxRateRepository;
 import com.softart.vetclinic.service.InvoiceItemService;
+import com.softart.vetclinic.util.InvoiceItemTotals;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -68,9 +70,10 @@ public class InvoiceItemController {
     public InvoiceItemResponse create(
             @RequestHeader("X-Clinic-Id") UUID clinicId,
             @Valid @RequestBody CreateInvoiceItemRequest request) {
-        var entity = invoiceItemMapper.toEntity(request);
-        applyTaxRateSnapshot(entity, request.taxRateId(), request.serviceId(), clinicId);
-        var result = invoiceItemService.create(entity, clinicId);
+    	var entity = invoiceItemMapper.toEntity(request);
+    	applyTaxRateSnapshot(entity, request.taxRateId(), request.serviceId(), clinicId);
+    	entity.setLineTotal(InvoiceItemTotals.computeLineTotal(entity));
+    	var result = invoiceItemService.create(entity, clinicId);
         recalculateInvoiceTotals(clinicId, result.getInvoiceId());
         return invoiceItemMapper.toResponse(result);
     }
@@ -80,13 +83,13 @@ public class InvoiceItemController {
             @RequestHeader("X-Clinic-Id") UUID clinicId,
             @PathVariable UUID id,
             @Valid @RequestBody UpdateInvoiceItemRequest request) {
-        var result = invoiceItemService.update(id, clinicId, existing -> {
-            invoiceItemMapper.updateEntity(request, existing);
-            // Re-snapshot ako je klijent eksplicitno poslao novi taxRateId
-            if (request.taxRateId() != null && !request.taxRateId().equals(existing.getTaxRateId())) {
-                applyTaxRateSnapshot(existing, request.taxRateId(), existing.getServiceId(), clinicId);
-            }
-        });
+    	var result = invoiceItemService.update(id, clinicId, existing -> {
+    	    invoiceItemMapper.updateEntity(request, existing);
+    	    if (request.taxRateId() != null && !request.taxRateId().equals(existing.getTaxRateId())) {
+    	        applyTaxRateSnapshot(existing, request.taxRateId(), existing.getServiceId(), clinicId);
+    	    }
+    	    existing.setLineTotal(InvoiceItemTotals.computeLineTotal(existing));
+    	});
         recalculateInvoiceTotals(clinicId, result.getInvoiceId());
         return invoiceItemMapper.toResponse(result);
     }
@@ -165,6 +168,12 @@ public class InvoiceItemController {
             subtotal = subtotal.add(net);
             taxAmount = taxAmount.add(tax);
             discountAmount = discountAmount.add(discount);
+
+            BigDecimal expectedLineTotal = InvoiceItemTotals.computeLineTotal(item);
+            if (item.getLineTotal() == null || item.getLineTotal().compareTo(expectedLineTotal) != 0) {
+                item.setLineTotal(expectedLineTotal);
+                invoiceItemRepository.save(item);
+            }
         }
 
         var invoice = invoiceRepository.findByIdAndClinicIdAndDeletedFalse(invoiceId, clinicId)
