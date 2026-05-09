@@ -26,5 +26,6 @@ public record InvoiceResponse(
         String currency,
         String note,
         OffsetDateTime createdAt,
-        OffsetDateTime updatedAt
+        OffsetDateTime updatedAt,
+        Integer version
 ) {}

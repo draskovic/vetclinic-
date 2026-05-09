@@ -1,22 +1,33 @@
 package com.softart.vetclinic.controller;
 
+import com.softart.vetclinic.dto.CreateInvoiceFromMedicalRecordRequest;
 import com.softart.vetclinic.dto.CreateInvoiceRequest;
+
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 
 import com.softart.vetclinic.dto.InvoiceResponse;
+import com.softart.vetclinic.dto.InvoiceWithItemsResponse;
 import com.softart.vetclinic.dto.UpdateInvoiceRequest;
 import com.softart.vetclinic.enums.InvoiceStatus;
+import com.softart.vetclinic.mapper.InvoiceItemMapper;
 import com.softart.vetclinic.mapper.InvoiceMapper;
+import com.softart.vetclinic.repository.InvoiceItemRepository;
 import com.softart.vetclinic.repository.InvoiceRepository;
 import com.softart.vetclinic.service.InvoiceService;
+import com.softart.vetclinic.service.InvoiceTotalsRecalculationService;
+import com.softart.vetclinic.entity.Invoice;
+import com.softart.vetclinic.entity.InvoiceItem;
+
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 
+import com.softart.vetclinic.service.InvoiceFromMedicalRecordService;
 import com.softart.vetclinic.service.InvoicePdfService;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -34,6 +45,10 @@ public class InvoiceController {
     private final InvoiceRepository invoiceRepository;
     private final InvoiceMapper invoiceMapper;
     private final InvoicePdfService invoicePdfService;
+    private final InvoiceFromMedicalRecordService invoiceFromMedicalRecordService;
+    private final InvoiceTotalsRecalculationService invoiceTotalsRecalculationService;
+    private final InvoiceItemRepository invoiceItemRepository;
+    private final InvoiceItemMapper invoiceItemMapper;
 
 
     @GetMapping
@@ -65,6 +80,30 @@ public class InvoiceController {
         return invoiceMapper.toResponse(invoiceService.create(entity, clinicId));
     }
     
+    @PostMapping("/from-medical-record/{recordId}")
+    @ResponseStatus(HttpStatus.CREATED)
+    public InvoiceWithItemsResponse createFromMedicalRecord(
+            @RequestHeader("X-Clinic-Id") UUID clinicId,
+            @PathVariable UUID recordId,
+            @Valid @RequestBody CreateInvoiceFromMedicalRecordRequest request) {
+
+        // 1. Atomski INSERT: invoice + sve stavke (jedna transakcija u servisu)
+        Invoice invoice = invoiceFromMedicalRecordService.createWithItems(clinicId, recordId, request);
+
+        // 2. Recalculate (UPDATE) iz kontrolera — sveža konekcija, RLS-safe
+        invoiceTotalsRecalculationService.recalculate(clinicId, invoice.getId());
+
+        // 3. Vrati fresh stanje (totals posle recalculate, items sortirani)
+        Invoice freshInvoice = invoiceService.findById(invoice.getId(), clinicId);
+        List<InvoiceItem> freshItems = invoiceItemRepository
+                .findByClinicIdAndInvoiceIdAndDeletedFalseOrderBySortOrderAsc(clinicId, invoice.getId());
+
+        return new InvoiceWithItemsResponse(
+                invoiceMapper.toResponse(freshInvoice),
+                freshItems.stream().map(invoiceItemMapper::toResponse).toList()
+        );
+    }
+    
     @GetMapping("/{id}/pdf")
     public ResponseEntity<byte[]> downloadPdf(
             @RequestHeader("X-Clinic-Id") UUID clinicId,
@@ -87,7 +126,14 @@ public class InvoiceController {
             @PathVariable UUID id,
             @Valid @RequestBody UpdateInvoiceRequest request) {
         return invoiceMapper.toResponse(
-                invoiceService.update(id, clinicId, existing -> invoiceMapper.updateEntity(request, existing)));
+                invoiceService.update(id, clinicId, existing -> {
+                    // Optimistic locking — backwards-kompatibilno: ako klijent ne šalje version, preskačemo check
+                    if (request.version() != null && !request.version().equals(existing.getVersion())) {
+                        throw new ObjectOptimisticLockingFailureException(
+                                Invoice.class.getName(), id);
+                    }
+                    invoiceMapper.updateEntity(request, existing);
+                }));
     }
 
     @DeleteMapping("/{id}")

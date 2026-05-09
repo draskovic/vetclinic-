@@ -19,5 +19,6 @@ public record UpdateInvoiceRequest(
         BigDecimal discountAmount,
         BigDecimal total,
         String currency,
-        String note
+        String note,
+        Integer version
 ) {}

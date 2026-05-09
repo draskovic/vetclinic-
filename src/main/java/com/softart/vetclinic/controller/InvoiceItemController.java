@@ -1,7 +1,5 @@
 package com.softart.vetclinic.controller;
 
-import java.math.BigDecimal;
-
 import java.util.List;
 import java.util.UUID;
 
@@ -22,17 +20,10 @@ import org.springframework.web.bind.annotation.RestController;
 import com.softart.vetclinic.dto.CreateInvoiceItemRequest;
 import com.softart.vetclinic.dto.InvoiceItemResponse;
 import com.softart.vetclinic.dto.UpdateInvoiceItemRequest;
-import com.softart.vetclinic.entity.Clinic;
-import com.softart.vetclinic.entity.InvoiceItem;
-import com.softart.vetclinic.entity.Service;
-import com.softart.vetclinic.entity.TaxRate;
 import com.softart.vetclinic.mapper.InvoiceItemMapper;
-import com.softart.vetclinic.repository.ClinicRepository;
-import com.softart.vetclinic.repository.InvoiceItemRepository;
-import com.softart.vetclinic.repository.InvoiceRepository;
-import com.softart.vetclinic.repository.ServiceRepository;
-import com.softart.vetclinic.repository.TaxRateRepository;
 import com.softart.vetclinic.service.InvoiceItemService;
+import com.softart.vetclinic.service.InvoiceTotalsRecalculationService;
+import com.softart.vetclinic.service.TaxRateSnapshotApplier;
 import com.softart.vetclinic.util.InvoiceItemTotals;
 
 import jakarta.validation.Valid;
@@ -45,11 +36,8 @@ public class InvoiceItemController {
 
     private final InvoiceItemService invoiceItemService;
     private final InvoiceItemMapper invoiceItemMapper;
-    private final InvoiceRepository invoiceRepository;
-    private final InvoiceItemRepository invoiceItemRepository;
-    private final TaxRateRepository taxRateRepository;
-    private final ServiceRepository serviceRepository;
-    private final ClinicRepository clinicRepository;
+    private final InvoiceTotalsRecalculationService invoiceTotalsRecalculationService;
+    private final TaxRateSnapshotApplier taxRateSnapshotApplier;
 
     @GetMapping
     public Page<InvoiceItemResponse> getAll(
@@ -71,10 +59,10 @@ public class InvoiceItemController {
             @RequestHeader("X-Clinic-Id") UUID clinicId,
             @Valid @RequestBody CreateInvoiceItemRequest request) {
     	var entity = invoiceItemMapper.toEntity(request);
-    	applyTaxRateSnapshot(entity, request.taxRateId(), request.serviceId(), clinicId);
+    	taxRateSnapshotApplier.apply(entity, request.taxRateId(), request.serviceId(), clinicId);
     	entity.setLineTotal(InvoiceItemTotals.computeLineTotal(entity));
     	var result = invoiceItemService.create(entity, clinicId);
-        recalculateInvoiceTotals(clinicId, result.getInvoiceId());
+    	invoiceTotalsRecalculationService.recalculate(clinicId, result.getInvoiceId());
         return invoiceItemMapper.toResponse(result);
     }
 
@@ -86,11 +74,11 @@ public class InvoiceItemController {
     	var result = invoiceItemService.update(id, clinicId, existing -> {
     	    invoiceItemMapper.updateEntity(request, existing);
     	    if (request.taxRateId() != null && !request.taxRateId().equals(existing.getTaxRateId())) {
-    	        applyTaxRateSnapshot(existing, request.taxRateId(), existing.getServiceId(), clinicId);
+    	    	taxRateSnapshotApplier.apply(existing, request.taxRateId(), existing.getServiceId(), clinicId);
     	    }
     	    existing.setLineTotal(InvoiceItemTotals.computeLineTotal(existing));
     	});
-        recalculateInvoiceTotals(clinicId, result.getInvoiceId());
+    	invoiceTotalsRecalculationService.recalculate(clinicId, result.getInvoiceId());
         return invoiceItemMapper.toResponse(result);
     }
 
@@ -102,7 +90,7 @@ public class InvoiceItemController {
         var item = invoiceItemService.findById(id, clinicId);
         UUID invoiceId = item.getInvoiceId();
         invoiceItemService.softDelete(id, clinicId);
-        recalculateInvoiceTotals(clinicId, invoiceId);
+        invoiceTotalsRecalculationService.recalculate(clinicId, invoiceId);
     }
 
     @GetMapping("/by-invoice/{invoiceId}")
@@ -113,75 +101,4 @@ public class InvoiceItemController {
                 .map(invoiceItemMapper::toResponse).toList();
     }
 
-    /**
-     * Snapshot tax_rate_id (FK) + tax_rate_label + tax_rate_percent.
-     * Razrešavanje:
-     *  1) explicit taxRateId iz request-a
-     *  2) taxRateId iz povezane Service entiteta (ako serviceId postoji)
-     *  3) klinika default (Ђ ili А po vatPayer)
-     */
-    private void applyTaxRateSnapshot(InvoiceItem entity, UUID requestedTaxRateId,
-                                       UUID serviceId, UUID clinicId) {
-        UUID taxRateId = requestedTaxRateId;
-
-        if (taxRateId == null && serviceId != null) {
-            taxRateId = serviceRepository.findByIdAndClinicIdAndDeletedFalse(serviceId, clinicId)
-                    .map(Service::getTaxRateId)
-                    .orElse(null);
-        }
-        if (taxRateId == null) {
-            taxRateId = resolveDefaultTaxRateId(clinicId);
-        }
-
-        UUID finalTaxRateId = taxRateId;
-        TaxRate tr = taxRateRepository.findByIdAndDeletedFalse(finalTaxRateId)
-                .orElseThrow(() -> new IllegalStateException(
-                        "TaxRate sa id " + finalTaxRateId + " nije pronađen"));
-
-        entity.setTaxRateId(tr.getId());
-        entity.setTaxRateLabel(tr.getLabel());
-        entity.setTaxRatePercent(tr.getPercent());
-    }
-
-    private UUID resolveDefaultTaxRateId(UUID clinicId) {
-        Clinic clinic = clinicRepository.findById(clinicId)
-                .orElseThrow(() -> new IllegalStateException("Klinika ne postoji: " + clinicId));
-        String label = Boolean.TRUE.equals(clinic.getVatPayer()) ? "Ђ" : "А";
-        return taxRateRepository.findByCountryCodeAndLabel("RS", label)
-                .orElseThrow(() -> new IllegalStateException(
-                        "Default TaxRate '" + label + "' (RS) nije pronađen u šifarniku"))
-                .getId();
-    }
-
-    private void recalculateInvoiceTotals(UUID clinicId, UUID invoiceId) {
-        var items = invoiceItemRepository.findByClinicIdAndInvoiceIdAndDeletedFalseOrderBySortOrderAsc(clinicId, invoiceId);
-        var subtotal = BigDecimal.ZERO;
-        var taxAmount = BigDecimal.ZERO;
-        var discountAmount = BigDecimal.ZERO;
-
-        for (var item : items) {
-            var base = item.getUnitPrice().multiply(item.getQuantity());
-            var discount = base.multiply(item.getDiscountPercent().divide(BigDecimal.valueOf(100)));
-            var net = base.subtract(discount);
-            var tax = net.multiply(item.getTaxRatePercent().divide(BigDecimal.valueOf(100)));
-
-            subtotal = subtotal.add(net);
-            taxAmount = taxAmount.add(tax);
-            discountAmount = discountAmount.add(discount);
-
-            BigDecimal expectedLineTotal = InvoiceItemTotals.computeLineTotal(item);
-            if (item.getLineTotal() == null || item.getLineTotal().compareTo(expectedLineTotal) != 0) {
-                item.setLineTotal(expectedLineTotal);
-                invoiceItemRepository.save(item);
-            }
-        }
-
-        var invoice = invoiceRepository.findByIdAndClinicIdAndDeletedFalse(invoiceId, clinicId)
-                .orElseThrow();
-        invoice.setSubtotal(subtotal);
-        invoice.setTaxAmount(taxAmount);
-        invoice.setDiscountAmount(discountAmount);
-        invoice.setTotal(subtotal.add(taxAmount));
-        invoiceRepository.save(invoice);
-    }
 }

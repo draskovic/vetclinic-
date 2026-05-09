@@ -74,6 +74,12 @@ public class GlobalExceptionHandler {
     public ErrorResponse handleAccessDenied(AccessDeniedException ex) {
         return new ErrorResponse(403, "Access denied: " + ex.getMessage());
     }
+    
+    @ExceptionHandler(org.springframework.dao.OptimisticLockingFailureException.class)
+    @ResponseStatus(HttpStatus.CONFLICT)
+    public ErrorResponse handleOptimisticLock(org.springframework.dao.OptimisticLockingFailureException ex) {
+        return new ErrorResponse(409, "Zapis je u međuvremenu izmenjen od strane drugog korisnika. Učitajte ponovo i pokušajte opet.");
+    }
 
     @ExceptionHandler(Exception.class)
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)

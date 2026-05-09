@@ -1,35 +1,53 @@
 package com.softart.vetclinic.controller;
 
-import com.softart.vetclinic.dto.*;
+import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.UUID;
+import java.util.stream.Collectors;
 
-import com.softart.vetclinic.entity.Clinic;
-import com.softart.vetclinic.entity.InvoiceItem;
-import com.softart.vetclinic.entity.TaxRate;
-import com.softart.vetclinic.entity.Treatment;
-import com.softart.vetclinic.mapper.TreatmentProtocolMapper;
-import com.softart.vetclinic.repository.ClinicRepository;
-import com.softart.vetclinic.repository.DiagnosisRepository;
-import com.softart.vetclinic.repository.InvoiceItemRepository;
-import com.softart.vetclinic.repository.InvoiceRepository;
-import com.softart.vetclinic.repository.ServiceRepository;
-import com.softart.vetclinic.repository.TaxRateRepository;
-import com.softart.vetclinic.service.InventoryDeductionService;
-import com.softart.vetclinic.service.TreatmentProtocolItemService;
-import com.softart.vetclinic.service.TreatmentProtocolService;
-import com.softart.vetclinic.service.TreatmentService;
-import com.softart.vetclinic.util.InvoiceItemTotals;
-import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseStatus;
+import org.springframework.web.bind.annotation.RestController;
 
-import java.math.BigDecimal;
-import java.util.*;
-import java.util.stream.Collectors;
+import com.softart.vetclinic.dto.ApplyProtocolRequest;
+import com.softart.vetclinic.dto.CreateTreatmentProtocolRequest;
+import com.softart.vetclinic.dto.TreatmentProtocolResponse;
+import com.softart.vetclinic.dto.TreatmentResponse;
+import com.softart.vetclinic.dto.UpdateTreatmentProtocolRequest;
+import com.softart.vetclinic.entity.InvoiceItem;
+import com.softart.vetclinic.entity.Treatment;
+import com.softart.vetclinic.mapper.TreatmentProtocolMapper;
+import com.softart.vetclinic.repository.DiagnosisRepository;
+import com.softart.vetclinic.repository.InvoiceItemRepository;
+import com.softart.vetclinic.repository.InvoiceRepository;
+import com.softart.vetclinic.repository.ServiceRepository;
+import com.softart.vetclinic.service.InventoryDeductionService;
+import com.softart.vetclinic.service.InvoiceTotalsRecalculationService;
+import com.softart.vetclinic.service.TaxRateSnapshotApplier;
+import com.softart.vetclinic.service.TreatmentProtocolItemService;
+import com.softart.vetclinic.service.TreatmentProtocolService;
+import com.softart.vetclinic.service.TreatmentService;
+import com.softart.vetclinic.util.InvoiceItemTotals;
+
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequestMapping("/api/treatment-protocols")
@@ -45,8 +63,8 @@ public class TreatmentProtocolController {
     private final InvoiceRepository invoiceRepository;
     private final InvoiceItemRepository invoiceItemRepository;
     private final InventoryDeductionService inventoryDeductionService;
-    private final TaxRateRepository taxRateRepository;
-    private final ClinicRepository clinicRepository;
+    private final InvoiceTotalsRecalculationService invoiceTotalsRecalculationService;
+    private final TaxRateSnapshotApplier taxRateSnapshotApplier;
 
 
     @GetMapping
@@ -172,13 +190,13 @@ public class TreatmentProtocolController {
                         invoiceItem.setDiscountPercent(BigDecimal.ZERO);
                         invoiceItem.setUnitPrice(service.getPrice());
 
-                        applyTaxRateSnapshot(invoiceItem, service.getTaxRateId(), clinicId);
+                        taxRateSnapshotApplier.apply(invoiceItem, service.getTaxRateId(), clinicId);
                         invoiceItem.setLineTotal(InvoiceItemTotals.computeLineTotal(invoiceItem));
 
                         invoiceItemRepository.save(invoiceItem);
                     }
 
-                    recalculateInvoiceTotals(clinicId, inv.getId());
+                    invoiceTotalsRecalculationService.recalculate(clinicId, inv.getId());
                 }
             }
         } catch (Exception e) {
@@ -261,57 +279,5 @@ public class TreatmentProtocolController {
             @RequestHeader("X-Clinic-Id") UUID clinicId,
             @PathVariable UUID id) {
         protocolService.softDelete(id, clinicId);
-    }
-
-    private void applyTaxRateSnapshot(InvoiceItem entity, UUID serviceTaxRateId, UUID clinicId) {
-        UUID taxRateId = serviceTaxRateId != null ? serviceTaxRateId : resolveDefaultTaxRateId(clinicId);
-        TaxRate tr = taxRateRepository.findByIdAndDeletedFalse(taxRateId)
-                .orElseThrow(() -> new IllegalStateException(
-                        "TaxRate sa id " + taxRateId + " nije pronađen"));
-        entity.setTaxRateId(tr.getId());
-        entity.setTaxRateLabel(tr.getLabel());
-        entity.setTaxRatePercent(tr.getPercent());
-    }
-
-    private UUID resolveDefaultTaxRateId(UUID clinicId) {
-        Clinic clinic = clinicRepository.findById(clinicId)
-                .orElseThrow(() -> new IllegalStateException("Klinika ne postoji: " + clinicId));
-        String label = Boolean.TRUE.equals(clinic.getVatPayer()) ? "Ђ" : "А";
-        return taxRateRepository.findByCountryCodeAndLabel("RS", label)
-                .orElseThrow(() -> new IllegalStateException(
-                        "Default TaxRate '" + label + "' (RS) nije pronađen u šifarniku"))
-                .getId();
-    }
-
-    private void recalculateInvoiceTotals(UUID clinicId, UUID invoiceId) {
-        var items = invoiceItemRepository.findByClinicIdAndInvoiceIdAndDeletedFalseOrderBySortOrderAsc(clinicId, invoiceId);
-        var subtotal = BigDecimal.ZERO;
-        var taxAmount = BigDecimal.ZERO;
-        var discountAmount = BigDecimal.ZERO;
-
-        for (var item : items) {
-            var base = item.getUnitPrice().multiply(item.getQuantity());
-            var discount = base.multiply(item.getDiscountPercent().divide(BigDecimal.valueOf(100)));
-            var net = base.subtract(discount);
-            var tax = net.multiply(item.getTaxRatePercent().divide(BigDecimal.valueOf(100)));
-
-            subtotal = subtotal.add(net);
-            taxAmount = taxAmount.add(tax);
-            discountAmount = discountAmount.add(discount);
-
-            BigDecimal expectedLineTotal = InvoiceItemTotals.computeLineTotal(item);
-            if (item.getLineTotal() == null || item.getLineTotal().compareTo(expectedLineTotal) != 0) {
-                item.setLineTotal(expectedLineTotal);
-                invoiceItemRepository.save(item);
-            }
-        }
-
-        var invoice = invoiceRepository.findByIdAndClinicIdAndDeletedFalse(invoiceId, clinicId)
-                .orElseThrow();
-        invoice.setSubtotal(subtotal);
-        invoice.setTaxAmount(taxAmount);
-        invoice.setDiscountAmount(discountAmount);
-        invoice.setTotal(subtotal.add(taxAmount));
-        invoiceRepository.save(invoice);
     }
 }
