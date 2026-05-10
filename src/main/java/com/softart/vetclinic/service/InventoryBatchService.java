@@ -77,7 +77,10 @@ public class InventoryBatchService extends AbstractCrudService<InventoryBatch, I
      */
     @Transactional
     public InventoryBatch createBatch(InventoryBatch batch, UUID clinicId) {
-        InventoryItem item = itemRepository.findByIdAndClinicIdAndDeletedFalse(batch.getInventoryItemId(), clinicId)
+        // PESSIMISTIC_WRITE lock — sprečava paralelan optimistic-lock konflikt
+        // sa drugim threads koji modifikuju item.quantityOnHand (deductForTreatment, itd.)
+        InventoryItem item = itemRepository
+                .findByIdAndClinicIdAndDeletedFalseForUpdate(batch.getInventoryItemId(), clinicId)
                 .orElseThrow(() -> new BadRequestException("Artikal ne postoji"));
 
         Optional<InventoryBatch> existing = batchRepository

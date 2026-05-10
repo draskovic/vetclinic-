@@ -32,7 +32,7 @@ public interface InventoryTransactionRepository extends JpaRepository<InventoryT
     boolean existsByIdAndClinicIdAndDeletedFalse(UUID id, UUID clinicId);
 
     @EntityGraph(attributePaths = {"inventoryItem", "performedByUser"})
-    List<InventoryTransaction> findByClinicIdAndInventoryItemIdAndDeletedFalse(UUID clinicId, UUID inventoryItemId);
+    List<InventoryTransaction> findByClinicIdAndInventoryItemIdAndDeletedFalseOrderByCreatedAtDesc(UUID clinicId, UUID inventoryItemId);
     
     List<InventoryTransaction> findByClinicIdAndReferenceTypeAndReferenceIdAndDeletedFalse(
             UUID clinicId, String referenceType, UUID referenceId);
