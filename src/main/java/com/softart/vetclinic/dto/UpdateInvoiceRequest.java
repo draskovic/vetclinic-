@@ -20,5 +20,6 @@ public record UpdateInvoiceRequest(
         BigDecimal total,
         String currency,
         String note,
+        String walkInCustomerName,
         Integer version
 ) {}

@@ -17,6 +17,12 @@ public class InvoiceItem extends BaseEntity {
 
     @Column(name = "service_id")
     private UUID serviceId;
+    
+    @Column(name = "inventory_item_id")
+    private UUID inventoryItemId;
+
+    @Column(name = "treatment_id")
+    private UUID treatmentId;
 
     @Column(nullable = false, length = 300)
     private String description;
@@ -56,4 +62,13 @@ public class InvoiceItem extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "service_id", insertable = false, updatable = false)
     private Service service;
+    
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "inventory_item_id", insertable = false, updatable = false)
+    private InventoryItem inventoryItem;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "treatment_id", insertable = false, updatable = false)
+    private Treatment treatment;
 }

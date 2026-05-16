@@ -21,6 +21,7 @@ public record CreateInventoryItemRequest(
         LocalDate expiryDate,
         Boolean active,
         Boolean trackBatches,
-        BigDecimal initialQuantity
+        BigDecimal initialQuantity,
+        @NotNull UUID taxRateId
 ) {}
 

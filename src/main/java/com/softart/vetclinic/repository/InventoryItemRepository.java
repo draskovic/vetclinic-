@@ -57,4 +57,9 @@ public interface InventoryItemRepository extends JpaRepository<InventoryItem, UU
      @Query("SELECT i FROM InventoryItem i WHERE i.id = :id AND i.clinicId = :clinicId AND i.deleted = false")
      Optional<InventoryItem> findByIdAndClinicIdAndDeletedFalseForUpdate(@Param("id") UUID id, @Param("clinicId") UUID clinicId);
 
+     @Query("SELECT i.id FROM InventoryItem i WHERE i.id IN :ids " +
+             "AND i.clinicId = :clinicId AND i.deleted = false")
+      List<UUID> findExistingIdsByIdsAndClinicId(
+              @Param("ids") List<UUID> ids,
+              @Param("clinicId") UUID clinicId);
 }

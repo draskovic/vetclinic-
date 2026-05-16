@@ -1,16 +1,15 @@
 package com.softart.vetclinic.dto;
 
-import com.softart.vetclinic.enums.InvoiceStatus;
-import jakarta.validation.constraints.NotNull;
-
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
+import com.softart.vetclinic.enums.InvoiceStatus;
+
 public record CreateInvoiceRequest(
         UUID appointmentId,
-        @NotNull UUID ownerId,
+        UUID ownerId,
         UUID medicalRecordId,
         UUID locationId,
         InvoiceStatus status,
@@ -21,5 +20,6 @@ public record CreateInvoiceRequest(
         BigDecimal discountAmount,
         BigDecimal total,
         String currency,
-        String note
+        String note,
+        String walkInCustomerName
 ) {}

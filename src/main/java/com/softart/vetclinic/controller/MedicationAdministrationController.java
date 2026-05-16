@@ -1,8 +1,10 @@
 package com.softart.vetclinic.controller;
 
 import com.softart.vetclinic.dto.CreateMedicationAdministrationRequest;
+
 import com.softart.vetclinic.dto.MedicationAdministrationResponse;
 import com.softart.vetclinic.dto.UpdateMedicationAdministrationRequest;
+import com.softart.vetclinic.dto.MedicationQuickPicksResponse;
 import com.softart.vetclinic.mapper.MedicationAdministrationMapper;
 import com.softart.vetclinic.service.MedicationAdministrationService;
 import jakarta.validation.Valid;
@@ -77,5 +79,22 @@ public class MedicationAdministrationController {
             @PathVariable UUID petId) {
         return service.findByPet(clinicId, petId).stream()
                 .map(mapper::toResponse).toList();
+    }
+    
+    @PostMapping("/bulk")
+    @ResponseStatus(HttpStatus.CREATED)
+    public List<MedicationAdministrationResponse> createBulk(
+            @RequestHeader("X-Clinic-Id") UUID clinicId,
+            @Valid @RequestBody List<@Valid CreateMedicationAdministrationRequest> requests) {
+        var entities = requests.stream().map(mapper::toEntity).toList();
+        return service.createBulk(entities, clinicId).stream()
+                .map(mapper::toResponse).toList();
+    }
+
+    @GetMapping("/quick-picks")
+    public MedicationQuickPicksResponse getQuickPicks(
+            @RequestHeader("X-Clinic-Id") UUID clinicId,
+            @RequestParam(defaultValue = "10") int limit) {
+        return service.getQuickPicks(clinicId, limit);
     }
 }

@@ -26,7 +26,7 @@ class InvoiceItemControllerTest extends IntegrationTestBase {
     void create_success() throws Exception {
         seedPrerequisites();
 
-        var request = new CreateInvoiceItemRequest(invoiceId, null, "General Checkup",
+        var request = new CreateInvoiceItemRequest(invoiceId, null,null,null, "General Checkup",
                 new BigDecimal("1"), new BigDecimal("50.00"), null, BigDecimal.ZERO,
                 new BigDecimal("50.00"), 1);
 
@@ -39,7 +39,7 @@ class InvoiceItemControllerTest extends IntegrationTestBase {
     @Test
     @DisplayName("POST /api/invoice-items - missing required fields returns 400")
     void create_missingRequired() throws Exception {
-        var request = new CreateInvoiceItemRequest(null, null, "",
+        var request = new CreateInvoiceItemRequest(null, null, null,null,"",
                 null, null, null, null, null, null);
 
         performPost("/api/invoice-items", tokenA, clinicAId, request)

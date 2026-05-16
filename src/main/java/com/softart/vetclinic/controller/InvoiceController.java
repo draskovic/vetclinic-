@@ -18,6 +18,7 @@ import com.softart.vetclinic.service.InvoiceService;
 import com.softart.vetclinic.service.InvoiceTotalsRecalculationService;
 import com.softart.vetclinic.entity.Invoice;
 import com.softart.vetclinic.entity.InvoiceItem;
+import com.softart.vetclinic.service.InventoryDeductionService;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -49,6 +50,7 @@ public class InvoiceController {
     private final InvoiceTotalsRecalculationService invoiceTotalsRecalculationService;
     private final InvoiceItemRepository invoiceItemRepository;
     private final InvoiceItemMapper invoiceItemMapper;
+    private final InventoryDeductionService inventoryDeductionService;
 
 
     @GetMapping
@@ -141,6 +143,21 @@ public class InvoiceController {
     public void delete(
             @RequestHeader("X-Clinic-Id") UUID clinicId,
             @PathVariable UUID id) {
+        // Pre softDelete-a fakture, reverziraj sve OUT inventarne tx-e za stavke
+        // koje su vezane za inventar (Quick Sale ili direktna prodaja artikla).
+        // Bez ovoga: brisanjem Quick Sale fakture roba se "gubi" u sistemu —
+        // OUT tx-e ostaju, lager nikad ne dobije inventar nazad.
+        List<InvoiceItem> items = invoiceItemRepository
+                .findByClinicIdAndInvoiceIdAndDeletedFalseOrderBySortOrderAsc(clinicId, id);
+        for (InvoiceItem item : items) {
+            if (item.getInventoryItemId() != null) {
+                try {
+                    inventoryDeductionService.reverseForInvoiceItem(clinicId, item.getId());
+                } catch (Exception ex) {
+                    ex.printStackTrace();
+                }
+            }
+        }
         invoiceService.softDelete(id, clinicId);
     }
 

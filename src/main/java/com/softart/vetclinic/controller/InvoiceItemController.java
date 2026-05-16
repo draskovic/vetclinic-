@@ -22,6 +22,7 @@ import com.softart.vetclinic.dto.InvoiceItemResponse;
 import com.softart.vetclinic.dto.UpdateInvoiceItemRequest;
 import com.softart.vetclinic.mapper.InvoiceItemMapper;
 import com.softart.vetclinic.service.InvoiceItemService;
+import com.softart.vetclinic.service.InventoryDeductionService;
 import com.softart.vetclinic.service.InvoiceTotalsRecalculationService;
 import com.softart.vetclinic.service.TaxRateSnapshotApplier;
 import com.softart.vetclinic.util.InvoiceItemTotals;
@@ -38,6 +39,7 @@ public class InvoiceItemController {
     private final InvoiceItemMapper invoiceItemMapper;
     private final InvoiceTotalsRecalculationService invoiceTotalsRecalculationService;
     private final TaxRateSnapshotApplier taxRateSnapshotApplier;
+    private final InventoryDeductionService inventoryDeductionService;
 
     @GetMapping
     public Page<InvoiceItemResponse> getAll(
@@ -62,6 +64,16 @@ public class InvoiceItemController {
     	taxRateSnapshotApplier.apply(entity, request.taxRateId(), request.serviceId(), clinicId);
     	entity.setLineTotal(InvoiceItemTotals.computeLineTotal(entity));
     	var result = invoiceItemService.create(entity, clinicId);
+    	// Auto-dedukcija inventara — ako je stavka vezana za artikal
+    	if (result.getInventoryItemId() != null) {
+    	    try {
+    	        inventoryDeductionService.deductForInvoiceItem(
+    	                clinicId, result.getInventoryItemId(),
+    	                result.getQuantity(), result.getId(), null);
+    	    } catch (Exception ex) {
+    	        ex.printStackTrace();
+    	    }
+    	}
     	invoiceTotalsRecalculationService.recalculate(clinicId, result.getInvoiceId());
         return invoiceItemMapper.toResponse(result);
     }
@@ -78,6 +90,9 @@ public class InvoiceItemController {
     	    }
     	    existing.setLineTotal(InvoiceItemTotals.computeLineTotal(existing));
     	});
+    	// TODO: Update količine/artikla na stavci sa inventoryItemId NE menja
+    	//       inventarne tx-e. Workaround: obrisati stavku i kreirati novu.
+    	//       Pravi fix (kompenzacija razlike) — V33+.
     	invoiceTotalsRecalculationService.recalculate(clinicId, result.getInvoiceId());
         return invoiceItemMapper.toResponse(result);
     }
@@ -90,6 +105,14 @@ public class InvoiceItemController {
         var item = invoiceItemService.findById(id, clinicId);
         UUID invoiceId = item.getInvoiceId();
         invoiceItemService.softDelete(id, clinicId);
+        // Auto-reverzija inventara — ako je stavka bila vezana za artikal
+        if (item.getInventoryItemId() != null) {
+            try {
+                inventoryDeductionService.reverseForInvoiceItem(clinicId, id);
+            } catch (Exception ex) {
+                ex.printStackTrace();
+            }
+        }
         invoiceTotalsRecalculationService.recalculate(clinicId, invoiceId);
     }
 

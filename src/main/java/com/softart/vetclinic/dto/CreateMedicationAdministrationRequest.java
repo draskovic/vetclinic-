@@ -13,7 +13,7 @@ public record CreateMedicationAdministrationRequest(
         @NotNull UUID vetId,
         UUID inventoryItemId,
         @NotBlank String medicationName,
-        @NotBlank String dosage,
+        String dosage,
         MedicationRoute route,
         @NotNull LocalDate administeredDate,
         String instructions

@@ -46,17 +46,20 @@ public interface InvoiceRepository extends JpaRepository<Invoice, UUID> {
    
 
     @EntityGraph(attributePaths = {"location", "owner"})
-    @Query("SELECT i FROM Invoice i WHERE i.clinicId = :clinicId AND i.deleted = false " +
+    @Query("SELECT i FROM Invoice i LEFT JOIN i.owner o WHERE i.clinicId = :clinicId AND i.deleted = false " +
            "AND (:status IS NULL OR i.status = :status) " +
-           "AND (:search = '' OR (LOWER(i.invoiceNumber) LIKE LOWER(CONCAT('%', :search, '%')) " +
-           "OR LOWER(i.owner.firstName) LIKE LOWER(CONCAT('%', :search, '%')) " +
-           "OR LOWER(i.owner.lastName) LIKE LOWER(CONCAT('%', :search, '%')) " +
-           "OR LOWER(CONCAT(i.owner.firstName, ' ', i.owner.lastName)) LIKE LOWER(CONCAT('%', :search, '%')) " +
-           "OR LOWER(i.owner.email) LIKE LOWER(CONCAT('%', :search, '%'))))")
+           "AND (:search = '' OR (" +
+           "     LOWER(i.invoiceNumber) LIKE LOWER(CONCAT('%', :search, '%')) " +
+           "  OR LOWER(COALESCE(o.firstName, '')) LIKE LOWER(CONCAT('%', :search, '%')) " +
+           "  OR LOWER(COALESCE(o.lastName, '')) LIKE LOWER(CONCAT('%', :search, '%')) " +
+           "  OR LOWER(CONCAT(COALESCE(o.firstName, ''), ' ', COALESCE(o.lastName, ''))) LIKE LOWER(CONCAT('%', :search, '%')) " +
+           "  OR LOWER(COALESCE(o.email, '')) LIKE LOWER(CONCAT('%', :search, '%')) " +
+           "  OR LOWER(COALESCE(i.walkInCustomerName, '')) LIKE LOWER(CONCAT('%', :search, '%'))" +
+           "))")
     Page<Invoice> searchByClinicIdAndStatus(
-            @Param("clinicId") UUID clinicId, 
-            @Param("search") String search, 
-            @Param("status") InvoiceStatus status, 
+            @Param("clinicId") UUID clinicId,
+            @Param("search") String search,
+            @Param("status") InvoiceStatus status,
             Pageable pageable);
 
 

@@ -18,5 +18,6 @@ public record UpdateInventoryItemRequest(
         BigDecimal sellPrice,
         LocalDate expiryDate,
         Boolean active,
-        Boolean trackBatches
+        Boolean trackBatches,
+        UUID taxRateId
 ) {}

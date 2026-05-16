@@ -22,6 +22,9 @@ public record InventoryItemResponse(
         LocalDate expiryDate,
         Boolean active,
         Boolean trackBatches,
+        UUID taxRateId,
+        String taxRateLabel,
+        BigDecimal taxRatePercent,
         OffsetDateTime createdAt,
         OffsetDateTime updatedAt
 ) {}

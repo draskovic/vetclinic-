@@ -20,7 +20,7 @@ class InventoryItemControllerTest extends IntegrationTestBase {
         var request = new CreateInventoryItemRequest(null, "Amoxicillin 500mg",
                 "AMX-500", InventoryCategory.MEDICATION, new BigDecimal("100"),
                 "tablets", new BigDecimal("20"), new BigDecimal("5.00"),
-                new BigDecimal("10.00"), null, true, false, null);
+                new BigDecimal("10.00"), null, true, false, null,null);
 
         performPost("/api/inventory-items", tokenA, clinicAId, request)
                 .andExpect(status().isCreated())
@@ -33,7 +33,7 @@ class InventoryItemControllerTest extends IntegrationTestBase {
     @DisplayName("POST /api/inventory-items - blank name returns 400")
     void create_blankName() throws Exception {
         var request = new CreateInventoryItemRequest(null, "",
-                null, InventoryCategory.SUPPLY, null, null, null, null, null, null, null, null, null);
+                null, InventoryCategory.SUPPLY, null, null, null, null, null, null, null, null, null,null);
 
         performPost("/api/inventory-items", tokenA, clinicAId, request)
                 .andExpect(status().isBadRequest());
@@ -43,7 +43,7 @@ class InventoryItemControllerTest extends IntegrationTestBase {
     @DisplayName("POST /api/inventory-items - null category returns 400")
     void create_nullCategory() throws Exception {
         var request = new CreateInventoryItemRequest(null, "Test Item",
-                null, null, null, null, null, null, null, null, null, null, null);
+                null, null, null, null, null, null, null, null, null, null, null,null);
 
         performPost("/api/inventory-items", tokenA, clinicAId, request)
                 .andExpect(status().isBadRequest());

@@ -16,14 +16,14 @@ public interface InvoiceItemRepository extends JpaRepository<InvoiceItem, UUID> 
 
     List<InvoiceItem> findByInvoiceIdOrderBySortOrderAsc(UUID invoiceId);
 
-    @EntityGraph(attributePaths = {"service"})
+    @EntityGraph(attributePaths = {"service", "inventoryItem"})
     Optional<InvoiceItem> findByIdAndClinicIdAndDeletedFalse(UUID id, UUID clinicId);
 
-    @EntityGraph(attributePaths = {"service"})
+    @EntityGraph(attributePaths = {"service", "inventoryItem"})
     Page<InvoiceItem> findByClinicIdAndDeletedFalse(UUID clinicId, Pageable pageable);
 
     boolean existsByIdAndClinicIdAndDeletedFalse(UUID id, UUID clinicId);
 
-    @EntityGraph(attributePaths = {"service"})
+    @EntityGraph(attributePaths = {"service", "inventoryItem"})
     List<InvoiceItem> findByClinicIdAndInvoiceIdAndDeletedFalseOrderBySortOrderAsc(UUID clinicId, UUID invoiceId);
 }

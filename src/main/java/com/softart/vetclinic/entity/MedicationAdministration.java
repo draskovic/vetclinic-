@@ -28,7 +28,7 @@ public class MedicationAdministration extends BaseEntity {
     @Column(name = "medication_name", nullable = false, length = 200)
     private String medicationName;
 
-    @Column(nullable = false, length = 100)
+    @Column(length = 100)
     private String dosage;
 
     @Enumerated(EnumType.STRING)

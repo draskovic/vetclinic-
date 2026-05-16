@@ -1,6 +1,7 @@
 package com.softart.vetclinic.controller;
 
 import java.util.List;
+
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -32,6 +33,8 @@ import com.softart.vetclinic.enums.InventoryCategory;
 import com.softart.vetclinic.mapper.InventoryItemMapper;
 import com.softart.vetclinic.repository.ClinicLocationRepository;
 import com.softart.vetclinic.service.InventoryItemService;
+import com.softart.vetclinic.entity.TaxRate;
+import com.softart.vetclinic.repository.TaxRateRepository;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -44,6 +47,7 @@ public class InventoryItemController {
     private final InventoryItemService inventoryItemService;
     private final InventoryItemMapper inventoryItemMapper;
     private final ClinicLocationRepository clinicLocationRepository;
+    private final TaxRateRepository taxRateRepository;
 
     @GetMapping
     public Page<InventoryItemResponse> getAll(
@@ -122,8 +126,9 @@ public class InventoryItemController {
 
     }
     
+    
     /**
-     * Batch-fetch locationName za listu InventoryItemResponse.
+     * Batch-fetch locationName + taxRateLabel/Percent za listu InventoryItemResponse.
      * Koristi se umesto MapStruct source="location.name" jer lazy load puca "no session" sa RLS.
      */
     private List<InventoryItemResponse> enrichMany(List<InventoryItemResponse> items) {
@@ -137,24 +142,40 @@ public class InventoryItemController {
                 : clinicLocationRepository.findAllById(locationIds).stream()
                         .collect(Collectors.toMap(ClinicLocation::getId, ClinicLocation::getName));
 
-        return items.stream().map(r -> new InventoryItemResponse(
-                r.id(),
-                r.locationId(),
-                r.locationId() != null ? locationNames.get(r.locationId()) : null,
-                r.name(),
-                r.sku(),
-                r.category(),
-                r.quantityOnHand(),
-                r.unit(),
-                r.reorderLevel(),
-                r.costPrice(),
-                r.sellPrice(),
-                r.expiryDate(),
-                r.active(),
-                r.trackBatches(),
-                r.createdAt(),
-                r.updatedAt()
-        )).toList();
+        Set<UUID> taxRateIds = items.stream()
+                .map(InventoryItemResponse::taxRateId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+
+        Map<UUID, TaxRate> taxRates = taxRateIds.isEmpty()
+                ? Map.of()
+                : taxRateRepository.findAllById(taxRateIds).stream()
+                        .collect(Collectors.toMap(TaxRate::getId, tr -> tr));
+
+        return items.stream().map(r -> {
+            TaxRate tr = r.taxRateId() != null ? taxRates.get(r.taxRateId()) : null;
+            return new InventoryItemResponse(
+                    r.id(),
+                    r.locationId(),
+                    r.locationId() != null ? locationNames.get(r.locationId()) : null,
+                    r.name(),
+                    r.sku(),
+                    r.category(),
+                    r.quantityOnHand(),
+                    r.unit(),
+                    r.reorderLevel(),
+                    r.costPrice(),
+                    r.sellPrice(),
+                    r.expiryDate(),
+                    r.active(),
+                    r.trackBatches(),
+                    r.taxRateId(),
+                    tr != null ? tr.getLabel() : null,
+                    tr != null ? tr.getPercent() : null,
+                    r.createdAt(),
+                    r.updatedAt()
+            );
+        }).toList();
     }
 
     private InventoryItemResponse enrichOne(InventoryItemResponse response) {

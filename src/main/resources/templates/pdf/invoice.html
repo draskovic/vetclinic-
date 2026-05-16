@@ -278,12 +278,20 @@
 
         <td>
             <div class="party-label">Primalac</div>
-            <div class="party-name" th:text="${owner.firstName + ' ' + owner.lastName}"></div>
-            <div th:if="${owner.clientCode != null}" th:text="'Br. kartona: ' + ${owner.clientCode}" style="font-size: 9pt; color: #555;"></div>
-            <div class="party-detail" th:if="${owner.email}" th:text="${owner.email}"></div>
-            <div class="party-detail" th:if="${owner.phone}" th:text="${owner.phone}"></div>
-            <div class="party-detail" th:if="${owner.address}" th:text="${owner.address}"></div>
-            <div class="party-detail" th:if="${owner.city}" th:text="${owner.city}"></div>
+			<!-- Postojeći vlasnik -->
+			<div th:if="${owner != null}">
+			    <div class="party-name" th:text="${owner.firstName + ' ' + owner.lastName}"></div>
+			    <div th:if="${owner.clientCode != null}" th:text="'Br. kartona: ' + ${owner.clientCode}" style="font-size: 9pt; color: #555;"></div>
+			    <div class="party-detail" th:if="${owner.email}" th:text="${owner.email}"></div>
+			    <div class="party-detail" th:if="${owner.phone}" th:text="${owner.phone}"></div>
+			    <div class="party-detail" th:if="${owner.address}" th:text="${owner.address}"></div>
+			    <div class="party-detail" th:if="${owner.city}" th:text="${owner.city}"></div>
+			</div>
+			<!-- Walk-in kupac (Quick Sale) -->
+			<div th:if="${owner == null}">
+			    <div class="party-name" th:text="${invoice.walkInCustomerName != null and !#strings.isEmpty(invoice.walkInCustomerName) ? invoice.walkInCustomerName : 'Anonimni kupac'}"></div>
+			    <div class="party-detail" style="font-style: italic; color: #888;">Maloprodaja</div>
+			</div>
         </td>
     </tr>
 </table>

@@ -6,6 +6,8 @@ import java.util.UUID;
 public record UpdateInvoiceItemRequest(
         UUID invoiceId,
         UUID serviceId,
+        UUID inventoryItemId,
+        UUID treatmentId,
         String description,
         BigDecimal quantity,
         BigDecimal unitPrice,

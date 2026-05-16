@@ -53,8 +53,12 @@ public class InvoicePdfService {
     	Invoice invoice = invoiceRepository.findByIdAndClinicIdAndDeletedFalse(invoiceId, clinicId)
                 .orElseThrow(() -> new ResourceNotFoundException("Invoice", "id", invoiceId));
 
-        Owner owner = ownerRepository.findById(invoice.getOwnerId())
-                .orElseThrow(() -> new ResourceNotFoundException("Owner", "id", invoice.getOwnerId()));
+        // Walk-in fakture (Quick Sale) imaju ownerId = null — preskoči fetch.
+        Owner owner = null;
+        if (invoice.getOwnerId() != null) {
+            owner = ownerRepository.findById(invoice.getOwnerId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Owner", "id", invoice.getOwnerId()));
+        }
 
         Clinic clinic = clinicRepository.findById(clinicId)
                 .orElseThrow(() -> new ResourceNotFoundException("Clinic", "id", clinicId));

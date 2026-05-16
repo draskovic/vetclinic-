@@ -10,6 +10,8 @@ import org.mapstruct.*;
 public interface InventoryItemMapper {
 
 	@Mapping(target = "locationName", ignore = true)
+	@Mapping(target = "taxRateLabel", ignore = true)
+    @Mapping(target = "taxRatePercent", ignore = true)
 	InventoryItemResponse toResponse(InventoryItem entity);
 
     @Mapping(target = "id", ignore = true)

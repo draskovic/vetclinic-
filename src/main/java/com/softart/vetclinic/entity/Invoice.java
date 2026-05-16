@@ -20,7 +20,7 @@ public class Invoice extends BaseEntity {
     @Column(name = "appointment_id")
     private UUID appointmentId;
 
-    @Column(name = "owner_id", nullable = false)
+    @Column(name = "owner_id")
     private UUID ownerId;
 
     @Column(name = "location_id")
@@ -75,5 +75,8 @@ public class Invoice extends BaseEntity {
     
     @Column(name = "medical_record_id")
     private UUID medicalRecordId;
+    
+    @Column(name = "walk_in_customer_name", length = 200)
+    private String walkInCustomerName;
 
 }

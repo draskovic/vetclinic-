@@ -58,5 +58,8 @@ public class InventoryItem extends BaseEntity {
     
     @Column(name = "track_batches", nullable = false)
     private Boolean trackBatches = false;
+    
+    @Column(name = "tax_rate_id", nullable = false)
+    private UUID taxRateId;
 
 }

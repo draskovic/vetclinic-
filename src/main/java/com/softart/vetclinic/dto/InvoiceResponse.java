@@ -25,6 +25,7 @@ public record InvoiceResponse(
         BigDecimal total,
         String currency,
         String note,
+        String walkInCustomerName,
         OffsetDateTime createdAt,
         OffsetDateTime updatedAt,
         Integer version

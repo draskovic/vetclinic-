@@ -30,7 +30,7 @@ class InvoiceControllerTest extends IntegrationTestBase {
         var request = new CreateInvoiceRequest(null, ownerId, null, null,
                 InvoiceStatus.DRAFT, null, null,
                 new BigDecimal("100.00"), new BigDecimal("20.00"), BigDecimal.ZERO,
-                new BigDecimal("120.00"), "RSD", null);
+                new BigDecimal("120.00"), "RSD", null,null);
 
         performPost("/api/invoices", tokenA, clinicAId, request)
                 .andExpect(status().isCreated())
@@ -43,7 +43,7 @@ class InvoiceControllerTest extends IntegrationTestBase {
     @DisplayName("POST /api/invoices - invalid owner returns 404")
     void create_invalidOwner() throws Exception {
         var request = new CreateInvoiceRequest(null, UUID.randomUUID(),null, null,
-                InvoiceStatus.DRAFT, null, null,  null,null, null, null, null, null);
+                InvoiceStatus.DRAFT, null, null,  null,null, null, null, null, null,null);
 
         performPost("/api/invoices", tokenA, clinicAId, request)
                 .andExpect(status().isNotFound());
@@ -53,7 +53,7 @@ class InvoiceControllerTest extends IntegrationTestBase {
     @DisplayName("POST /api/invoices - missing required fields returns 400")
     void create_missingRequired() throws Exception {
         var request = new CreateInvoiceRequest(null, null, null,null,
-                null, null, null, null, null, null, null, null, null);
+                null, null, null, null, null, null, null, null, null, null);
 
         performPost("/api/invoices", tokenA, clinicAId, request)
                 .andExpect(status().isBadRequest());

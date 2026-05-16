@@ -41,5 +41,9 @@ public interface MedicationAdministrationMapper {
     @Mapping(target = "pet", ignore = true)
     @Mapping(target = "vet", ignore = true)
     @Mapping(target = "inventoryItem", ignore = true)
+    @Mapping(target = "inventoryItemId", nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.SET_TO_NULL)
+    @Mapping(target = "dosage", nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.SET_TO_NULL)
+    @Mapping(target = "route", nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.SET_TO_NULL)
+    @Mapping(target = "instructions", nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.SET_TO_NULL)
     void updateEntity(UpdateMedicationAdministrationRequest dto, @MappingTarget MedicationAdministration entity);
 }

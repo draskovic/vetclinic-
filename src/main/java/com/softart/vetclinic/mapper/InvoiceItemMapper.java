@@ -10,6 +10,7 @@ import org.mapstruct.*;
 public interface InvoiceItemMapper {
 
     @Mapping(target = "serviceName", source = "service.name")
+    @Mapping(target = "inventoryItemName", source = "inventoryItem.name")
     InvoiceItemResponse toResponse(InvoiceItem entity);
 
     @Mapping(target = "id", ignore = true)
@@ -22,6 +23,8 @@ public interface InvoiceItemMapper {
     @Mapping(target = "clinic", ignore = true)
     @Mapping(target = "invoice", ignore = true)
     @Mapping(target = "service", ignore = true)
+    @Mapping(target = "inventoryItem", ignore = true)
+    @Mapping(target = "treatment", ignore = true)
     @Mapping(target = "taxRateLabel", ignore = true)
     @Mapping(target = "taxRatePercent", ignore = true)
     InvoiceItem toEntity(CreateInvoiceItemRequest dto);
@@ -37,6 +40,8 @@ public interface InvoiceItemMapper {
     @Mapping(target = "clinic", ignore = true)
     @Mapping(target = "invoice", ignore = true)
     @Mapping(target = "service", ignore = true)
+    @Mapping(target = "inventoryItem", ignore = true)
+    @Mapping(target = "treatment", ignore = true)
     @Mapping(target = "taxRateLabel", ignore = true)
     @Mapping(target = "taxRatePercent", ignore = true)
     void updateEntity(UpdateInvoiceItemRequest dto, @MappingTarget InvoiceItem entity);

@@ -9,6 +9,8 @@ import java.util.UUID;
 public record CreateInvoiceItemRequest(
         @NotNull UUID invoiceId,
         UUID serviceId,
+        UUID inventoryItemId,
+        UUID treatmentId,
         @NotBlank String description,
         BigDecimal quantity,
         @NotNull BigDecimal unitPrice,

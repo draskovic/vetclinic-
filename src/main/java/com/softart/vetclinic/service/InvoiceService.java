@@ -60,10 +60,12 @@ public class InvoiceService extends AbstractCrudService<Invoice, InvoiceReposito
 
     @Override
     protected void validateForCreate(Invoice entity) {
-        requireExists(
-                ownerRepository.existsByIdAndClinicIdAndDeletedFalse(entity.getOwnerId(), entity.getClinicId()),
-                "Owner", "id", entity.getOwnerId()
-        );
+        if (entity.getOwnerId() != null) {
+            requireExists(
+                    ownerRepository.existsByIdAndClinicIdAndDeletedFalse(entity.getOwnerId(), entity.getClinicId()),
+                    "Owner", "id", entity.getOwnerId()
+            );
+        }
         if (entity.getAppointmentId() != null) {
             requireExists(
                     appointmentRepository.existsByIdAndClinicIdAndDeletedFalse(entity.getAppointmentId(), entity.getClinicId()),
