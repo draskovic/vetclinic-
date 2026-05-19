@@ -385,12 +385,13 @@ public class MedicalRecordController {
             @RequestParam(required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE_TIME) java.time.OffsetDateTime dateFrom,
             @RequestParam(required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE_TIME) java.time.OffsetDateTime dateTo,
             @RequestParam(required = false) UUID vetId,
+            @RequestParam(required = false) UUID ownerId,
             Pageable pageable) {
         if (pageable.getSort().isUnsorted()) {
             pageable = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(),
                     Sort.by(Sort.Direction.DESC, "createdAt"));
         }
-        Page<MedicalRecord> page = medicalRecordService.searchAll(clinicId, search, dateFrom, dateTo, vetId, pageable);
+        Page<MedicalRecord> page = medicalRecordService.searchAll(clinicId, search, dateFrom, dateTo, vetId,ownerId, pageable);
 
         Set<UUID> petIds = page.getContent().stream().map(MedicalRecord::getPetId).collect(Collectors.toSet());
         Map<UUID, String> petNames = petRepository.findAllById(petIds).stream()

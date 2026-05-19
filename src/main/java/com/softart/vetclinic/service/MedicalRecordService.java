@@ -15,6 +15,9 @@ import com.softart.vetclinic.repository.AppointmentRepository;
 import com.softart.vetclinic.repository.MedicalRecordRepository;
 import com.softart.vetclinic.repository.PetRepository;
 import com.softart.vetclinic.repository.UserRepository;
+import org.springframework.data.jpa.domain.Specification;
+import static com.softart.vetclinic.repository.specifications.MedicalRecordSpecifications.*;
+
 
 @Service
 public class MedicalRecordService extends AbstractCrudService<MedicalRecord, MedicalRecordRepository> {
@@ -88,29 +91,20 @@ public class MedicalRecordService extends AbstractCrudService<MedicalRecord, Med
         return medicalRecordRepository.findByClinicIdAndOwnerIdOrderByCreatedAtDesc(clinicId, ownerId);
     }
 
-    public Page<MedicalRecord> searchAll(UUID clinicId, String search, Pageable pageable) {
-        if (search == null || search.isBlank()) {
-            return findAllByClinicId(clinicId, pageable);
-        }
-        return repository.searchByClinicId(clinicId, search, pageable);
-    }
-    
+    @Transactional(readOnly = true)
     public Page<MedicalRecord> searchAll(UUID clinicId, String search,
-            OffsetDateTime dateFrom, OffsetDateTime dateTo, UUID vetId, Pageable pageable) {
-        String s = (search == null || search.isBlank()) ? "" : search;
-        if (dateFrom != null && dateTo != null) {
-            return repository.searchWithDateFilter(clinicId, s, dateFrom, dateTo, pageable);
-        }
-        if (vetId != null) {
-            return repository.searchWithVetFilter(clinicId, s, vetId, pageable);
-        }
-        if (s.isEmpty()) {
-            return findAllByClinicId(clinicId, pageable);
-        }
-        return repository.searchByClinicId(clinicId, s, pageable);
+            OffsetDateTime dateFrom, OffsetDateTime dateTo, UUID vetId, UUID ownerId, Pageable pageable) {
+
+        Specification<MedicalRecord> spec = Specification.where(inClinic(clinicId))
+                .and(notDeleted())
+                .and(withEagerLoading())
+                .and(textSearch(search))
+                .and(dateBetween(dateFrom, dateTo))
+                .and(vetId(vetId))
+                .and(ownerId(ownerId));
+
+        return medicalRecordRepository.findAll(spec, pageable);
     }
-
-
     
     @Transactional
     public MedicalRecord createWithRecordCode(MedicalRecord entity, UUID clinicId) {

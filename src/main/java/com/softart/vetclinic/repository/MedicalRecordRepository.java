@@ -8,6 +8,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -15,7 +16,7 @@ import org.springframework.stereotype.Repository;
 import com.softart.vetclinic.entity.MedicalRecord;
 
 @Repository
-public interface MedicalRecordRepository extends JpaRepository<MedicalRecord, UUID> {
+public interface MedicalRecordRepository extends JpaRepository<MedicalRecord, UUID>, JpaSpecificationExecutor<MedicalRecord> {
 
     List<MedicalRecord> findByClinicIdAndPetIdOrderByCreatedAtDesc(UUID clinicId, UUID petId);
 
@@ -36,7 +37,6 @@ public interface MedicalRecordRepository extends JpaRepository<MedicalRecord, UU
     @EntityGraph(attributePaths = {"pet", "vet"})
     Optional<MedicalRecord> findByAppointmentIdAndDeletedFalse(UUID appointmentId);
     
-  
 
     @Query("SELECT mr FROM MedicalRecord mr JOIN Pet p ON mr.petId = p.id " +
     	       "WHERE mr.clinicId = :clinicId AND p.ownerId = :ownerId AND mr.deleted = false " +
@@ -45,53 +45,7 @@ public interface MedicalRecordRepository extends JpaRepository<MedicalRecord, UU
     	    @Param("clinicId") UUID clinicId, 
     	    @Param("ownerId") UUID ownerId);
 
-
-    @EntityGraph(attributePaths = {"pet", "vet"})
-    @Query("SELECT m FROM MedicalRecord m WHERE m.clinicId = :clinicId AND m.deleted = false " +
-           "AND (:search = '' OR (LOWER(m.pet.name) LIKE LOWER(CONCAT('%', :search, '%')) " +
-           "OR EXISTS (SELECT 1 FROM MedicalRecordDiagnosis mrd JOIN Diagnosis d ON d.id = mrd.diagnosisId WHERE mrd.medicalRecordId = m.id AND LOWER(d.name) LIKE LOWER(CONCAT('%', :search, '%'))) " +
-           "OR LOWER(m.symptoms) LIKE LOWER(CONCAT('%', :search, '%')) " +
-           "OR LOWER(m.vet.firstName) LIKE LOWER(CONCAT('%', :search, '%')) " +
-           "OR LOWER(m.vet.lastName) LIKE LOWER(CONCAT('%', :search, '%')) " +
-           "OR LOWER(m.recordCode) LIKE LOWER(CONCAT('%', :search, '%'))" +
-           "OR LOWER(CONCAT(m.vet.firstName, ' ', m.vet.lastName)) LIKE LOWER(CONCAT('%', :search, '%'))))")
-
-    Page<MedicalRecord> searchByClinicId(@Param("clinicId") UUID clinicId, @Param("search") String search, Pageable pageable);
-    
-    @EntityGraph(attributePaths = {"pet", "vet"})
-    @Query("SELECT m FROM MedicalRecord m WHERE m.clinicId = :clinicId AND m.deleted = false " +
-           "AND (:search = '' OR (LOWER(m.pet.name) LIKE LOWER(CONCAT('%', :search, '%')) " +
-           "OR EXISTS (SELECT 1 FROM MedicalRecordDiagnosis mrd JOIN Diagnosis d ON d.id = mrd.diagnosisId WHERE mrd.medicalRecordId = m.id AND LOWER(d.name) LIKE LOWER(CONCAT('%', :search, '%'))) " +
-           "OR LOWER(m.symptoms) LIKE LOWER(CONCAT('%', :search, '%')) " +
-           "OR LOWER(m.vet.firstName) LIKE LOWER(CONCAT('%', :search, '%')) " +
-           "OR LOWER(m.vet.lastName) LIKE LOWER(CONCAT('%', :search, '%')) " +
-           "OR LOWER(m.recordCode) LIKE LOWER(CONCAT('%', :search, '%'))" +
-           "OR LOWER(CONCAT(m.vet.firstName, ' ', m.vet.lastName)) LIKE LOWER(CONCAT('%', :search, '%')))) " +
-           "AND m.createdAt >= :dateFrom AND m.createdAt <= :dateTo")
-    Page<MedicalRecord> searchWithDateFilter(
-            @Param("clinicId") UUID clinicId,
-            @Param("search") String search,
-            @Param("dateFrom") java.time.OffsetDateTime dateFrom,
-            @Param("dateTo") java.time.OffsetDateTime dateTo,
-            Pageable pageable);
-
-    @EntityGraph(attributePaths = {"pet", "vet"})
-    @Query("SELECT m FROM MedicalRecord m WHERE m.clinicId = :clinicId AND m.deleted = false " +
-           "AND (:search = '' OR (LOWER(m.pet.name) LIKE LOWER(CONCAT('%', :search, '%')) " +
-           "OR EXISTS (SELECT 1 FROM MedicalRecordDiagnosis mrd JOIN Diagnosis d ON d.id = mrd.diagnosisId WHERE mrd.medicalRecordId = m.id AND LOWER(d.name) LIKE LOWER(CONCAT('%', :search, '%'))) " +
-           "OR LOWER(m.symptoms) LIKE LOWER(CONCAT('%', :search, '%')) " +
-           "OR LOWER(m.vet.firstName) LIKE LOWER(CONCAT('%', :search, '%')) " +
-           "OR LOWER(m.vet.lastName) LIKE LOWER(CONCAT('%', :search, '%')) " +
-           "OR LOWER(m.recordCode) LIKE LOWER(CONCAT('%', :search, '%'))" +
-           "OR LOWER(CONCAT(m.vet.firstName, ' ', m.vet.lastName)) LIKE LOWER(CONCAT('%', :search, '%')))) " +
-           "AND m.vetId = :vetId")
-    Page<MedicalRecord> searchWithVetFilter(
-            @Param("clinicId") UUID clinicId,
-            @Param("search") String search,
-            @Param("vetId") UUID vetId,
-            Pageable pageable);
-
-
+   
     @Query("SELECT MAX(m.recordCode) FROM MedicalRecord m WHERE m.clinicId = :clinicId AND m.recordCode LIKE :prefix% AND m.deleted = false")
     String findMaxRecordCodeByPrefix(@Param("clinicId") UUID clinicId, @Param("prefix") String prefix);
 
