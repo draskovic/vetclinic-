@@ -247,6 +247,13 @@
 		    width: 100%;
 		    border-collapse: collapse;
 		    margin-bottom: 20px;
+		}
+
+		table.items thead {
+		    display: table-header-group;
+		}
+
+		table.items tbody tr {
 		    page-break-inside: avoid;
 		}
 
@@ -383,6 +390,32 @@
 </table>
 <div class="no-data" th:if="${treatments == null or treatments.isEmpty()}">Nema usluga u ovom kartonu.</div>
 
+<!-- MEDICATION ADMINISTRATIONS -->
+<div class="section-title">Aplikovani lekovi</div>
+<table class="items" th:if="${medicationAdministrations != null and !medicationAdministrations.isEmpty()}">
+    <thead>
+        <tr>
+            <th style="width: 5%">#</th>
+            <th style="width: 30%">Lek</th>
+            <th style="width: 15%">Doza</th>
+            <th style="width: 10%">Put</th>
+            <th style="width: 15%">Datum</th>
+            <th style="width: 25%">Napomena</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr th:each="ma, iter : ${medicationAdministrations}">
+            <td th:text="${iter.index + 1}">1</td>
+            <td th:text="${ma.medicationName}"></td>
+            <td th:text="${ma.dosage != null ? ma.dosage : '-'}"></td>
+            <td th:text="${ma.route != null ? ma.route : '-'}"></td>
+            <td th:text="${#temporals.format(ma.administeredDate, 'dd.MM.yyyy.')}"></td>
+            <td th:text="${ma.instructions != null ? ma.instructions : '-'}"></td>
+        </tr>
+    </tbody>
+</table>
+<div class="no-data" th:if="${medicationAdministrations == null or medicationAdministrations.isEmpty()}">Nema aplikovanih lekova.</div>
+
 <!-- LAB REPORTS -->
 <div class="section-title">Laboratorijski izveštaji</div>
 <table class="items" th:if="${labReports != null and !labReports.isEmpty()}">
@@ -438,7 +471,7 @@
         </tr>
     </tbody>
 </table>
-<div class="no-data" th:if="${prescriptions == null or prescriptions.isEmpty()}">Nema propisanih lekova.</div>
+<div class="no-data" th:if="${prescriptions == null or prescriptions.isEmpty()}">Nema propisanih lekova na recept.</div>
 
 <!-- VACCINATIONS -->
 <div class="section-title">Vakcinacije</div>
@@ -466,7 +499,7 @@
         </tr>
     </tbody>
 </table>
-<div class="no-data" th:if="${vaccinations == null or vaccinations.isEmpty()}">Nema vakcinacija u ovom kartonu.</div>
+<div class="no-data" th:if="${vaccinations == null or vaccinations.isEmpty()}">Nema vakcinacija.</div>
 
 <!-- FOLLOW-UP -->
 <div th:if="${record.followUpRecommended != null and record.followUpRecommended}">

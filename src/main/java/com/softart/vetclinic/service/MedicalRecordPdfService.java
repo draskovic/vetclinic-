@@ -38,6 +38,7 @@ public class MedicalRecordPdfService {
     private final TemplateEngine templateEngine;
     private final TreatmentService treatmentService;
     private final LabReportService labReportService;
+    private final MedicationAdministrationService medicationAdministrationService;
 
     
     
@@ -59,6 +60,7 @@ public class MedicalRecordPdfService {
                                     BreedRepository breedRepository,
                                     TreatmentService treatmentService,
                                     LabReportService labReportService,
+                                    MedicationAdministrationService medicationAdministrationService,
                                     ClinicLogoHelper clinicLogoHelper,
                                     MedicalRecordDiagnosisRepository medicalRecordDiagnosisRepository,
                                     DiagnosisRepository diagnosisRepository) {
@@ -75,6 +77,7 @@ public class MedicalRecordPdfService {
         this.clinicLogoHelper = clinicLogoHelper;
         this.medicalRecordDiagnosisRepository = medicalRecordDiagnosisRepository;
         this.diagnosisRepository = diagnosisRepository;
+        this.medicationAdministrationService = medicationAdministrationService;
         
     }
 
@@ -99,6 +102,7 @@ public class MedicalRecordPdfService {
             List<Vaccination> vaccinations = vaccinationService.findByMedicalRecord(clinicId, medicalRecordId);
             List<Treatment> treatments = treatmentService.findByMedicalRecord(clinicId, medicalRecordId);
             List<LabReport> labReports = labReportService.findByMedicalRecord(clinicId, medicalRecordId);
+            List<MedicationAdministration> medicationAdministrations = medicationAdministrationService.findByMedicalRecord(clinicId, medicalRecordId);
             
             List<MedicalRecordDiagnosis> mrdList = medicalRecordDiagnosisRepository
                     .findByClinicIdAndMedicalRecordId(clinicId, medicalRecordId);
@@ -121,6 +125,7 @@ public class MedicalRecordPdfService {
             context.setVariable("breedName", breedName);
             context.setVariable("treatments", treatments);
             context.setVariable("labReports", labReports);
+            context.setVariable("medicationAdministrations", medicationAdministrations);
             context.setVariable("diagnoses", diagnoses);
             context.setVariable("logoDataUri", clinicLogoHelper.toDataUri(clinic));
 
