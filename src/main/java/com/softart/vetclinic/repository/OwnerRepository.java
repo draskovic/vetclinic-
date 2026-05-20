@@ -28,6 +28,8 @@ public interface OwnerRepository extends JpaRepository<Owner, UUID> {
 
     List<Owner> findByClinicIdAndDeletedFalseAndPhone(UUID clinicId, String phone);
     
+    List<Owner> findByClinicIdAndFirstNameIgnoreCaseAndLastNameIgnoreCaseAndDeletedFalse(
+            UUID clinicId, String firstName, String lastName);
     
     @Query("SELECT o FROM Owner o WHERE o.clinicId = :clinicId AND o.deleted = false " +
     	       "AND (:search = '' OR (LOWER(o.firstName) LIKE LOWER(CONCAT('%', :search, '%')) " +

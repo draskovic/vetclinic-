@@ -1,6 +1,6 @@
 package com.softart.vetclinic.service;
 
-import com.softart.vetclinic.dto.PdfParseResult;
+import com.softart.vetclinic.dto.LabReportParseResult;
 import com.softart.vetclinic.entity.Pet;
 import com.softart.vetclinic.entity.User;
 import com.softart.vetclinic.repository.PetRepository;
@@ -30,7 +30,7 @@ public class PdfParserService {
 
     private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("dd.MM.yyyy");
 
-    public PdfParseResult parsePdf(MultipartFile file, UUID clinicId) {
+    public LabReportParseResult parsePdf(MultipartFile file, UUID clinicId) {
         String text = extractText(file);
         log.info("=== RAW PDF TEXT START ===\n{}\n=== RAW PDF TEXT END ===", text);
 
@@ -82,8 +82,9 @@ public class PdfParserService {
             }
         }
 
-        return new PdfParseResult(
+        return new LabReportParseResult(
                 reportNumber, petName, petId, vetName, vetId,
+                null, null, null, null,
                 laboratoryName, analysisType, requestedAt, completedAt
         );
     }

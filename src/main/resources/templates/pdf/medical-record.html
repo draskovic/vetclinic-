@@ -274,10 +274,16 @@
             <span th:if="${clinic.city}" th:text="${clinic.city}"></span>
             <span th:if="${clinic.country}">, <span th:text="${clinic.country}"></span></span>
         </div>
-        <div class="clinic-detail" th:if="${clinic.phone}">Tel: <span th:text="${clinic.phone}"></span></div>
-        <div class="clinic-detail" th:if="${clinic.email}" th:text="${clinic.email}"></div>
-		<div class="clinic-detail" th:if="${clinic.taxId}">PIB: <span th:text="${clinic.taxId}"></span></div>
-		<div class="clinic-detail" th:if="${clinic.registrationNumber}">Matični br: <span th:text="${clinic.registrationNumber}"></span></div>
+		<div class="clinic-detail" th:if="${!#strings.isEmpty(clinic.phone) or !#strings.isEmpty(clinic.email)}">
+		    <span th:if="${!#strings.isEmpty(clinic.phone)}">Tel: <span th:text="${clinic.phone}"></span></span>
+		    <span th:if="${!#strings.isEmpty(clinic.phone) and !#strings.isEmpty(clinic.email)}">, </span>
+		    <span th:if="${!#strings.isEmpty(clinic.email)}" th:text="${clinic.email}"></span>
+		</div>
+		<div class="clinic-detail" th:if="${!#strings.isEmpty(clinic.taxId) or !#strings.isEmpty(clinic.registrationNumber)}">
+		    <span th:if="${!#strings.isEmpty(clinic.taxId)}">PIB: <span th:text="${clinic.taxId}"></span></span>
+		    <span th:if="${!#strings.isEmpty(clinic.taxId) and !#strings.isEmpty(clinic.registrationNumber)}">, </span>
+		    <span th:if="${!#strings.isEmpty(clinic.registrationNumber)}">Matični br: <span th:text="${clinic.registrationNumber}"></span></span>
+		</div>
 		<div class="clinic-detail" th:if="${clinic.veterinaryLicenseNumber}">Br. licence: <span th:text="${clinic.veterinaryLicenseNumber}"></span></div>
 
     </div>

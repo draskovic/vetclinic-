@@ -26,11 +26,12 @@ import org.springframework.web.multipart.MultipartFile;
 
 import com.softart.vetclinic.dto.CreateLabReportRequest;
 import com.softart.vetclinic.dto.LabReportResponse;
-import com.softart.vetclinic.dto.PdfParseResult;
+import com.softart.vetclinic.dto.LabReportParseResult;
 import com.softart.vetclinic.dto.UpdateLabReportRequest;
 import com.softart.vetclinic.enums.LabReportStatus;
 import com.softart.vetclinic.enums.TestCategory;
 import com.softart.vetclinic.mapper.LabReportMapper;
+import com.softart.vetclinic.service.DocxParserService;
 import com.softart.vetclinic.service.LabReportService;
 import com.softart.vetclinic.service.PdfParserService;
 
@@ -46,6 +47,7 @@ public class LabReportController {
     private final LabReportService labReportService;
     private final LabReportMapper labReportMapper;
     private final PdfParserService pdfParserService;
+    private final DocxParserService docxParserService;
 
 
     @GetMapping
@@ -134,11 +136,23 @@ public class LabReportController {
     }
 
     
-    @PostMapping(value="/parse-pdf", consumes = "multipart/form-data")
-    public PdfParseResult parsePdf(
+    @PostMapping(value = "/parse", consumes = "multipart/form-data")
+    public LabReportParseResult parse(
             @RequestHeader("X-Clinic-Id") UUID clinicId,
             @RequestParam("file") MultipartFile file) {
-        return pdfParserService.parsePdf(file, clinicId);
+        String fileName = file.getOriginalFilename();
+        if (fileName == null || fileName.isBlank()) {
+            throw new IllegalArgumentException("Naziv fajla je obavezan");
+        }
+        String lower = fileName.toLowerCase();
+        if (lower.endsWith(".pdf")) {
+            return pdfParserService.parsePdf(file, clinicId);
+        } else if (lower.endsWith(".docx")) {
+            return docxParserService.parseDocx(file, clinicId);
+        } else {
+            throw new IllegalArgumentException(
+                    "Podržani formati: .pdf, .docx (dobijen: " + fileName + ")");
+        }
     }
 
 

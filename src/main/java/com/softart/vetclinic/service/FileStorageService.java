@@ -115,19 +115,20 @@ public class FileStorageService {
         }
         
         List<String> allowedTypes = List.of(
-            "application/pdf",
-            "image/jpeg",
-            "image/png",
-            "image/gif",
-            "image/webp",
-            "image/bmp",
-            "image/tiff"
-        );
-        
-        if (!allowedTypes.contains(contentType)) {
-            throw new BadRequestException("File type not allowed: " + contentType 
-                + ". Allowed: PDF, JPEG, PNG, GIF, WEBP, BMP, TIFF");
-        }
+        	    "application/pdf",
+        	    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        	    "image/jpeg",
+        	    "image/png",
+        	    "image/gif",
+        	    "image/webp",
+        	    "image/bmp",
+        	    "image/tiff"
+        	);
+
+        	if (!allowedTypes.contains(contentType)) {
+        	    throw new BadRequestException("File type not allowed: " + contentType 
+        	        + ". Allowed: PDF, DOCX, JPEG, PNG, GIF, WEBP, BMP, TIFF");
+        	}
     }
 
     

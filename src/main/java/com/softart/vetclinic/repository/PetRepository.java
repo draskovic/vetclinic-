@@ -30,6 +30,8 @@ public interface PetRepository extends JpaRepository<Pet, UUID> {
     List<Pet> findByClinicIdAndOwnerIdAndDeletedFalse(UUID clinicId, UUID ownerId);
     
     List<Pet> findByClinicIdAndNameIgnoreCaseAndDeletedFalse(UUID clinicId, String name);
+    
+    List<Pet> findByClinicIdAndMicrochipNumberAndDeletedFalse(UUID clinicId, String microchipNumber);
 
     @EntityGraph(attributePaths = {"owner", "species", "breed"})
     @Query("SELECT p FROM Pet p " +

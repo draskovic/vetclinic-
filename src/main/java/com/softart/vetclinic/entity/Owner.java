@@ -39,4 +39,18 @@ public class Owner extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "clinic_id", insertable = false, updatable = false)
     private Clinic clinic;
+    
+    @PrePersist
+    @PreUpdate
+    private void trimStringFields() {
+        if (firstName != null) firstName = firstName.trim();
+        if (lastName != null) lastName = lastName.trim();
+        if (email != null) email = email.trim();
+        if (phone != null) phone = phone.trim();
+        if (address != null) address = address.trim();
+        if (city != null) city = city.trim();
+        if (personalId != null) personalId = personalId.trim();
+        if (clientCode != null) clientCode = clientCode.trim();
+        if (note != null) note = note.trim();
+    }
 }
