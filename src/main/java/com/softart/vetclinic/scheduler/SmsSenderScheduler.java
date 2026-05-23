@@ -15,7 +15,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -32,24 +32,27 @@ public class SmsSenderScheduler {
     private final OwnerRepository ownerRepository;
     private final SmsService smsService;
     private final com.softart.vetclinic.repository.ClinicRepository clinicRepository;
+    private final TransactionTemplate transactionTemplate;
 
     /**
      * Svakih 5 minuta pokusava da posalje PENDING SMS notifikacije
      * ciji scheduledAt je u proslosti (ili sada).
+     *
+     * Per-notification tx: jedna failed notifikacija NE rollback-uje ostale.
      */
     @Scheduled(cron = "0 */5 * * * *")
-    @Transactional
     public void processPendingSmsNotifications() {
         log.info("=== Obrada PENDING SMS notifikacija ===");
 
-        List<Notification> pendingNotifications = notificationRepository
-                .findPendingSmsNotifications(
+        // 1. Load batch (notification table je global, no clinic context needed)
+        List<Notification> pendingNotifications = transactionTemplate.execute(status ->
+                notificationRepository.findPendingSmsNotifications(
                         NotificationStatus.PENDING,
                         NotificationChannel.SMS,
                         OffsetDateTime.now(),
-                        PageRequest.of(0, BATCH_SIZE));
+                        PageRequest.of(0, BATCH_SIZE)));
 
-        if (pendingNotifications.isEmpty()) {
+        if (pendingNotifications == null || pendingNotifications.isEmpty()) {
             log.debug("Nema PENDING SMS notifikacija za slanje");
             return;
         }
@@ -60,36 +63,12 @@ public class SmsSenderScheduler {
         int failed = 0;
 
         for (Notification notification : pendingNotifications) {
+            // Postavi context PRE per-iteration tx
+            ClinicContextHolder.set(notification.getClinicId());
             try {
-                // Postavi clinic context za RLS
-                ClinicContextHolder.set(notification.getClinicId());
-
-                String phoneNumber = resolvePhoneNumber(notification);
-                if (phoneNumber == null) {
-                    markAsFailed(notification, "Broj telefona nije pronadjen za primaoca "
-                            + notification.getRecipientType() + ":" + notification.getRecipientId());
-                    failed++;
-                    continue;
-                }
-
-                String countryCode = clinicRepository.findById(notification.getClinicId())
-                        .map(c -> c.getPhoneCountryCode())
-                        .orElse("+381");
-
-                smsService.sendSms(phoneNumber, notification.getMessage(), countryCode);
-               
-
-                notification.setStatus(NotificationStatus.SENT);
-                notification.setSentAt(OffsetDateTime.now());
-                notification.setFailureReason(null);
-                notificationRepository.save(notification);
-                sent++;
-
-                log.info("SMS notifikacija {} uspesno poslata na {}", notification.getId(), phoneNumber);
-
-            } catch (SmsDeliveryException e) {
-                markAsFailed(notification, e.getMessage());
-                failed++;
+                boolean ok = processOne(notification);
+                if (ok) sent++;
+                else failed++;
             } catch (Exception e) {
                 log.error("Neocekivana greska za SMS notifikaciju {}: {}",
                         notification.getId(), e.getMessage(), e);
@@ -101,6 +80,40 @@ public class SmsSenderScheduler {
         }
 
         log.info("=== Zavrsena obrada SMS: poslato={}, neuspesno={} ===", sent, failed);
+    }
+
+    /**
+     * Vraca true ako je notifikacija uspesno poslata i status SENT commit-ovan.
+     * Marking as FAILED se desava u svojoj tx (commit-uje se cak i ako outer logic pukne).
+     */
+    private boolean processOne(Notification notification) {
+        String phoneNumber = resolvePhoneNumber(notification);
+        if (phoneNumber == null) {
+            markAsFailed(notification, "Broj telefona nije pronadjen za primaoca "
+                    + notification.getRecipientType() + ":" + notification.getRecipientId());
+            return false;
+        }
+
+        String countryCode = clinicRepository.findById(notification.getClinicId())
+                .map(c -> c.getPhoneCountryCode())
+                .orElse("+381");
+
+        try {
+            smsService.sendSms(phoneNumber, notification.getMessage(), countryCode);
+        } catch (SmsDeliveryException e) {
+            markAsFailed(notification, e.getMessage());
+            return false;
+        }
+
+        // SMS sent — commit SENT status u svojoj tx
+        transactionTemplate.executeWithoutResult(status -> {
+            notification.setStatus(NotificationStatus.SENT);
+            notification.setSentAt(OffsetDateTime.now());
+            notification.setFailureReason(null);
+            notificationRepository.save(notification);
+        });
+        log.info("SMS notifikacija {} uspesno poslata na {}", notification.getId(), phoneNumber);
+        return true;
     }
 
     /**
@@ -132,13 +145,17 @@ public class SmsSenderScheduler {
     }
 
     /**
-     * Oznacava notifikaciju kao FAILED sa razlogom.
+     * Oznacava notifikaciju kao FAILED u svojoj tx.
+     * Garantovano commit-ovan cak i ako outer logic baca exception kasnije.
      */
     private void markAsFailed(Notification notification, String reason) {
         log.error("SMS notifikacija {} neuspesna: {}", notification.getId(), reason);
-        notification.setStatus(NotificationStatus.FAILED);
-        notification.setFailureReason(
-                reason != null && reason.length() > 1000 ? reason.substring(0, 1000) : reason);
-        notificationRepository.save(notification);
+        String truncated = (reason != null && reason.length() > 1000)
+                ? reason.substring(0, 1000) : reason;
+        transactionTemplate.executeWithoutResult(status -> {
+            notification.setStatus(NotificationStatus.FAILED);
+            notification.setFailureReason(truncated);
+            notificationRepository.save(notification);
+        });
     }
 }

@@ -1,5 +1,6 @@
 package com.softart.vetclinic.scheduler;
 
+import com.softart.vetclinic.config.tenant.ClinicContextHolder;
 import com.softart.vetclinic.entity.Notification;
 import com.softart.vetclinic.entity.Owner;
 import com.softart.vetclinic.enums.NotificationChannel;
@@ -9,13 +10,12 @@ import com.softart.vetclinic.repository.NotificationRepository;
 import com.softart.vetclinic.repository.OwnerRepository;
 import com.softart.vetclinic.service.email.EmailDeliveryException;
 import com.softart.vetclinic.service.email.EmailService;
-import com.softart.vetclinic.config.tenant.ClinicContextHolder;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -31,18 +31,25 @@ public class EmailSenderScheduler {
     private final NotificationRepository notificationRepository;
     private final OwnerRepository ownerRepository;
     private final EmailService emailService;
+    private final TransactionTemplate transactionTemplate;
 
+    /**
+     * Svakih 5 minuta pokusava da posalje PENDING email notifikacije
+     * ciji scheduledAt je u proslosti (ili sada).
+     *
+     * Per-notification tx: jedna failed notifikacija NE rollback-uje ostale.
+     */
     @Scheduled(cron = "0 */5 * * * *")
-    @Transactional
     public void processPendingEmailNotifications() {
-        List<Notification> pendingEmails = notificationRepository.findPendingEmailNotifications(
-                NotificationStatus.PENDING,
-                NotificationChannel.EMAIL,
-                OffsetDateTime.now(),
-                PageRequest.of(0, BATCH_SIZE)
-        );
+        // 1. Load batch (notification table je global, no clinic context needed)
+        List<Notification> pendingEmails = transactionTemplate.execute(status ->
+                notificationRepository.findPendingEmailNotifications(
+                        NotificationStatus.PENDING,
+                        NotificationChannel.EMAIL,
+                        OffsetDateTime.now(),
+                        PageRequest.of(0, BATCH_SIZE)));
 
-        if (pendingEmails.isEmpty()) {
+        if (pendingEmails == null || pendingEmails.isEmpty()) {
             return;
         }
 
@@ -52,32 +59,15 @@ public class EmailSenderScheduler {
         int failed = 0;
 
         for (Notification notification : pendingEmails) {
+            // Postavi context PRE per-iteration tx
+            ClinicContextHolder.set(notification.getClinicId());
             try {
-                ClinicContextHolder.set(notification.getClinicId());
-
-                String recipientEmail = resolveEmail(notification);
-                if (recipientEmail == null) {
-                    markAsFailed(notification, "Could not resolve email for recipient");
-                    failed++;
-                    continue;
-                }
-
-                String messageId = emailService.sendEmail(
-                        recipientEmail,
-                        notification.getTitle(),
-                        notification.getMessage()
-                );
-
-                notification.setStatus(NotificationStatus.SENT);
-                notification.setSentAt(OffsetDateTime.now());
-                notification.setFailureReason(null);
-                notificationRepository.save(notification);
-                sent++;
-
-            } catch (EmailDeliveryException e) {
-                markAsFailed(notification, e.getMessage());
-                failed++;
+                boolean ok = processOne(notification);
+                if (ok) sent++;
+                else failed++;
             } catch (Exception e) {
+                log.error("Unexpected error for email notification {}: {}",
+                        notification.getId(), e.getMessage(), e);
                 markAsFailed(notification, "Unexpected error: " + e.getMessage());
                 failed++;
             } finally {
@@ -86,6 +76,38 @@ public class EmailSenderScheduler {
         }
 
         log.info("Email processing complete: sent={}, failed={}", sent, failed);
+    }
+
+    /**
+     * Vraca true ako je email uspesno poslat i status SENT commit-ovan.
+     * markAsFailed se desava u svojoj tx (commit-uje se cak i ako outer logic pukne).
+     */
+    private boolean processOne(Notification notification) {
+        String recipientEmail = resolveEmail(notification);
+        if (recipientEmail == null) {
+            markAsFailed(notification, "Could not resolve email for recipient");
+            return false;
+        }
+
+        try {
+            emailService.sendEmail(
+                    recipientEmail,
+                    notification.getTitle(),
+                    notification.getMessage()
+            );
+        } catch (EmailDeliveryException e) {
+            markAsFailed(notification, e.getMessage());
+            return false;
+        }
+
+        // Email sent — commit SENT status u svojoj tx
+        transactionTemplate.executeWithoutResult(status -> {
+            notification.setStatus(NotificationStatus.SENT);
+            notification.setSentAt(OffsetDateTime.now());
+            notification.setFailureReason(null);
+            notificationRepository.save(notification);
+        });
+        return true;
     }
 
     private String resolveEmail(Notification notification) {
@@ -109,12 +131,18 @@ public class EmailSenderScheduler {
         return null;
     }
 
+    /**
+     * Oznacava notifikaciju kao FAILED u svojoj tx.
+     * Garantovano commit-ovan cak i ako outer logic baca exception kasnije.
+     */
     private void markAsFailed(Notification notification, String reason) {
         log.error("Email notification {} failed: {}", notification.getId(), reason);
-        notification.setStatus(NotificationStatus.FAILED);
-        String truncatedReason = reason != null && reason.length() > 1000
+        String truncatedReason = (reason != null && reason.length() > 1000)
                 ? reason.substring(0, 1000) : reason;
-        notification.setFailureReason(truncatedReason);
-        notificationRepository.save(notification);
+        transactionTemplate.executeWithoutResult(status -> {
+            notification.setStatus(NotificationStatus.FAILED);
+            notification.setFailureReason(truncatedReason);
+            notificationRepository.save(notification);
+        });
     }
 }

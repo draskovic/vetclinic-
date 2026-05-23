@@ -142,68 +142,61 @@ public class PublicBookingService {
             rateLimiter.checkLimit("ip:" + clientIp);
         }
 
-        try {
-            ClinicContextHolder.set(clinicId);
-
-            // 3. Proveri settings
-            BookingSettings settings = bookingSettingsRepository.findByClinicId(clinicId)
-                    .orElseThrow(() -> new BadRequestException("Online zakazivanje nije dostupno"));
-            if (!settings.getEnabled()) {
-                throw new BadRequestException("Online zakazivanje nije omogućeno");
-            }
-
-            // 4. Owner resolucija
-            UUID ownerId = resolveOwner(clinicId, request);
-
-            // 5. Pet resolucija
-            UUID petId = resolvePet(clinicId, ownerId, request);
-
-            // 6. Vet resolucija — proveri da je slot još slobodan
-            ZoneId clinicZone = ZoneId.of(settings.getTimezone());
-            var slots = slotAvailabilityService.getAvailableSlots(
-                    clinicId, request.locationId(),
-                    request.startTime().atZoneSameInstant(clinicZone).toLocalDate(),
-                    request.type(), request.preferredVetId());
-
-            UUID vetId = slots.stream()
-                    .filter(s -> s.startTime().isEqual(request.startTime()))
-                    .map(BookingAvailableSlotResponse::vetId)
-                    .findFirst()
-                    .orElseThrow(() -> new BadRequestException(
-                            "Izabrani termin više nije dostupan. Molimo izaberite drugi."));
-
-            // 7. Kreiraj appointment
-            AppointmentStatus status = settings.getAutoConfirm()
-                    ? AppointmentStatus.CONFIRMED
-                    : AppointmentStatus.PENDING;
-
-            Appointment appointment = new Appointment();
-            appointment.setClinicId(clinicId);
-            appointment.setLocationId(request.locationId());
-            appointment.setPetId(petId);
-            appointment.setOwnerId(ownerId);
-            appointment.setVetId(vetId);
-            appointment.setStartTime(request.startTime());
-            appointment.setEndTime(request.startTime().plusMinutes(settings.getSlotDurationMinutes()));
-            appointment.setStatus(status);
-            appointment.setType(request.type());
-            appointment.setReason(request.reason());
-            appointment.setBookingSource(BookingSource.ONLINE);
-            appointment.setCancellationToken(UUID.randomUUID().toString());
-
-            Appointment saved = appointmentRepository.save(appointment);
-
-            String message = settings.getAutoConfirm()
-                    ? "Vaš termin je uspešno zakazan!"
-                    : "Vaš zahtev je primljen. Klinika će potvrditi termin u najkraćem roku.";
-
-            log.info("Online booking kreiran: id={}, clinicId={}, status={}", saved.getId(), clinicId, status);
-
-            return new BookingCreateResponse(saved.getId(), status, message);
-
-        } finally {
-            ClinicContextHolder.clear();
+        // 3. Proveri settings (context već postavljen iz kontrolera)
+        BookingSettings settings = bookingSettingsRepository.findByClinicId(clinicId)
+                .orElseThrow(() -> new BadRequestException("Online zakazivanje nije dostupno"));
+        if (!settings.getEnabled()) {
+            throw new BadRequestException("Online zakazivanje nije omogućeno");
         }
+
+        // 4. Owner resolucija
+        UUID ownerId = resolveOwner(clinicId, request);
+
+        // 5. Pet resolucija
+        UUID petId = resolvePet(clinicId, ownerId, request);
+
+        // 6. Vet resolucija — proveri da je slot još slobodan
+        ZoneId clinicZone = ZoneId.of(settings.getTimezone());
+        var slots = slotAvailabilityService.getAvailableSlots(
+                clinicId, request.locationId(),
+                request.startTime().atZoneSameInstant(clinicZone).toLocalDate(),
+                request.type(), request.preferredVetId());
+
+        UUID vetId = slots.stream()
+                .filter(s -> s.startTime().isEqual(request.startTime()))
+                .map(BookingAvailableSlotResponse::vetId)
+                .findFirst()
+                .orElseThrow(() -> new BadRequestException(
+                        "Izabrani termin više nije dostupan. Molimo izaberite drugi."));
+
+        // 7. Kreiraj appointment
+        AppointmentStatus status = settings.getAutoConfirm()
+                ? AppointmentStatus.CONFIRMED
+                : AppointmentStatus.PENDING;
+
+        Appointment appointment = new Appointment();
+        appointment.setClinicId(clinicId);
+        appointment.setLocationId(request.locationId());
+        appointment.setPetId(petId);
+        appointment.setOwnerId(ownerId);
+        appointment.setVetId(vetId);
+        appointment.setStartTime(request.startTime());
+        appointment.setEndTime(request.startTime().plusMinutes(settings.getSlotDurationMinutes()));
+        appointment.setStatus(status);
+        appointment.setType(request.type());
+        appointment.setReason(request.reason());
+        appointment.setBookingSource(BookingSource.ONLINE);
+        appointment.setCancellationToken(UUID.randomUUID().toString());
+
+        Appointment saved = appointmentRepository.save(appointment);
+
+        String message = settings.getAutoConfirm()
+                ? "Vaš termin je uspešno zakazan!"
+                : "Vaš zahtev je primljen. Klinika će potvrditi termin u najkraćem roku.";
+
+        log.info("Online booking kreiran: id={}, clinicId={}, status={}", saved.getId(), clinicId, status);
+
+        return new BookingCreateResponse(saved.getId(), status, message);
     }
 
     public void cancelBooking(String cancellationToken) {

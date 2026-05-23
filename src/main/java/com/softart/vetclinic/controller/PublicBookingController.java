@@ -1,5 +1,6 @@
 package com.softart.vetclinic.controller;
 
+import com.softart.vetclinic.config.tenant.ClinicContextHolder;
 import com.softart.vetclinic.dto.*;
 import com.softart.vetclinic.entity.Clinic;
 import com.softart.vetclinic.enums.AppointmentType;
@@ -72,6 +73,7 @@ public class PublicBookingController {
             @RequestBody @Valid BookingCreateRequest request,
             HttpServletRequest httpRequest) {
         String clientIp = getClientIp(httpRequest);
+        ClinicContextHolder.set(clinicId);
         try {
             BookingCreateResponse response = bookingService.createBooking(clinicId, request, clientIp);
             return ResponseEntity.ok(response);
@@ -79,6 +81,8 @@ public class PublicBookingController {
             log.warn("Booking greška za clinicId={}: {}", clinicId, e.getMessage());
             return ResponseEntity.badRequest().body(
                     new BookingCreateResponse(null, null, e.getMessage()));
+        } finally {
+            ClinicContextHolder.clear();
         }
     }
 

@@ -1,5 +1,6 @@
 package com.softart.vetclinic.controller;
 
+import com.softart.vetclinic.config.tenant.ClinicContextHolder;
 import com.softart.vetclinic.dto.ClinicResponse;
 
 import com.softart.vetclinic.dto.ProvisionClinicRequest;
@@ -74,7 +75,13 @@ public class ClinicController {
     @PostMapping("/provision")
     @ResponseStatus(HttpStatus.CREATED)
     public ProvisionClinicResponse provision(@Valid @RequestBody ProvisionClinicRequest request) {
-        return clinicProvisioningService.provision(request);
+        UUID clinicId = UUID.randomUUID();
+        ClinicContextHolder.set(clinicId);
+        try {
+            return clinicProvisioningService.provision(clinicId, request);
+        } finally {
+            ClinicContextHolder.clear();
+        }
     }
 
     @GetMapping("/lookup")
