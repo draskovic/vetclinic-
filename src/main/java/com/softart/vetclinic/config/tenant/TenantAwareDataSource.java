@@ -36,7 +36,8 @@ public class TenantAwareDataSource implements DataSource {
 
     private Connection wrapConnection(Connection raw) throws SQLException {
         UUID clinicId = ClinicContextHolder.get();
-        if (clinicId != null) {
+        final boolean rlsWasSet = (clinicId != null);
+        if (rlsWasSet) {
             try (Statement stmt = raw.createStatement()) {
                 stmt.execute("SET app.current_clinic_id = '" + clinicId + "'");
             }
@@ -49,7 +50,14 @@ public class TenantAwareDataSource implements DataSource {
                 new Class<?>[]{Connection.class},
                 (proxy, method, args) -> {
                     if ("close".equals(method.getName())) {
-                        resetTenantContext(raw);
+                        if (rlsWasSet) {
+                            try {
+                                resetTenantContext(raw);
+                            } catch (Throwable t) {
+                                // Nikad ne blokirati delegirani close — zombi konekcija je gora od stale RLS var-a
+                                log.warn("Unexpected error during RLS reset; proceeding with close", t);
+                            }
+                        }
                         return method.invoke(raw, args);
                     }
                     return method.invoke(raw, args);
@@ -57,6 +65,16 @@ public class TenantAwareDataSource implements DataSource {
     }
 
     private void resetTenantContext(Connection connection) {
+        try {
+            if (connection.isClosed()) {
+                log.trace("Connection already closed, skipping RLS RESET");
+                return;
+            }
+        } catch (SQLException e) {
+            // Ako ne možemo ni da proverimo stanje, konekcija je problematična — preskoči RESET
+            log.trace("Failed to check connection.isClosed(), skipping RLS RESET: {}", e.getMessage());
+            return;
+        }
         try (Statement stmt = connection.createStatement()) {
             stmt.execute("RESET app.current_clinic_id");
             log.trace("RLS RESET clinic_id");

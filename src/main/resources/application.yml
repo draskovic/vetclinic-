@@ -67,7 +67,7 @@ app:
     twilio:
       account-sid: YOUR_TWILIO_ACCOUNT_SID
       auth-token: YOUR_TWILIO_AUTH_TOKEN
-      from-number: "+17176403933"
+      from-number: "+447886066323"
       enabled: false
   email:
     from: YOUR_EMAIL_FROM

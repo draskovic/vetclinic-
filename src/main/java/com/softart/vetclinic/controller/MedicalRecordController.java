@@ -35,6 +35,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 import com.softart.vetclinic.dto.CreateMedicalRecordRequest;
 import com.softart.vetclinic.dto.MedicalRecordResponse;
@@ -104,6 +105,7 @@ public class MedicalRecordController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
+    @Transactional
     public MedicalRecordResponse create(
             @RequestHeader("X-Clinic-Id") UUID clinicId,
             @Valid @RequestBody CreateMedicalRecordRequest request) {
@@ -124,13 +126,11 @@ public class MedicalRecordController {
             }
         }
 
+        // Atomic: ako termin update pukne, rollback ceo create (intervencija + dijagnoze).
+        // Eliminisan silent try/catch — bolje fail-fast nego polovično stanje.
         if (entity.getAppointmentId() != null) {
-            try {
-                appointmentService.update(entity.getAppointmentId(), clinicId,
-                    appointment -> appointment.setStatus(AppointmentStatus.COMPLETED));
-            } catch (Exception e) {
-                // Ne blokiraj kreiranje intervencije ako ažuriranje termina ne uspe
-            }
+            appointmentService.update(entity.getAppointmentId(), clinicId,
+                appointment -> appointment.setStatus(AppointmentStatus.COMPLETED));
         }
 
 
@@ -190,13 +190,10 @@ public class MedicalRecordController {
 
         MedicalRecord r = medicalRecordService.createWithRecordCode(entity, clinicId);
 
-        // Promeni status termina na IN_PROGRESS
-        try {
-            appointmentService.update(appointmentId, clinicId,
-                a -> a.setStatus(AppointmentStatus.IN_PROGRESS));
-        } catch (Exception e) {
-            // Ne blokiraj kreiranje
-        }
+        // Atomic: ako termin update pukne, rollback ceo startFromAppointment.
+        // Eliminisan silent try/catch — bolje fail-fast nego polovično stanje (draft intervencija + termin u starom statusu).
+        appointmentService.update(appointmentId, clinicId,
+            a -> a.setStatus(AppointmentStatus.IN_PROGRESS));
 
         var pet = petRepository.findById(r.getPetId()).orElse(null);
         var owner = pet != null ? ownerRepository.findById(pet.getOwnerId()).orElse(null) : null;
@@ -254,6 +251,58 @@ public class MedicalRecordController {
         );
     }
 
+    @PostMapping("/{id}/finish")
+    @Transactional
+    @PreAuthorize("hasAuthority('manage_medical_records') or hasAuthority('*')")
+    public MedicalRecordResponse finish(
+            @RequestHeader("X-Clinic-Id") UUID clinicId,
+            @PathVariable UUID id,
+            @Valid @RequestBody UpdateMedicalRecordRequest request) {
+
+        // 1. Update intervencije sa form values (kao u standard update endpoint-u)
+        MedicalRecord r = medicalRecordService.update(id, clinicId,
+                existing -> medicalRecordMapper.updateEntity(request, existing));
+
+        // 2. Replace-all dijagnoza (identičan flow kao u update endpoint-u)
+        if (request.diagnosisIds() != null) {
+            medicalRecordDiagnosisRepository.deleteByClinicIdAndMedicalRecordId(clinicId, id);
+            for (UUID diagId : request.diagnosisIds()) {
+                MedicalRecordDiagnosis mrd = new MedicalRecordDiagnosis();
+                mrd.setClinicId(clinicId);
+                mrd.setMedicalRecordId(id);
+                mrd.setDiagnosisId(diagId);
+                medicalRecordDiagnosisRepository.save(mrd);
+            }
+        }
+
+        // 3. ATOMIC: ako intervencija ima vezan termin, postavi status na COMPLETED.
+        // BEZ try/catch — ako appointment update pukne (validation, RLS, network),
+        // CEO finish flow se rollback-uje (intervencija ostaje neizmenjena, dijagnoze takođe).
+        // Eliminiše polovično stanje koje je postojalo u handleFinish-u sa silent try/catch.
+        if (r.getAppointmentId() != null) {
+            appointmentService.update(r.getAppointmentId(), clinicId,
+                    a -> a.setStatus(AppointmentStatus.COMPLETED));
+        }
+
+        // 4. Build response (identičan format kao update endpoint)
+        var pet = petRepository.findById(r.getPetId()).orElse(null);
+        var owner = pet != null ? ownerRepository.findById(pet.getOwnerId()).orElse(null) : null;
+        var vet = userRepository.findById(r.getVetId()).orElse(null);
+
+        return new MedicalRecordResponse(
+                r.getId(), r.getAppointmentId(), r.getRecordCode(),
+                r.getPetId(),
+                pet != null ? pet.getName() : "",
+                pet != null ? pet.getOwnerId() : null,
+                owner != null ? owner.getFirstName() + " " + owner.getLastName() : "",
+                r.getVetId(),
+                vet != null ? vet.getFirstName() + " " + vet.getLastName() : "",
+                r.getSymptoms(), resolveDiagnoses(clinicId, r.getId()), r.getExaminationNotes(),
+                r.getWeightKg(), r.getTemperatureC(), r.getHeartRate(),
+                r.getFollowUpRecommended(), r.getFollowUpDate(),
+                r.getCreatedAt(), r.getUpdatedAt()
+        );
+    }
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)

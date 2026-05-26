@@ -16,6 +16,11 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 import lombok.extern.slf4j.Slf4j;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.security.core.GrantedAuthority;
+import java.util.ArrayList;
+
 import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
@@ -26,6 +31,8 @@ import java.util.UUID;
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
+    // Reuse jedne instance — ObjectMapper je thread-safe i skup za instanciranje
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
@@ -43,11 +50,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         UUID userId;
         UUID clinicId;
         String role;
+        String permissions;
         try {
             claims = jwtService.parseToken(token);
             userId = UUID.fromString(claims.getSubject());
             clinicId = UUID.fromString(claims.get("clinicId", String.class));
             role = claims.get("role", String.class);
+            permissions = claims.get("permissions", String.class);
         } catch (JwtException | IllegalArgumentException | NullPointerException e) {
             // Invalid token (bad signature, expired, malformed/missing claims) → unauthenticated
             log.warn("Invalid JWT from IP {}: {} ({})",
@@ -85,7 +94,21 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 }
             }
 
-            var authorities = List.of(new SimpleGrantedAuthority("ROLE_" + role));
+            // Role authority (ROLE_ prefix) + sve permissions iz JWT-a kao posebne authorities.
+            // Permission name = authority name (npr. "manage_medical_records") — direktno mapiranje
+            // na @PreAuthorize("hasAuthority('manage_medical_records')") u kontrolerima.
+            List<GrantedAuthority> authorities = new ArrayList<>();
+            authorities.add(new SimpleGrantedAuthority("ROLE_" + role));
+            if (permissions != null && !permissions.isBlank()) {
+                try {
+                    List<String> permList = OBJECT_MAPPER.readValue(permissions, new TypeReference<List<String>>() {});
+                    permList.forEach(p -> authorities.add(new SimpleGrantedAuthority(p)));
+                } catch (Exception e) {
+                    // Ne fail-uj request — korisnik ostaje samo sa ROLE_ authority (fail-safe: manje prava, ne više)
+                    log.warn("Failed to parse permissions claim for user {} from IP {}: {}",
+                            userId, getClientIp(request), e.getMessage());
+                }
+            }
             var authentication = new UsernamePasswordAuthenticationToken(
                     new JwtPrincipal(userId, clinicId, claims.get("email", String.class), role),
                     null, authorities);
