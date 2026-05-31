@@ -9,11 +9,17 @@ import org.mapstruct.*;
 @Mapper(componentModel = "spring")
 public interface PetMapper {
 
+	@Mapping(target = "hasActiveAlerts", ignore = true)
     @Mapping(target = "ownerName", expression = "java(entity.getOwner() != null ? entity.getOwner().getFirstName() + \" \" + entity.getOwner().getLastName() : null)")
     @Mapping(target = "speciesName", source = "species.name")
     @Mapping(target = "breedName", source = "breed.name")
     PetResponse toResponse(Pet entity);
 
+	@Mapping(target = "ownerName", expression = "java(entity.getOwner() != null ? entity.getOwner().getFirstName() + \" \" + entity.getOwner().getLastName() : null)")
+    @Mapping(target = "speciesName", source = "entity.species.name")
+    @Mapping(target = "breedName", source = "entity.breed.name")
+    PetResponse toResponseWithAlerts(Pet entity, Boolean hasActiveAlerts);
+	
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "clinicId", ignore = true)
     @Mapping(target = "createdAt", ignore = true)

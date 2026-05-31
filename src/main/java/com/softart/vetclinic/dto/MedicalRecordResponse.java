@@ -25,5 +25,6 @@ public record MedicalRecordResponse(
         Boolean followUpRecommended,
         LocalDate followUpDate,
         OffsetDateTime createdAt,
-        OffsetDateTime updatedAt
+        OffsetDateTime updatedAt,
+        Boolean hasActiveAlerts
 ) {}

@@ -69,6 +69,7 @@ public class MedicalRecordController {
     private final MedicalRecordDiagnosisRepository medicalRecordDiagnosisRepository;
     private final DiagnosisRepository diagnosisRepository;
     private final DiagnosisMapper diagnosisMapper;
+    private final com.softart.vetclinic.service.PetHealthAlertService petHealthAlertService;
 
     @GetMapping("/{id}")
     public MedicalRecordResponse getById(
@@ -98,7 +99,8 @@ public class MedicalRecordController {
                 r.getFollowUpRecommended(),
                 r.getFollowUpDate(),
                 r.getCreatedAt(),
-                r.getUpdatedAt()
+                r.getUpdatedAt(),
+                false
         );
     }
 
@@ -147,7 +149,7 @@ public class MedicalRecordController {
                 r.getSymptoms(),  resolveDiagnoses(clinicId, r.getId()), r.getExaminationNotes(),
                 r.getWeightKg(), r.getTemperatureC(), r.getHeartRate(),
                 r.getFollowUpRecommended(), r.getFollowUpDate(),
-                r.getCreatedAt(), r.getUpdatedAt()
+                r.getCreatedAt(), r.getUpdatedAt(), false
         );
     }
 
@@ -173,7 +175,7 @@ public class MedicalRecordController {
                     r.getSymptoms(), resolveDiagnoses(clinicId, r.getId()), r.getExaminationNotes(),
                     r.getWeightKg(), r.getTemperatureC(), r.getHeartRate(),
                     r.getFollowUpRecommended(), r.getFollowUpDate(),
-                    r.getCreatedAt(), r.getUpdatedAt()
+                    r.getCreatedAt(), r.getUpdatedAt(),false
             );
         }
 
@@ -208,7 +210,7 @@ public class MedicalRecordController {
                 r.getSymptoms(), resolveDiagnoses(clinicId, r.getId()), r.getExaminationNotes(),
                 r.getWeightKg(), r.getTemperatureC(), r.getHeartRate(),
                 r.getFollowUpRecommended(), r.getFollowUpDate(),
-                r.getCreatedAt(), r.getUpdatedAt()
+                r.getCreatedAt(), r.getUpdatedAt(), false
         );
     }
 
@@ -247,7 +249,7 @@ public class MedicalRecordController {
                 r.getSymptoms(), resolveDiagnoses(clinicId, r.getId()), r.getExaminationNotes(),
                 r.getWeightKg(), r.getTemperatureC(), r.getHeartRate(),
                 r.getFollowUpRecommended(), r.getFollowUpDate(),
-                r.getCreatedAt(), r.getUpdatedAt()
+                r.getCreatedAt(), r.getUpdatedAt(), false
         );
     }
 
@@ -300,7 +302,7 @@ public class MedicalRecordController {
                 r.getSymptoms(), resolveDiagnoses(clinicId, r.getId()), r.getExaminationNotes(),
                 r.getWeightKg(), r.getTemperatureC(), r.getHeartRate(),
                 r.getFollowUpRecommended(), r.getFollowUpDate(),
-                r.getCreatedAt(), r.getUpdatedAt()
+                r.getCreatedAt(), r.getUpdatedAt(),false
         );
     }
 
@@ -326,7 +328,7 @@ public class MedicalRecordController {
         
         List<UUID> recordIds = records.stream().map(MedicalRecord::getId).toList();
         Map<UUID, List<DiagnosisResponse>> diagnosesMap = resolveDiagnosesBatch(clinicId, recordIds);
-
+        boolean petHasAlerts = !petHealthAlertService.findActiveByPet(clinicId, petId).isEmpty();
 
         return records.stream().map(r -> new MedicalRecordResponse(
                 r.getId(), r.getAppointmentId(),  r.getRecordCode(),
@@ -341,7 +343,8 @@ public class MedicalRecordController {
                 r.getExaminationNotes(),
                 r.getWeightKg(), r.getTemperatureC(), r.getHeartRate(),
                 r.getFollowUpRecommended(), r.getFollowUpDate(),
-                r.getCreatedAt(), r.getUpdatedAt()
+                r.getCreatedAt(), r.getUpdatedAt(),
+                petHasAlerts
         )).toList();
     }
 
@@ -366,7 +369,7 @@ public class MedicalRecordController {
                 r.getSymptoms(), resolveDiagnoses(clinicId, r.getId()), r.getExaminationNotes(),
                 r.getWeightKg(), r.getTemperatureC(), r.getHeartRate(),
                 r.getFollowUpRecommended(), r.getFollowUpDate(),
-                r.getCreatedAt(), r.getUpdatedAt()
+                r.getCreatedAt(), r.getUpdatedAt(), false
         );
     }
 
@@ -402,7 +405,8 @@ public class MedicalRecordController {
         
         List<UUID> recordIds = records.stream().map(MedicalRecord::getId).toList();
         Map<UUID, List<DiagnosisResponse>> diagnosesMap = resolveDiagnosesBatch(clinicId, recordIds);
-
+        Set<UUID> ownerPetIds = records.stream().map(MedicalRecord::getPetId).collect(Collectors.toSet());
+        Set<UUID> petsWithAlerts = petHealthAlertService.findPetIdsWithActiveAlerts(clinicId, ownerPetIds);
 
         return records.stream().map(r -> new MedicalRecordResponse(
                 r.getId(),
@@ -423,7 +427,8 @@ public class MedicalRecordController {
                 r.getFollowUpRecommended(),
                 r.getFollowUpDate(),
                 r.getCreatedAt(),
-                r.getUpdatedAt()
+                r.getUpdatedAt(),
+                petsWithAlerts.contains(r.getPetId())
         )).toList();
     }
     
@@ -458,7 +463,8 @@ public class MedicalRecordController {
 
         List<UUID> recordIds = page.getContent().stream().map(MedicalRecord::getId).toList();
         Map<UUID, List<DiagnosisResponse>> diagnosesMap = resolveDiagnosesBatch(clinicId, recordIds);
-
+        Set<UUID> petsWithAlerts = petHealthAlertService.findPetIdsWithActiveAlerts(clinicId, petIds);
+        
         return page.map(r -> new MedicalRecordResponse(
                 r.getId(),
                 r.getAppointmentId(),
@@ -478,7 +484,8 @@ public class MedicalRecordController {
                 r.getFollowUpRecommended(),
                 r.getFollowUpDate(),
                 r.getCreatedAt(),
-                r.getUpdatedAt()
+                r.getUpdatedAt(),
+                petsWithAlerts.contains(r.getPetId())
         ));
     }
 

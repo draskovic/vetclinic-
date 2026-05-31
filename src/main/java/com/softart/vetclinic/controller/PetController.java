@@ -1,10 +1,14 @@
 package com.softart.vetclinic.controller;
 
 import com.softart.vetclinic.dto.CreatePetRequest;
+
 import com.softart.vetclinic.dto.PetResponse;
 import com.softart.vetclinic.dto.UpdatePetRequest;
 import com.softart.vetclinic.mapper.PetMapper;
 import com.softart.vetclinic.service.PetService;
+import com.softart.vetclinic.service.PetHealthAlertService;
+import com.softart.vetclinic.entity.Pet;
+
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -14,6 +18,8 @@ import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Set;
+import java.util.stream.Collectors;
 import java.util.List;
 import java.util.UUID;
 
@@ -24,17 +30,23 @@ public class PetController {
 
     private final PetService petService;
     private final PetMapper petMapper;
+    private final PetHealthAlertService petHealthAlertService;
 
     @GetMapping
     public Page<PetResponse> getAll(
             @RequestHeader("X-Clinic-Id") UUID clinicId,
             @RequestParam(required = false) String search,
             Pageable pageable) {
-    	if (pageable.getSort().isUnsorted()) {
-    	    pageable = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), Sort.by(Sort.Direction.ASC, "name"));
-    	}
+    	
+        if (pageable.getSort().isUnsorted()) {
+            pageable = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), Sort.by(Sort.Direction.ASC, "name"));
+        }
+        Page<Pet> page = petService.searchAll(clinicId, search, pageable);
+        Set<UUID> petIds = page.getContent().stream().map(Pet::getId).collect(Collectors.toSet());
+        Set<UUID> withAlerts = petHealthAlertService.findPetIdsWithActiveAlerts(clinicId, petIds);
 
-        return petService.searchAll(clinicId, search, pageable).map(petMapper::toResponse);
+        return page.map(pet ->
+                petMapper.toResponseWithAlerts(pet, withAlerts.contains(pet.getId())));
     }
 
 

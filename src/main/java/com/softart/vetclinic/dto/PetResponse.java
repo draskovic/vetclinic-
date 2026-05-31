@@ -30,5 +30,6 @@ public record PetResponse(
         String patientCode,
         String legacyCode,
         OffsetDateTime createdAt,
-        OffsetDateTime updatedAt
+        OffsetDateTime updatedAt,
+        Boolean hasActiveAlerts
 ) {}
