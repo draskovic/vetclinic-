@@ -1,5 +1,6 @@
 package com.softart.vetclinic.repository;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -54,6 +55,16 @@ public interface InventoryTransactionRepository extends JpaRepository<InventoryT
     Optional<InventoryTransaction> findByIdAndClinicIdAndDeletedFalseForUpdate(
             @Param("id") UUID id,
             @Param("clinicId") UUID clinicId);
+    
+    // Neto kretanja bez lota (za track_batches artikle: manjak/orphan OUT + legacy opening IN).
+    // ADJUSTMENT isključen — nije delta nego apsolutna vrednost; za batch artikle ionako ne postoji bez lota.
+    @Query("SELECT COALESCE(SUM(CASE WHEN t.type = com.softart.vetclinic.enums.InventoryTransactionType.IN " +
+           "THEN t.quantity ELSE -t.quantity END), 0) " +
+           "FROM InventoryTransaction t " +
+           "WHERE t.clinicId = :clinicId AND t.inventoryItemId = :itemId " +
+           "AND t.batchId IS NULL AND t.deleted = false " +
+           "AND t.type <> com.softart.vetclinic.enums.InventoryTransactionType.ADJUSTMENT")
+    BigDecimal sumBatchlessNetByItem(@Param("clinicId") UUID clinicId, @Param("itemId") UUID itemId);
 
 
 }

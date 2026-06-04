@@ -32,6 +32,7 @@ public class InventoryDeductionService {
     private final InventoryTransactionRepository txRepo;
     private final InventoryBatchRepository batchRepo;
     private final InventoryStockApplier stockApplier;
+    private final InventoryBatchService inventoryBatchService;
 
     /**
      * Auto-dedukcija inventara pri kreiranju usluge na intervenciji.
@@ -160,10 +161,8 @@ public class InventoryDeductionService {
 			log.warn("Nedovoljno zaliha u lotovima za {}, nedostaje {}", item.getName(), remaining);
 		}
 		
-		// Sinhronizuj item.quantityOnHand = SUM(lots.quantityOnHand)
-		BigDecimal newTotal = batchRepo.sumQuantityByItem(clinicId, item.getId());
-		item.setQuantityOnHand(newTotal != null ? newTotal : BigDecimal.ZERO);
-		itemRepo.save(item);
+		// Sinhronizuj stanje: SUM(lotova) + neto(bez lota) — minus iz manjka preživljava
+		inventoryBatchService.syncItemQuantity(clinicId, item);
 	}
     
     /**
@@ -201,22 +200,26 @@ public class InventoryDeductionService {
             txRepo.save(tx);
 
             if (tx.getBatchId() != null) {
+                // Batch tx — vrati količinu na lot, pa rekalkuliši stanje artikla
                 batchRepo.findByIdAndClinicIdAndDeletedFalseForUpdate(tx.getBatchId(), clinicId)
                         .ifPresent(batch -> {
                             stockApplier.reverseOnBatch(batch, tx.getType(), tx.getQuantity());
                             batchRepo.save(batch);
                         });
                 itemRepo.findByIdAndClinicIdAndDeletedFalseForUpdate(tx.getInventoryItemId(), clinicId)
-                        .ifPresent(item -> {
-                            BigDecimal total = batchRepo.sumQuantityByItem(clinicId, item.getId());
-                            item.setQuantityOnHand(total != null ? total : BigDecimal.ZERO);
-                            itemRepo.save(item);
-                        });
+                        .ifPresent(item -> inventoryBatchService.syncItemQuantity(clinicId, item));
             } else {
                 itemRepo.findByIdAndClinicIdAndDeletedFalseForUpdate(tx.getInventoryItemId(), clinicId)
                         .ifPresent(item -> {
-                            stockApplier.reverseOnItem(item, tx.getType(), tx.getQuantity());
-                            itemRepo.save(item);
+                            if (Boolean.TRUE.equals(item.getTrackBatches())) {
+                                // Manjak (orphan OUT) na batch artiklu — tx je već soft-deleted,
+                                // syncItemQuantity ga isključuje iz neta i ispravno vraća stanje.
+                                inventoryBatchService.syncItemQuantity(clinicId, item);
+                            } else {
+                                // Ne-batch artikal: vrati delta direktno (ADJUSTMENT-safe running value)
+                                stockApplier.reverseOnItem(item, tx.getType(), tx.getQuantity());
+                                itemRepo.save(item);
+                            }
                         });
             }
         }

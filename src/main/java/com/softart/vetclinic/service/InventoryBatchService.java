@@ -1,11 +1,13 @@
 package com.softart.vetclinic.service;
 
 import com.softart.vetclinic.entity.InventoryBatch;
+
 import com.softart.vetclinic.entity.InventoryItem;
 import com.softart.vetclinic.exception.BadRequestException;
 import com.softart.vetclinic.exception.DuplicateResourceException;
 import com.softart.vetclinic.repository.InventoryBatchRepository;
 import com.softart.vetclinic.repository.InventoryItemRepository;
+import com.softart.vetclinic.repository.InventoryTransactionRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -22,12 +24,15 @@ public class InventoryBatchService extends AbstractCrudService<InventoryBatch, I
 
     private final InventoryBatchRepository batchRepository;
     private final InventoryItemRepository itemRepository;
+    private final InventoryTransactionRepository transactionRepository;
 
     public InventoryBatchService(InventoryBatchRepository batchRepository,
-                                 InventoryItemRepository itemRepository) {
+                                 InventoryItemRepository itemRepository,
+                                 InventoryTransactionRepository transactionRepository) {
         super(batchRepository);
         this.batchRepository = batchRepository;
         this.itemRepository = itemRepository;
+        this.transactionRepository = transactionRepository;
     }
 
     @Override
@@ -124,13 +129,22 @@ public class InventoryBatchService extends AbstractCrudService<InventoryBatch, I
     }
 
     /**
-     * Rekalkuliše ukupnu količinu na artiklu kao SUM(lots.quantityOnHand).
-     * Poziva se iz createBatch, deleteBatch, FIFO dedukcije i reverse-a.
+     * Rekalkuliše ukupnu količinu na artiklu kao:
+     *   SUM(aktivni lotovi) + neto(transakcije bez lota).
+     *
+     * Neto bez lota čuva manjak (orphan OUT iz FIFO dedukcije kad lotovi ne pokrivaju
+     * potražnju) i legacy opening IN — tako negativno stanje preživljava do reconciliation-a
+     * (veterinar uveče doda lot → stanje se automatski izravna).
+     *
+     * Poziva se iz createBatch, deleteBatch, FIFO dedukcije/reverzije i batch transakcija.
      */
     @Transactional
     public void syncItemQuantity(UUID clinicId, InventoryItem item) {
-        BigDecimal total = batchRepository.sumQuantityByItem(clinicId, item.getId());
-        item.setQuantityOnHand(total != null ? total : BigDecimal.ZERO);
+        BigDecimal batchSum = batchRepository.sumQuantityByItem(clinicId, item.getId());
+        BigDecimal batchlessNet = transactionRepository.sumBatchlessNetByItem(clinicId, item.getId());
+        BigDecimal total = (batchSum != null ? batchSum : BigDecimal.ZERO)
+                .add(batchlessNet != null ? batchlessNet : BigDecimal.ZERO);
+        item.setQuantityOnHand(total);
         itemRepository.save(item);
     }
 }

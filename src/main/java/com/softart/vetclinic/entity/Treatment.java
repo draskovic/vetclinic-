@@ -6,6 +6,7 @@ import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
 import java.util.UUID;
+import java.math.BigDecimal;
 
 @Entity
 @Table(name = "treatment")
@@ -27,6 +28,15 @@ public class Treatment extends BaseEntity {
 
     @Column(columnDefinition = "TEXT")
     private String description;
+
+    @Column(name = "quantity", nullable = false, precision = 8, scale = 2)
+    private BigDecimal quantity = BigDecimal.ONE;
+
+    @Column(name = "unit_price", precision = 12, scale = 2)
+    private BigDecimal unitPrice;
+
+    @Column(name = "discount_percent", nullable = false, precision = 5, scale = 2)
+    private BigDecimal discountPercent = BigDecimal.ZERO;
 
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "tooth_chart", columnDefinition = "JSONB")

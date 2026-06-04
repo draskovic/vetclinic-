@@ -135,10 +135,11 @@ public class InvoiceFromMedicalRecordService {
             item.setClinicId(clinicId);
             item.setInvoiceId(savedInvoice.getId());
             item.setServiceId(t.getServiceId());
+            item.setTreatmentId(t.getId());          // ← NOVA: medicinsko poreklo
             item.setDescription(t.getName());
-            item.setQuantity(BigDecimal.ONE);
-            item.setUnitPrice(service.getPrice());
-            item.setDiscountPercent(BigDecimal.ZERO);
+            item.setQuantity(t.getQuantity());
+            item.setUnitPrice(t.getUnitPrice() != null ? t.getUnitPrice() : service.getPrice());
+            item.setDiscountPercent(t.getDiscountPercent());
             item.setSortOrder(sortOrder++);
 
             taxRateSnapshotApplier.apply(item, service.getTaxRateId(), clinicId);

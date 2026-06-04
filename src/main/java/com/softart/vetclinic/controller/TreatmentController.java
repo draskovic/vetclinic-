@@ -1,6 +1,7 @@
 package com.softart.vetclinic.controller;
 
 import java.math.BigDecimal;
+
 import java.util.List;
 import java.util.UUID;
 
@@ -33,10 +34,12 @@ import com.softart.vetclinic.util.InvoiceItemTotals;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @RestController
 @RequestMapping("/api/treatments")
 @RequiredArgsConstructor
+@Slf4j
 public class TreatmentController {
 
     private final TreatmentService treatmentService;
@@ -68,6 +71,11 @@ public class TreatmentController {
             @RequestHeader("X-Clinic-Id") UUID clinicId,
             @Valid @RequestBody CreateTreatmentRequest request) {
         var entity = treatmentMapper.toEntity(request);
+        // snapshot kataloške cene u tretman ako override nije poslat (karton prikazuje cenu)
+        if (entity.getUnitPrice() == null && entity.getServiceId() != null) {
+            serviceRepository.findByIdAndClinicIdAndDeletedFalse(entity.getServiceId(), clinicId)
+                    .ifPresent(s -> entity.setUnitPrice(s.getPrice()));
+        }
         var result = treatmentService.create(entity, clinicId);
 
         // Auto-dodaj stavku na fakturu ako postoji
@@ -84,26 +92,26 @@ public class TreatmentController {
                     invoiceItem.setClinicId(clinicId);
                     invoiceItem.setInvoiceId(inv.getId());
                     invoiceItem.setServiceId(entity.getServiceId());
+                    invoiceItem.setTreatmentId(result.getId());   // ← NOVA: poreklo stavke = medicinski 
                     invoiceItem.setDescription(result.getName());
-                    invoiceItem.setQuantity(BigDecimal.ONE);
-                    invoiceItem.setDiscountPercent(BigDecimal.ZERO);
+                    invoiceItem.setQuantity(result.getQuantity());
+                    invoiceItem.setDiscountPercent(result.getDiscountPercent());
 
                     UUID serviceTaxRateId = null;
                     if (entity.getServiceId() != null) {
                         var serviceOpt = serviceRepository.findByIdAndClinicIdAndDeletedFalse(entity.getServiceId(), clinicId);
                         if (serviceOpt.isPresent()) {
-                            invoiceItem.setUnitPrice(serviceOpt.get().getPrice());
+                            invoiceItem.setUnitPrice(result.getUnitPrice() != null ? result.getUnitPrice() : serviceOpt.get().getPrice());
                             serviceTaxRateId = serviceOpt.get().getTaxRateId();
                         }
                     }
                     if (invoiceItem.getUnitPrice() == null) {
-                        invoiceItem.setUnitPrice(BigDecimal.ZERO);
+                        invoiceItem.setUnitPrice(result.getUnitPrice() != null ? result.getUnitPrice() : BigDecimal.ZERO);
                     }
 
                     taxRateSnapshotApplier.apply(invoiceItem, serviceTaxRateId, clinicId);
 
                     // Izračunaj lineTotal
-                    taxRateSnapshotApplier.apply(invoiceItem, serviceTaxRateId, clinicId);
                     invoiceItem.setLineTotal(InvoiceItemTotals.computeLineTotal(invoiceItem));
 
                     invoiceItemRepository.save(invoiceItem);
@@ -121,7 +129,8 @@ public class TreatmentController {
                         clinicId, result.getServiceId(), result.getId(), entity.getVetId());
             }
         } catch (Exception ex) {
-            ex.printStackTrace();
+            log.error("Auto-dedukcija inventara za treatment {} (clinic {}) nije uspela",
+                    result.getId(), clinicId, ex);
         }
 
         return treatmentMapper.toResponse(result);
@@ -133,8 +142,72 @@ public class TreatmentController {
             @RequestHeader("X-Clinic-Id") UUID clinicId,
             @PathVariable UUID id,
             @Valid @RequestBody UpdateTreatmentRequest request) {
-        return treatmentMapper.toResponse(
-                treatmentService.update(id, clinicId, existing -> treatmentMapper.updateEntity(request, existing)));
+
+        // R3a: snapshot stare usluge — promena usluge menja BOM (service_inventory_item)
+        var before = treatmentService.findById(id, clinicId);
+        var oldServiceId = before.getServiceId();
+
+        var result = treatmentService.update(id, clinicId,
+                existing -> treatmentMapper.updateEntity(request, existing));
+
+        if (!java.util.Objects.equals(oldServiceId, result.getServiceId())) {
+            try {
+                if (oldServiceId != null) {
+                    inventoryDeductionService.reverseForTreatment(clinicId, id);
+                }
+                if (result.getServiceId() != null) {
+                    inventoryDeductionService.deductForTreatment(
+                            clinicId, result.getServiceId(), id, result.getVetId());
+                }
+            } catch (Exception ex) {
+                log.error("Korekcija inventara pri izmeni treatment {} (clinic {}) nije uspela",
+                        id, clinicId, ex);
+            }
+        }
+
+        // 1b sync: izmena tretmana → preslikaj na povezanu fakturnu stavku (karton = izvor istine)
+        try {
+            var invoice = invoiceRepository.findByMedicalRecordIdAndDeletedFalse(result.getMedicalRecordId());
+            if (invoice.isPresent()) {
+                var inv = invoice.get();
+                var status = inv.getStatus();
+                if (status == com.softart.vetclinic.enums.InvoiceStatus.DRAFT
+                    || status == com.softart.vetclinic.enums.InvoiceStatus.ISSUED
+                    || status == com.softart.vetclinic.enums.InvoiceStatus.OVERDUE) {
+
+                    // efektivna cena: override sa tretmana ?? cena iz kataloga usluge
+                    BigDecimal effectivePrice = result.getUnitPrice();
+                    if (effectivePrice == null && result.getServiceId() != null) {
+                        effectivePrice = serviceRepository.findByIdAndClinicIdAndDeletedFalse(result.getServiceId(), clinicId)
+                                .map(s -> s.getPrice()).orElse(null);
+                    }
+                    if (effectivePrice == null) {
+                        effectivePrice = BigDecimal.ZERO;
+                    }
+
+                    var items = invoiceItemRepository.findByClinicIdAndInvoiceIdAndDeletedFalseOrderBySortOrderAsc(clinicId, inv.getId());
+                    boolean changed = false;
+                    for (var li : items) {
+                        if (id.equals(li.getTreatmentId())) {
+                            li.setDescription(result.getName());
+                            li.setQuantity(result.getQuantity());
+                            li.setUnitPrice(effectivePrice);
+                            li.setDiscountPercent(result.getDiscountPercent());
+                            li.setLineTotal(InvoiceItemTotals.computeLineTotal(li));
+                            invoiceItemRepository.save(li);
+                            changed = true;
+                        }
+                    }
+                    if (changed) {
+                        invoiceTotalsRecalculationService.recalculate(clinicId, inv.getId());
+                    }
+                }
+            }
+        } catch (Exception e) {
+            log.error("1b sync fakturne stavke pri izmeni treatment {} (clinic {}) nije uspeo", id, clinicId, e);
+        }
+
+        return treatmentMapper.toResponse(result);
     }
 
     @DeleteMapping("/{id}")
@@ -172,7 +245,8 @@ public class TreatmentController {
         try {
             inventoryDeductionService.reverseForTreatment(clinicId, id);
         } catch (Exception ex) {
-            ex.printStackTrace();
+            log.error("Auto-reverzija inventara za treatment {} (clinic {}) nije uspela",
+                    id, clinicId, ex);
         }
     }
 

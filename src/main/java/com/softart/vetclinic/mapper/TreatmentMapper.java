@@ -13,6 +13,8 @@ public interface TreatmentMapper {
     @Mapping(target = "vetName", expression = "java(entity.getVet() != null ? entity.getVet().getFirstName() + \" \" + entity.getVet().getLastName() : null)")
     TreatmentResponse toResponse(Treatment entity);
 
+    @Mapping(target = "quantity", source = "quantity", defaultExpression = "java(java.math.BigDecimal.ONE)")
+    @Mapping(target = "discountPercent", source = "discountPercent", defaultExpression = "java(java.math.BigDecimal.ZERO)")
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "clinicId", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
@@ -27,6 +29,7 @@ public interface TreatmentMapper {
     Treatment toEntity(CreateTreatmentRequest dto);
 
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
+    @Mapping(target = "unitPrice", nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.SET_TO_NULL)
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "clinicId", ignore = true)
     @Mapping(target = "createdAt", ignore = true)

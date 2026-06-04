@@ -1,6 +1,7 @@
 package com.softart.vetclinic.controller;
 
 import java.util.List;
+
 import java.util.UUID;
 
 import org.springframework.data.domain.Page;
@@ -28,11 +29,13 @@ import com.softart.vetclinic.service.TaxRateSnapshotApplier;
 import com.softart.vetclinic.util.InvoiceItemTotals;
 
 import jakarta.validation.Valid;
+import lombok.extern.slf4j.Slf4j;
 import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequestMapping("/api/invoice-items")
 @RequiredArgsConstructor
+@Slf4j
 public class InvoiceItemController {
 
     private final InvoiceItemService invoiceItemService;
@@ -71,7 +74,8 @@ public class InvoiceItemController {
     	                clinicId, result.getInventoryItemId(),
     	                result.getQuantity(), result.getId(), null);
     	    } catch (Exception ex) {
-    	        ex.printStackTrace();
+    	        log.error("Auto-dedukcija inventara za invoice_item {} (clinic {}) nije uspela",
+    	                result.getId(), clinicId, ex);
     	    }
     	}
     	invoiceTotalsRecalculationService.recalculate(clinicId, result.getInvoiceId());
@@ -83,6 +87,12 @@ public class InvoiceItemController {
             @RequestHeader("X-Clinic-Id") UUID clinicId,
             @PathVariable UUID id,
             @Valid @RequestBody UpdateInvoiceItemRequest request) {
+
+        // R3a: snapshot PRE izmene — za korekciju inventara
+        var before = invoiceItemService.findById(id, clinicId);
+        var oldInventoryItemId = before.getInventoryItemId();
+        var oldQuantity = before.getQuantity();
+
     	var result = invoiceItemService.update(id, clinicId, existing -> {
     	    invoiceItemMapper.updateEntity(request, existing);
     	    if (request.taxRateId() != null && !request.taxRateId().equals(existing.getTaxRateId())) {
@@ -90,9 +100,28 @@ public class InvoiceItemController {
     	    }
     	    existing.setLineTotal(InvoiceItemTotals.computeLineTotal(existing));
     	});
-    	// TODO: Update količine/artikla na stavci sa inventoryItemId NE menja
-    	//       inventarne tx-e. Workaround: obrisati stavku i kreirati novu.
-    	//       Pravi fix (kompenzacija razlike) — V33+.
+
+    	// R3a: ako se artikal ILI količina promenila → reverse stare dedukcije + deduktuj novu
+    	boolean inventoryChanged =
+    	        !java.util.Objects.equals(oldInventoryItemId, result.getInventoryItemId())
+    	        || (oldQuantity != null && result.getQuantity() != null
+    	            && oldQuantity.compareTo(result.getQuantity()) != 0);
+    	if (inventoryChanged) {
+    	    try {
+    	        if (oldInventoryItemId != null) {
+    	            inventoryDeductionService.reverseForInvoiceItem(clinicId, id);
+    	        }
+    	        if (result.getInventoryItemId() != null) {
+    	            inventoryDeductionService.deductForInvoiceItem(
+    	                    clinicId, result.getInventoryItemId(),
+    	                    result.getQuantity(), result.getId(), null);
+    	        }
+    	    } catch (Exception ex) {
+    	        log.error("Korekcija inventara pri izmeni invoice_item {} (clinic {}) nije uspela",
+    	                id, clinicId, ex);
+    	    }
+    	}
+
     	invoiceTotalsRecalculationService.recalculate(clinicId, result.getInvoiceId());
         return invoiceItemMapper.toResponse(result);
     }
@@ -110,7 +139,8 @@ public class InvoiceItemController {
             try {
                 inventoryDeductionService.reverseForInvoiceItem(clinicId, id);
             } catch (Exception ex) {
-                ex.printStackTrace();
+                log.error("Auto-reverzija inventara za invoice_item {} (clinic {}) nije uspela",
+                        id, clinicId, ex);
             }
         }
         invoiceTotalsRecalculationService.recalculate(clinicId, invoiceId);

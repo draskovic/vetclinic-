@@ -20,7 +20,7 @@ import java.util.UUID;
  *
  * Plaćanje (Smart A — tendered/change model):
  *  - tenderedAmount = koliko je kupac dao u kasu (klijent salje).
- *  - Server kompjutira:
+ *  - Server računa:
  *      payment.amount = min(tenderedAmount, total)
  *      changeAmount   = max(tenderedAmount - total, 0)        (vraća se u response)
  *      status         = tenderedAmount >= total ? PAID : PARTIALLY_PAID
@@ -42,7 +42,7 @@ public record QuickSaleRequest(
         @NotEmpty @Valid List<QuickSaleLineRequest> lines,
 
         @NotNull PaymentMethod paymentMethod,
-        @NotNull @Positive BigDecimal tenderedAmount,
+        @NotNull BigDecimal tenderedAmount,
         OffsetDateTime paidAt,
         String paymentReferenceNumber,
         String paymentNote

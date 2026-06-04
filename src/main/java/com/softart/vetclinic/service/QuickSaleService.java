@@ -222,9 +222,12 @@ public class QuickSaleService {
         BigDecimal totalScaled = subtotal.add(taxAmount).setScale(2, RoundingMode.HALF_UP);
 
         // ============================================================
-        // 5) Payment kompjutacija (Smart A — tendered/change)
+        // 5) Payment računanje (Smart A — tendered/change)
         // ============================================================
         BigDecimal tendered = request.tenderedAmount();
+        if (totalScaled.signum() > 0 && tendered.signum() <= 0) {
+            throw new BadRequestException("Iznos primljen od kupca mora biti veći od 0.");
+        }
         BigDecimal paid = tendered.min(totalScaled);
         BigDecimal change = tendered.subtract(totalScaled).max(BigDecimal.ZERO);
 

@@ -28,7 +28,7 @@ class TreatmentControllerTest extends IntegrationTestBase {
         seedPrerequisites();
 
         var request = new CreateTreatmentRequest(recordId, null, userAId,
-                "Wound cleaning", "Cleaned and disinfected wound", null, "Successful");
+                "Wound cleaning", "Cleaned and disinfected wound", null, "Successful", null, null, null);
 
         performPost("/api/treatments", tokenA, clinicAId, request)
                 .andExpect(status().isCreated())
@@ -39,7 +39,7 @@ class TreatmentControllerTest extends IntegrationTestBase {
     @Test
     @DisplayName("POST /api/treatments - missing required fields returns 400")
     void create_missingRequired() throws Exception {
-        var request = new CreateTreatmentRequest(null, null, null, "", null, null, null);
+        var request = new CreateTreatmentRequest(null, null, null, "", null, null, null, null, null, null);
 
         performPost("/api/treatments", tokenA, clinicAId, request)
                 .andExpect(status().isBadRequest());

@@ -6,6 +6,7 @@ import com.softart.vetclinic.enums.AdjustmentReason;
 import com.softart.vetclinic.enums.InventoryCategory;
 import com.softart.vetclinic.enums.InventoryTransactionType;
 import com.softart.vetclinic.repository.InventoryItemRepository;
+import com.softart.vetclinic.exception.BadRequestException;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -93,19 +94,35 @@ public class InventoryItemService extends AbstractCrudService<InventoryItem, Inv
     }
 
     /**
-     * Override: zabranjuje direktnu izmenu quantityOnHand kroz update DTO.
-     * Sve promene zaliha MORAJU ići kroz inventory_transaction (audit trail).
-     * Vrednost quantityOnHand iz DTO-a se ignoriše i vraća na originalnu.
+     * Override sa dve zaštite na postojećem artiklu:
+     *
+     * 1) quantityOnHand se NE sme menjati direktno kroz DTO — sve promene zaliha
+     *    MORAJU ići kroz inventory_transaction (audit trail). Vrednost iz DTO-a se
+     *    ignoriše i vraća na originalnu.
+     *
+     * 2) trackBatches (način praćenja) se NE sme menjati posle kreiranja — flip bi
+     *    pregazio quantityOnHand sa SUM(lotova) i tiho izgubio stanje. Pokušaj → 400.
      */
     @Override
     @Transactional
     public InventoryItem update(UUID id, UUID clinicId, Consumer<InventoryItem> updater) {
         InventoryItem existing = findById(id, clinicId);
         BigDecimal originalQty = existing.getQuantityOnHand();
+        Boolean originalTrackBatches = existing.getTrackBatches();
 
         Consumer<InventoryItem> protectedUpdater = item -> {
             updater.accept(item);
-            // Forsirano vraćanje — ignorišemo bilo kakvu vrednost koju je DTO pokušao da postavi
+
+            // R2: track_batches se NE sme menjati na postojećem artiklu.
+            // Flip bi pregazio quantity_on_hand sa SUM(lotova) -> tiha nula
+            // (vidi "TestFIFO" iz dijagnostike). Novi nacin pracenja = novi artikal.
+            if (!originalTrackBatches.equals(item.getTrackBatches())) {
+                throw new BadRequestException(
+                        "Praćenje po lotovima se ne može menjati na postojećem artiklu. "
+                        + "Napravite novi artikal sa željenim načinom praćenja.");
+            }
+
+            // Forsirano vraćanje — sve promene zaliha idu kroz inventory_transaction
             item.setQuantityOnHand(originalQty);
         };
 

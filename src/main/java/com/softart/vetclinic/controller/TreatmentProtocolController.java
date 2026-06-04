@@ -1,6 +1,7 @@
 package com.softart.vetclinic.controller;
 
 import java.math.BigDecimal;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -8,6 +9,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import java.util.HashMap;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -48,10 +50,12 @@ import com.softart.vetclinic.util.InvoiceItemTotals;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @RestController
 @RequestMapping("/api/treatment-protocols")
 @RequiredArgsConstructor
+@Slf4j
 public class TreatmentProtocolController {
 
     private final TreatmentProtocolService protocolService;
@@ -152,6 +156,8 @@ public class TreatmentProtocolController {
             treatment.setVetId(request.vetId());
             treatment.setServiceId(item.getServiceId());
             treatment.setName(service.getName());
+            treatment.setQuantity(BigDecimal.valueOf(item.getQuantity()));
+            treatment.setUnitPrice(service.getPrice());
             if (item.getNotes() != null) {
                 treatment.setDescription(item.getNotes());
             }
@@ -159,6 +165,14 @@ public class TreatmentProtocolController {
             createdTreatments.add(treatmentService.create(treatment, clinicId));
         }
 
+        Map<UUID, Treatment> serviceToTreatment = new HashMap<>();
+        for (var t : existingTreatments) {
+            if (t.getServiceId() != null) serviceToTreatment.putIfAbsent(t.getServiceId(), t);
+        }
+        for (var t : createdTreatments) {
+            if (t.getServiceId() != null) serviceToTreatment.putIfAbsent(t.getServiceId(), t);
+        }
+        
         // Auto-fakturisanje
         try {
             var invoice = invoiceRepository.findByMedicalRecordIdAndDeletedFalse(request.medicalRecordId());
@@ -181,14 +195,17 @@ public class TreatmentProtocolController {
                         if (service == null) continue;
                         if (existingInvoiceServiceIds.contains(item.getServiceId())) continue;
 
+                        var srcTreatment = serviceToTreatment.get(item.getServiceId());
+
                         var invoiceItem = new InvoiceItem();
                         invoiceItem.setClinicId(clinicId);
                         invoiceItem.setInvoiceId(inv.getId());
                         invoiceItem.setServiceId(item.getServiceId());
+                        invoiceItem.setTreatmentId(srcTreatment != null ? srcTreatment.getId() : null);
                         invoiceItem.setDescription(service.getName());
-                        invoiceItem.setQuantity(BigDecimal.valueOf(item.getQuantity()));
-                        invoiceItem.setDiscountPercent(BigDecimal.ZERO);
-                        invoiceItem.setUnitPrice(service.getPrice());
+                        invoiceItem.setQuantity(srcTreatment != null ? srcTreatment.getQuantity() : BigDecimal.valueOf(item.getQuantity()));
+                        invoiceItem.setDiscountPercent(srcTreatment != null ? srcTreatment.getDiscountPercent() : BigDecimal.ZERO);
+                        invoiceItem.setUnitPrice(srcTreatment != null && srcTreatment.getUnitPrice() != null ? srcTreatment.getUnitPrice() : service.getPrice());
 
                         taxRateSnapshotApplier.apply(invoiceItem, service.getTaxRateId(), clinicId);
                         invoiceItem.setLineTotal(InvoiceItemTotals.computeLineTotal(invoiceItem));
@@ -212,7 +229,7 @@ public class TreatmentProtocolController {
                 }
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("Auto-dedukcija inventara za protokol (clinic {}) nije uspela", clinicId, e);
         }
 
         return createdTreatments.stream().map(t -> {
@@ -222,6 +239,7 @@ public class TreatmentProtocolController {
                 service != null ? service.getName() : t.getName(),
                 t.getVetId(), null,
                 t.getName(), t.getDescription(), t.getToothChart(), t.getResult(),
+                t.getQuantity(), t.getUnitPrice(), t.getDiscountPercent(),
                 t.getCreatedAt(), t.getUpdatedAt()
             );
         }).toList();
