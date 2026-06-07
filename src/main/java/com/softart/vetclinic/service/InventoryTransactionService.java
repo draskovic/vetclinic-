@@ -1,20 +1,24 @@
 package com.softart.vetclinic.service;
 
+import com.softart.vetclinic.entity.InventoryBatch;
+import com.softart.vetclinic.entity.InventoryItem;
 import com.softart.vetclinic.entity.InventoryTransaction;
+import com.softart.vetclinic.enums.InventoryTransactionType;
+import com.softart.vetclinic.exception.BadRequestException;
 import com.softart.vetclinic.repository.InventoryBatchRepository;
 import com.softart.vetclinic.repository.InventoryItemRepository;
 import com.softart.vetclinic.repository.InventoryTransactionRepository;
+import com.softart.vetclinic.repository.ProductRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import com.softart.vetclinic.enums.InventoryTransactionType;
 
-
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-import com.softart.vetclinic.exception.BadRequestException;
+import java.util.function.Consumer;
 
 @Service
 public class InventoryTransactionService extends AbstractCrudService<InventoryTransaction, InventoryTransactionRepository> {
@@ -22,21 +26,21 @@ public class InventoryTransactionService extends AbstractCrudService<InventoryTr
     private final InventoryTransactionRepository inventoryTransactionRepository;
     private final InventoryItemRepository inventoryItemRepository;
     private final InventoryBatchRepository inventoryBatchRepository;
-    private final InventoryBatchService inventoryBatchService;
+    private final ProductRepository productRepository;
     private final InventoryStockApplier stockApplier;
 
     public InventoryTransactionService(InventoryTransactionRepository inventoryTransactionRepository,
             InventoryItemRepository inventoryItemRepository,
             InventoryBatchRepository inventoryBatchRepository,
-            InventoryBatchService inventoryBatchService,
+            ProductRepository productRepository,
             InventoryStockApplier stockApplier) {
-				super(inventoryTransactionRepository);
-				this.inventoryTransactionRepository = inventoryTransactionRepository;
-				this.inventoryItemRepository = inventoryItemRepository;
-				this.inventoryBatchRepository = inventoryBatchRepository;
-				this.inventoryBatchService = inventoryBatchService;
-				this.stockApplier = stockApplier;
-			}
+        super(inventoryTransactionRepository);
+        this.inventoryTransactionRepository = inventoryTransactionRepository;
+        this.inventoryItemRepository = inventoryItemRepository;
+        this.inventoryBatchRepository = inventoryBatchRepository;
+        this.productRepository = productRepository;
+        this.stockApplier = stockApplier;
+    }
 
     @Override
     protected String getEntityName() {
@@ -68,24 +72,10 @@ public class InventoryTransactionService extends AbstractCrudService<InventoryTr
         validateReason(entity);
     }
 
-    private void validateBatch(InventoryTransaction entity) {
-        var item = inventoryItemRepository.findByIdAndClinicIdAndDeletedFalse(
-                entity.getInventoryItemId(), entity.getClinicId())
-            .orElseThrow();
-        validateBatch(entity, item);
-    }
-
     /**
-     * Varijanta sa već-učitanim item-om — eliminiše N+1 kad se validacija
-     * poziva više puta u istom flow-u (create, update).
+     * Lot mora pripadati artiklu. (track_batches enforcement je u resolveBatchId — pre create-a.)
      */
-    private void validateBatch(InventoryTransaction entity, com.softart.vetclinic.entity.InventoryItem item) {
-        if (Boolean.TRUE.equals(item.getTrackBatches())) {
-            if (entity.getBatchId() == null) {
-                throw new BadRequestException("Za artikle sa lotovima, lot je obavezan");
-            }
-        }
-
+    private void validateBatch(InventoryTransaction entity) {
         if (entity.getBatchId() != null) {
             var batch = inventoryBatchRepository
                     .findByIdAndClinicIdAndDeletedFalse(entity.getBatchId(), entity.getClinicId())
@@ -95,63 +85,74 @@ public class InventoryTransactionService extends AbstractCrudService<InventoryTr
             }
         }
     }
-    
+
     private void validateReason(InventoryTransaction entity) {
         InventoryTransactionType type = entity.getType();
         if ((type == InventoryTransactionType.ADJUSTMENT || type == InventoryTransactionType.EXPIRED)
                 && entity.getReason() == null) {
             throw new BadRequestException(
-                    "Razlog (reason) je obavezan za transakcije tipa " + type.name()
-            );
+                    "Razlog (reason) je obavezan za transakcije tipa " + type.name());
         }
     }
 
-    
+    /**
+     * Razrešava batch_id kad nije zadat:
+     *  - artikal sa lotovima (product.track_batches) → lot je obavezan (400),
+     *  - ne-batch artikal → DEFAULT lot (sav IN/OUT/ADJ ide na njega).
+     * Posle splita svaka tx ima batch_id.
+     */
+    private void resolveBatchId(InventoryTransaction entity, UUID clinicId) {
+        if (entity.getBatchId() != null) return;
+
+        InventoryItem item = inventoryItemRepository
+                .findByIdAndClinicIdAndDeletedFalse(entity.getInventoryItemId(), clinicId)
+                .orElseThrow(() -> new BadRequestException("Artikal ne postoji"));
+
+        boolean tracks = productRepository.findByIdAndClinicIdAndDeletedFalse(item.getProductId(), clinicId)
+                .map(p -> Boolean.TRUE.equals(p.getTrackBatches()))
+                .orElse(false);
+        if (tracks) {
+            throw new BadRequestException("Za artikle sa lotovima, lot je obavezan");
+        }
+
+        InventoryBatch def = inventoryBatchRepository
+                .findDefaultByItemForUpdate(clinicId, entity.getInventoryItemId())
+                .orElseThrow(() -> new IllegalStateException(
+                        "DEFAULT lot ne postoji za artikal " + entity.getInventoryItemId()));
+        entity.setBatchId(def.getId());
+    }
+
     @Override
     @Transactional
     public InventoryTransaction create(InventoryTransaction entity, UUID clinicId) {
+        resolveBatchId(entity, clinicId);
         InventoryTransaction saved = super.create(entity, clinicId);
 
-        if (entity.getBatchId() != null) {
-            // Batch-aware tx — primeni delta na lot, pa sinhronizuj item.qty = SUM(batches)
-            inventoryBatchRepository
-                    .findByIdAndClinicIdAndDeletedFalseForUpdate(entity.getBatchId(), clinicId)
-                    .ifPresent(batch -> {
-                        stockApplier.applyToBatch(batch, entity.getType(), entity.getQuantity());
-                        inventoryBatchRepository.save(batch);
-                    });
-            inventoryItemRepository
-                    .findByIdAndClinicIdAndDeletedFalse(entity.getInventoryItemId(), clinicId)
-                    .ifPresent(item -> inventoryBatchService.syncItemQuantity(clinicId, item));
-        } else {
-            // Item-level tx — direktna primena na quantityOnHand
-            inventoryItemRepository
-                    .findByIdAndClinicIdAndDeletedFalse(entity.getInventoryItemId(), clinicId)
-                    .ifPresent(item -> {
-                        stockApplier.applyToItem(item, entity.getType(), entity.getQuantity());
-                        inventoryItemRepository.save(item);
-                    });
-        }
+        // batch_id je sad uvek postavljen → primeni deltu na lot (stanje artikla = SUM lotova)
+        inventoryBatchRepository
+                .findByIdAndClinicIdAndDeletedFalseForUpdate(entity.getBatchId(), clinicId)
+                .ifPresent(batch -> {
+                    stockApplier.applyToBatch(batch, entity.getType(), entity.getQuantity());
+                    inventoryBatchRepository.save(batch);
+                });
 
         return saved;
     }
 
     @Override
     @Transactional
-    public InventoryTransaction update(UUID id, UUID clinicId, java.util.function.Consumer<InventoryTransaction> updater) {
-        // Snapshot starih vrednosti PRE primene update-a
+    public InventoryTransaction update(UUID id, UUID clinicId, Consumer<InventoryTransaction> updater) {
         InventoryTransaction existing = findById(id, clinicId);
-        UUID oldItemId = existing.getInventoryItemId();
         UUID oldBatchId = existing.getBatchId();
         InventoryTransactionType oldType = existing.getType();
-        java.math.BigDecimal oldQty = existing.getQuantity();
+        BigDecimal oldQty = existing.getQuantity();
 
-        // Primeni update (ovo menja existing objekat)
         InventoryTransaction saved = super.update(id, clinicId, updater);
+        resolveBatchId(saved, clinicId);
         validateReason(saved);
         validateBatch(saved);
 
-        // 1) Poništi efekat STARE transakcije (na starom batch-u ili starom item-u)
+        // 1) poništi efekat STARE tx na starom lotu
         if (oldBatchId != null) {
             inventoryBatchRepository
                     .findByIdAndClinicIdAndDeletedFalseForUpdate(oldBatchId, clinicId)
@@ -159,16 +160,8 @@ public class InventoryTransactionService extends AbstractCrudService<InventoryTr
                         stockApplier.reverseOnBatch(batch, oldType, oldQty);
                         inventoryBatchRepository.save(batch);
                     });
-        } else {
-            inventoryItemRepository
-                    .findByIdAndClinicIdAndDeletedFalse(oldItemId, clinicId)
-                    .ifPresent(item -> {
-                        stockApplier.reverseOnItem(item, oldType, oldQty);
-                        inventoryItemRepository.save(item);
-                    });
         }
-
-        // 2) Primeni efekat NOVE transakcije (na novom batch-u ili novom item-u)
+        // 2) primeni efekat NOVE tx na novom lotu
         if (saved.getBatchId() != null) {
             inventoryBatchRepository
                     .findByIdAndClinicIdAndDeletedFalseForUpdate(saved.getBatchId(), clinicId)
@@ -176,26 +169,6 @@ public class InventoryTransactionService extends AbstractCrudService<InventoryTr
                         stockApplier.applyToBatch(batch, saved.getType(), saved.getQuantity());
                         inventoryBatchRepository.save(batch);
                     });
-        } else {
-            inventoryItemRepository
-                    .findByIdAndClinicIdAndDeletedFalse(saved.getInventoryItemId(), clinicId)
-                    .ifPresent(item -> {
-                        stockApplier.applyToItem(item, saved.getType(), saved.getQuantity());
-                        inventoryItemRepository.save(item);
-                    });
-        }
-
-        // 3) Sinhronizuj item.quantityOnHand iz lotova — za stari item (uvek ako batch flow)
-        //    i za novi item ako se promenio
-        if (oldBatchId != null) {
-            inventoryItemRepository
-                    .findByIdAndClinicIdAndDeletedFalse(oldItemId, clinicId)
-                    .ifPresent(item -> inventoryBatchService.syncItemQuantity(clinicId, item));
-        }
-        if (saved.getBatchId() != null && !saved.getInventoryItemId().equals(oldItemId)) {
-            inventoryItemRepository
-                    .findByIdAndClinicIdAndDeletedFalse(saved.getInventoryItemId(), clinicId)
-                    .ifPresent(item -> inventoryBatchService.syncItemQuantity(clinicId, item));
         }
 
         return saved;
@@ -203,12 +176,10 @@ public class InventoryTransactionService extends AbstractCrudService<InventoryTr
 
     @Transactional
     public InventoryTransaction reverse(UUID id, UUID clinicId) {
-        // Dohvati original sa lock-om (serijalizacija paralelnih storno zahteva)
         InventoryTransaction original = inventoryTransactionRepository
                 .findByIdAndClinicIdAndDeletedFalseForUpdate(id, clinicId)
                 .orElseThrow(() -> new BadRequestException("Transakcija ne postoji"));
 
-        // Validacije
         if (original.getType() == InventoryTransactionType.ADJUSTMENT) {
             throw new BadRequestException(
                     "Korekcija se ne može stornirati. Greška se ispravlja novom korekcijom.");
@@ -220,7 +191,6 @@ public class InventoryTransactionService extends AbstractCrudService<InventoryTr
             throw new BadRequestException("Transakcija je već stornirana.");
         }
 
-        // Edge case — obrisan lot
         if (original.getBatchId() != null) {
             boolean batchExists = inventoryBatchRepository
                     .findByIdAndClinicIdAndDeletedFalse(original.getBatchId(), clinicId)
@@ -231,7 +201,6 @@ public class InventoryTransactionService extends AbstractCrudService<InventoryTr
             }
         }
 
-        // Kreiraj storno: obrnut tip, ista količina, isti batch/item
         InventoryTransaction storno = new InventoryTransaction();
         storno.setInventoryItemId(original.getInventoryItemId());
         storno.setBatchId(original.getBatchId());
@@ -245,10 +214,8 @@ public class InventoryTransactionService extends AbstractCrudService<InventoryTr
         storno.setNote("Storno transakcije " + original.getType().name()
                 + " od " + original.getCreatedAt().toLocalDate());
 
-        // Prolazi kroz standardni create flow — primenjuje se na batch/item
         InventoryTransaction saved = create(storno, clinicId);
 
-        // Obeleži original kao storniran (u istoj transakciji)
         original.setReversed(true);
         inventoryTransactionRepository.save(original);
 
@@ -257,9 +224,9 @@ public class InventoryTransactionService extends AbstractCrudService<InventoryTr
 
     @Transactional(readOnly = true)
     public List<InventoryTransaction> findByItem(UUID clinicId, UUID inventoryItemId) {
-    	return inventoryTransactionRepository.findByClinicIdAndInventoryItemIdAndDeletedFalseOrderByCreatedAtDesc(clinicId, inventoryItemId);
+        return inventoryTransactionRepository.findByClinicIdAndInventoryItemIdAndDeletedFalseOrderByCreatedAtDesc(clinicId, inventoryItemId);
     }
-    
+
     @Transactional(readOnly = true)
     public Page<InventoryTransaction> searchAll(UUID clinicId, String search,
                                                  InventoryTransactionType type,
@@ -271,5 +238,4 @@ public class InventoryTransactionService extends AbstractCrudService<InventoryTr
                 search == null || search.isBlank() ? "" : search,
                 type, inventoryItemId, pageable);
     }
-
 }

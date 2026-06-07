@@ -10,7 +10,7 @@ import org.mapstruct.*;
 public interface InvoiceItemMapper {
 
     @Mapping(target = "serviceName", source = "service.name")
-    @Mapping(target = "inventoryItemName", source = "inventoryItem.name")
+    @Mapping(target = "inventoryItemName", source = "inventoryItem.product.name")
     InvoiceItemResponse toResponse(InvoiceItem entity);
 
     @Mapping(target = "id", ignore = true)

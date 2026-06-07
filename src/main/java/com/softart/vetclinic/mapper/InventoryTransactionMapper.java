@@ -9,7 +9,7 @@ import org.mapstruct.*;
 @Mapper(componentModel = "spring")
 public interface InventoryTransactionMapper {
 
-	@Mapping(target = "inventoryItemName", source = "inventoryItem.name")
+    @Mapping(target = "inventoryItemName", ignore = true)
 	@Mapping(target = "performedByName", expression = "java(entity.getPerformedByUser() != null ? entity.getPerformedByUser().getFirstName() + \" \" + entity.getPerformedByUser().getLastName() : null)")
 	@Mapping(target = "batchDeleted", ignore = true)    // ← NOVO
 	@Mapping(target = "batchNumber", ignore = true)

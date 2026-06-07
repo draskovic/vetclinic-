@@ -99,4 +99,42 @@ public interface InventoryBatchRepository extends JpaRepository<InventoryBatch, 
     @Query("SELECT b.id, b.batchNumber FROM InventoryBatch b WHERE b.id IN :ids AND b.clinicId = :clinicId")
     List<Object[]> findBatchNumbersByIdInAndClinicId(@Param("ids") Collection<UUID> ids,
                                                       @Param("clinicId") UUID clinicId);
+    
+    // DEFAULT batch artikla (sistemski lot — nosi ne-batch stanje + preliv/minus)
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT b FROM InventoryBatch b " +
+           "WHERE b.clinicId = :clinicId AND b.inventoryItemId = :itemId " +
+           "AND b.isDefault = true AND b.deleted = false")
+    Optional<InventoryBatch> findDefaultByItemForUpdate(@Param("clinicId") UUID clinicId,
+                                                        @Param("itemId") UUID itemId);
+
+    // FEFO: realni (ne-DEFAULT) lotovi sa zalihom, expiry ASC NULLS LAST
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT b FROM InventoryBatch b " +
+           "WHERE b.clinicId = :clinicId AND b.inventoryItemId = :itemId " +
+           "AND b.deleted = false AND b.isDefault = false AND b.quantityOnHand > 0 " +
+           "ORDER BY CASE WHEN b.expiryDate IS NULL THEN 1 ELSE 0 END, b.expiryDate ASC")
+    List<InventoryBatch> findActiveNonDefaultByItemFifoForUpdate(@Param("clinicId") UUID clinicId,
+                                                                 @Param("itemId") UUID itemId);
+
+    // Batch-fetch stanja po stranici: SUM(lotova) GROUP BY artikal (index-only preko idx_batch_item_qty)
+    @Query("SELECT b.inventoryItemId AS itemId, COALESCE(SUM(b.quantityOnHand), 0) AS qty " +
+           "FROM InventoryBatch b " +
+           "WHERE b.clinicId = :clinicId AND b.inventoryItemId IN :itemIds AND b.deleted = false " +
+           "GROUP BY b.inventoryItemId")
+    List<ItemQuantity> sumQuantityByItemIds(@Param("clinicId") UUID clinicId,
+                                            @Param("itemIds") Collection<UUID> itemIds);
+
+    interface ItemQuantity {
+        UUID getItemId();
+        BigDecimal getQty();
+    }
+
+    // R2 guard: postoji li ijedan realni (ne-DEFAULT) lot za bilo koji artikal ovog product-a
+    @Query("SELECT CASE WHEN COUNT(b) > 0 THEN true ELSE false END FROM InventoryBatch b " +
+           "JOIN b.inventoryItem i " +
+           "WHERE i.clinicId = :clinicId AND i.productId = :productId " +
+           "AND b.isDefault = false AND b.deleted = false")
+    boolean existsRealBatchByProduct(@Param("clinicId") UUID clinicId,
+                                     @Param("productId") UUID productId);
 }

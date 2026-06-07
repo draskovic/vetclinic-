@@ -16,20 +16,20 @@ public interface PrescriptionRepository extends JpaRepository<Prescription, UUID
 
     List<Prescription> findByMedicalRecordId(UUID medicalRecordId);
 
-    @EntityGraph(attributePaths = {"pet", "vet", "inventoryItem"})
+    @EntityGraph(attributePaths = {"pet", "vet", "inventoryItem", "inventoryItem.product"})
     List<Prescription> findByClinicIdAndPetId(UUID clinicId, UUID petId);
 
-    @EntityGraph(attributePaths = {"pet", "vet", "inventoryItem"})
+    @EntityGraph(attributePaths = {"pet", "vet", "inventoryItem", "inventoryItem.product"})
     Optional<Prescription> findByIdAndClinicIdAndDeletedFalse(UUID id, UUID clinicId);
 
-    @EntityGraph(attributePaths = {"pet", "vet", "inventoryItem"})
+    @EntityGraph(attributePaths = {"pet", "vet", "inventoryItem", "inventoryItem.product"})
     Page<Prescription> findByClinicIdAndDeletedFalse(UUID clinicId, Pageable pageable);
 
     boolean existsByIdAndClinicIdAndDeletedFalse(UUID id, UUID clinicId);
 
-    @EntityGraph(attributePaths = {"pet", "vet", "inventoryItem"})
+    @EntityGraph(attributePaths = {"pet", "vet", "inventoryItem", "inventoryItem.product"})
     List<Prescription> findByClinicIdAndMedicalRecordIdAndDeletedFalse(UUID clinicId, UUID medicalRecordId);
 
-    @EntityGraph(attributePaths = {"pet", "vet", "inventoryItem"})
+    @EntityGraph(attributePaths = {"pet", "vet", "inventoryItem", "inventoryItem.product"})
     List<Prescription> findByClinicIdAndPetIdAndDeletedFalse(UUID clinicId, UUID petId);
 }

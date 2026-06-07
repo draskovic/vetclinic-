@@ -1,7 +1,7 @@
 package com.softart.vetclinic.service;
 
 import com.softart.vetclinic.entity.ServiceInventoryItem;
-import com.softart.vetclinic.repository.InventoryItemRepository;
+import com.softart.vetclinic.repository.ProductRepository;
 import com.softart.vetclinic.repository.ServiceInventoryItemRepository;
 import com.softart.vetclinic.repository.ServiceRepository;
 import org.springframework.data.domain.Page;
@@ -17,15 +17,15 @@ public class ServiceInventoryItemService extends AbstractCrudService<ServiceInve
 
     private final ServiceInventoryItemRepository repository;
     private final ServiceRepository serviceRepository;
-    private final InventoryItemRepository inventoryItemRepository;
+    private final ProductRepository productRepository;
 
     public ServiceInventoryItemService(ServiceInventoryItemRepository repository,
                                        ServiceRepository serviceRepository,
-                                       InventoryItemRepository inventoryItemRepository) {
+                                       ProductRepository productRepository) {
         super(repository);
         this.repository = repository;
         this.serviceRepository = serviceRepository;
-        this.inventoryItemRepository = inventoryItemRepository;
+        this.productRepository = productRepository;
     }
 
     @Override
@@ -55,8 +55,8 @@ public class ServiceInventoryItemService extends AbstractCrudService<ServiceInve
             "Service", "id", entity.getServiceId()
         );
         requireExists(
-            inventoryItemRepository.existsByIdAndClinicIdAndDeletedFalse(entity.getInventoryItemId(), entity.getClinicId()),
-            "InventoryItem", "id", entity.getInventoryItemId()
+            productRepository.existsByIdAndClinicIdAndDeletedFalse(entity.getProductId(), entity.getClinicId()),
+            "Product", "id", entity.getProductId()
         );
     }
 
@@ -66,7 +66,7 @@ public class ServiceInventoryItemService extends AbstractCrudService<ServiceInve
     }
 
     @Transactional(readOnly = true)
-    public List<ServiceInventoryItem> findByInventoryItem(UUID clinicId, UUID inventoryItemId) {
-        return repository.findByClinicIdAndInventoryItemIdAndDeletedFalse(clinicId, inventoryItemId);
+    public List<ServiceInventoryItem> findByProduct(UUID clinicId, UUID productId) {
+        return repository.findByClinicIdAndProductIdAndDeletedFalse(clinicId, productId);
     }
 }

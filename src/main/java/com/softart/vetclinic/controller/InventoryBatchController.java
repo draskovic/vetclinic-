@@ -5,8 +5,10 @@ import com.softart.vetclinic.dto.InventoryBatchResponse;
 import com.softart.vetclinic.dto.UpdateInventoryBatchRequest;
 import com.softart.vetclinic.entity.InventoryBatch;
 import com.softart.vetclinic.entity.InventoryItem;
+import com.softart.vetclinic.entity.Product;
 import com.softart.vetclinic.mapper.InventoryBatchMapper;
 import com.softart.vetclinic.repository.InventoryItemRepository;
+import com.softart.vetclinic.repository.ProductRepository;
 import com.softart.vetclinic.service.InventoryBatchService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -30,12 +32,17 @@ public class InventoryBatchController {
     private final InventoryBatchService batchService;
     private final InventoryBatchMapper batchMapper;
     private final InventoryItemRepository itemRepository;
+    private final ProductRepository productRepository;
 
     @GetMapping("/by-item/{itemId}")
     public List<InventoryBatchResponse> getByItem(
             @RequestHeader("X-Clinic-Id") UUID clinicId,
             @PathVariable UUID itemId) {
-        return enrich(batchService.findByItem(clinicId, itemId), clinicId);
+        // DEFAULT lot je sistemski (nosi ne-batch stanje/preliv) — ne prikazuje se u "Lotovi" tabu
+        List<InventoryBatch> batches = batchService.findByItem(clinicId, itemId).stream()
+                .filter(b -> !Boolean.TRUE.equals(b.getIsDefault()))
+                .toList();
+        return enrich(batches, clinicId);
     }
 
     @GetMapping("/expiring")
@@ -88,7 +95,7 @@ public class InventoryBatchController {
     }
 
     /**
-     * Batch-fetch artikala (name, unit) i izračunavanje daysUntilExpiry + status.
+     * Batch-fetch product (name, unit) + izračunavanje daysUntilExpiry + status.
      */
     private List<InventoryBatchResponse> enrich(List<InventoryBatch> batches, UUID clinicId) {
         if (batches.isEmpty()) return List.of();
@@ -100,14 +107,22 @@ public class InventoryBatchController {
                     .ifPresent(i -> itemMap.put(itemId, i));
         }
 
+        Set<UUID> productIds = itemMap.values().stream()
+                .map(InventoryItem::getProductId).collect(Collectors.toSet());
+        Map<UUID, Product> productMap = productIds.isEmpty()
+                ? Map.of()
+                : productRepository.findAllById(productIds).stream()
+                        .collect(Collectors.toMap(Product::getId, p -> p));
+
         LocalDate today = LocalDate.now();
 
         return batches.stream().map(b -> {
             InventoryBatchResponse base = batchMapper.toResponse(b);
             InventoryItem item = itemMap.get(b.getInventoryItemId());
+            Product product = item != null ? productMap.get(item.getProductId()) : null;
 
-            String itemName = item != null ? item.getName() : null;
-            String itemUnit = item != null ? item.getUnit() : null;
+            String itemName = product != null ? product.getName() : null;
+            String itemUnit = product != null ? product.getUnit() : null;
 
             Long daysUntil = null;
             String status = "OK";

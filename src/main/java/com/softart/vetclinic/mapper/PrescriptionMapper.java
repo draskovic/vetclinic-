@@ -11,7 +11,7 @@ public interface PrescriptionMapper {
 
     @Mapping(target = "petName", source = "pet.name")
     @Mapping(target = "vetName", expression = "java(entity.getVet() != null ? entity.getVet().getFirstName() + \" \" + entity.getVet().getLastName() : null)")
-    @Mapping(target = "inventoryItemName", source = "inventoryItem.name")
+    @Mapping(target = "inventoryItemName", source = "inventoryItem.product.name")
     PrescriptionResponse toResponse(Prescription entity);
 
     @Mapping(target = "id", ignore = true)

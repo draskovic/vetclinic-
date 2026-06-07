@@ -21,36 +21,46 @@ import java.util.UUID;
 @Repository
 public interface InventoryItemRepository extends JpaRepository<InventoryItem, UUID> {
 
-    @EntityGraph(attributePaths = {"location"})
-    List<InventoryItem> findByClinicIdAndCategoryAndActiveTrue(UUID clinicId, InventoryCategory category);
+    @Query("SELECT i FROM InventoryItem i JOIN i.product p " +
+            "WHERE i.clinicId = :clinicId AND i.deleted = false " +
+            "AND p.category = :category AND i.active = true")
+     List<InventoryItem> findByClinicIdAndProductCategoryAndActiveTrue(
+             @Param("clinicId") UUID clinicId,
+             @Param("category") InventoryCategory category);
 
     @EntityGraph(attributePaths = {"location"})
     Optional<InventoryItem> findByIdAndClinicIdAndDeletedFalse(UUID id, UUID clinicId);
 
+    List<InventoryItem> findByClinicIdAndProductIdAndDeletedFalse(UUID clinicId, UUID productId);
+    
     @EntityGraph(attributePaths = {"location"})
     Page<InventoryItem> findByClinicIdAndDeletedFalse(UUID clinicId, Pageable pageable);
 
     boolean existsByIdAndClinicIdAndDeletedFalse(UUID id, UUID clinicId);
     
-    @EntityGraph(attributePaths = {"location"})
-    @Query("SELECT i FROM InventoryItem i WHERE i.clinicId = :clinicId AND i.deleted = false " +
-           "AND (:category IS NULL OR i.category = :category) " +
-           "AND (:search = '' OR (LOWER(i.name) LIKE LOWER(CONCAT('%', :search, '%')) " +
-           "OR LOWER(i.sku) LIKE LOWER(CONCAT('%', :search, '%')) " +
-           "OR LOWER(i.unit) LIKE LOWER(CONCAT('%', :search, '%'))))")
-    Page<InventoryItem> searchByClinicIdAndCategory(
-            @Param("clinicId") UUID clinicId,
-            @Param("search") String search,
-            @Param("category") InventoryCategory category,
-            Pageable pageable);
+    @Query("SELECT i FROM InventoryItem i JOIN i.product p " +
+            "WHERE i.clinicId = :clinicId AND i.deleted = false " +
+            "AND (:category IS NULL OR p.category = :category) " +
+            "AND (:search = '' OR (LOWER(p.name) LIKE LOWER(CONCAT('%', :search, '%')) " +
+            "OR LOWER(p.sku) LIKE LOWER(CONCAT('%', :search, '%')) " +
+            "OR LOWER(p.unit) LIKE LOWER(CONCAT('%', :search, '%'))))")
+     Page<InventoryItem> searchByClinicIdAndCategory(
+             @Param("clinicId") UUID clinicId,
+             @Param("search") String search,
+             @Param("category") InventoryCategory category,
+             Pageable pageable);
 
 
     @Query("SELECT i FROM InventoryItem i WHERE i.clinicId = :clinicId AND i.deleted = false " +
-            "AND i.active = true AND i.reorderLevel IS NOT NULL AND i.quantityOnHand <= i.reorderLevel")
+            "AND i.active = true AND i.reorderLevel IS NOT NULL " +
+            "AND (SELECT COALESCE(SUM(b.quantityOnHand), 0) FROM InventoryBatch b " +
+            "     WHERE b.inventoryItemId = i.id AND b.deleted = false) <= i.reorderLevel")
      List<InventoryItem> findLowStock(@Param("clinicId") UUID clinicId);
 
      @Query("SELECT COUNT(i) FROM InventoryItem i WHERE i.clinicId = :clinicId AND i.deleted = false " +
-            "AND i.active = true AND i.reorderLevel IS NOT NULL AND i.quantityOnHand <= i.reorderLevel")
+            "AND i.active = true AND i.reorderLevel IS NOT NULL " +
+            "AND (SELECT COALESCE(SUM(b.quantityOnHand), 0) FROM InventoryBatch b " +
+            "     WHERE b.inventoryItemId = i.id AND b.deleted = false) <= i.reorderLevel")
      long countLowStock(@Param("clinicId") UUID clinicId);
      
      @Lock(LockModeType.PESSIMISTIC_WRITE)

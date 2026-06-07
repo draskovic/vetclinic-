@@ -1,6 +1,7 @@
 package com.softart.vetclinic.service;
 
 import com.softart.vetclinic.dto.QuickSaleLineRequest;
+
 import com.softart.vetclinic.dto.QuickSaleRequest;
 import com.softart.vetclinic.entity.Invoice;
 import com.softart.vetclinic.entity.InvoiceItem;
@@ -9,6 +10,7 @@ import com.softart.vetclinic.entity.Payment;
 import com.softart.vetclinic.enums.InvoiceStatus;
 import com.softart.vetclinic.exception.BadRequestException;
 import com.softart.vetclinic.exception.ResourceNotFoundException;
+import com.softart.vetclinic.repository.ProductRepository;
 import com.softart.vetclinic.repository.InventoryItemRepository;
 import com.softart.vetclinic.repository.InvoiceItemRepository;
 import com.softart.vetclinic.repository.OwnerRepository;
@@ -53,6 +55,7 @@ public class QuickSaleService {
     private final PaymentRepository paymentRepository;
     private final ServiceRepository serviceRepository;
     private final InventoryItemRepository inventoryItemRepository;
+    private final ProductRepository productRepository;
     private final OwnerRepository ownerRepository;
     private final TaxRateSnapshotApplier taxRateSnapshotApplier;
     private final InventoryDeductionService inventoryDeductionService;
@@ -62,6 +65,7 @@ public class QuickSaleService {
                             PaymentRepository paymentRepository,
                             ServiceRepository serviceRepository,
                             InventoryItemRepository inventoryItemRepository,
+                            ProductRepository productRepository,
                             OwnerRepository ownerRepository,
                             TaxRateSnapshotApplier taxRateSnapshotApplier,
                             InventoryDeductionService inventoryDeductionService) {
@@ -70,6 +74,7 @@ public class QuickSaleService {
         this.paymentRepository = paymentRepository;
         this.serviceRepository = serviceRepository;
         this.inventoryItemRepository = inventoryItemRepository;
+        this.productRepository = productRepository;
         this.ownerRepository = ownerRepository;
         this.taxRateSnapshotApplier = taxRateSnapshotApplier;
         this.inventoryDeductionService = inventoryDeductionService;
@@ -134,6 +139,16 @@ public class QuickSaleService {
                         .filter(i -> !Boolean.TRUE.equals(i.getDeleted())
                                 && clinicId.equals(i.getClinicId()))
                         .collect(Collectors.toMap(InventoryItem::getId, i -> i));
+        
+        // Batch-fetch product (name) za artikle u linijama — name je sad na product-u
+        Map<UUID, com.softart.vetclinic.entity.Product> productMap = inventoryItemMap.isEmpty()
+                ? Map.of()
+                : productRepository.findAllById(
+                        inventoryItemMap.values().stream()
+                                .map(InventoryItem::getProductId)
+                                .collect(Collectors.toSet())).stream()
+                        .collect(Collectors.toMap(
+                                com.softart.vetclinic.entity.Product::getId, p -> p));
 
         // ============================================================
         // 4) Build InvoiceItem entitete + akumuliraj totals
@@ -158,10 +173,15 @@ public class QuickSaleService {
                 throw new ResourceNotFoundException("InventoryItem", "id", lineReq.inventoryItemId());
             }
 
-            // Resolve description (klijent override → service.name → inventoryItem.name)
+            // Resolve description (klijent override → service.name → product.name)
             String description = lineReq.description();
             if (description == null || description.isBlank()) {
-                description = service != null ? service.getName() : inventoryItem.getName();
+                if (service != null) {
+                    description = service.getName();
+                } else {
+                    com.softart.vetclinic.entity.Product prod = productMap.get(inventoryItem.getProductId());
+                    description = prod != null ? prod.getName() : null;
+                }
             }
 
             // Resolve unitPrice (klijent override → service.price → inventoryItem.sellPrice)

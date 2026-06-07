@@ -6,6 +6,6 @@ import java.util.UUID;
 
 public record CreateServiceInventoryItemRequest(
     @NotNull UUID serviceId,
-    @NotNull UUID inventoryItemId,
+    @NotNull UUID productId,
     BigDecimal quantityPerUse
 ) {}

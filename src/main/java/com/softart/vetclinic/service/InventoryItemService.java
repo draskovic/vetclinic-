@@ -1,22 +1,22 @@
 package com.softart.vetclinic.service;
 
+import com.softart.vetclinic.entity.InventoryBatch;
 import com.softart.vetclinic.entity.InventoryItem;
 import com.softart.vetclinic.entity.InventoryTransaction;
 import com.softart.vetclinic.enums.AdjustmentReason;
 import com.softart.vetclinic.enums.InventoryCategory;
 import com.softart.vetclinic.enums.InventoryTransactionType;
+import com.softart.vetclinic.repository.InventoryBatchRepository;
 import com.softart.vetclinic.repository.InventoryItemRepository;
-import com.softart.vetclinic.exception.BadRequestException;
+import com.softart.vetclinic.repository.ProductRepository;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import java.util.function.Consumer;
-
 
 import java.math.BigDecimal;
-
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -25,15 +25,20 @@ import java.util.UUID;
 public class InventoryItemService extends AbstractCrudService<InventoryItem, InventoryItemRepository> {
 
     private final InventoryItemRepository inventoryItemRepository;
+    private final InventoryBatchRepository inventoryBatchRepository;
+    private final ProductRepository productRepository;
     private final InventoryTransactionService inventoryTransactionService;
 
     public InventoryItemService(InventoryItemRepository inventoryItemRepository,
+                                InventoryBatchRepository inventoryBatchRepository,
+                                ProductRepository productRepository,
                                 @Lazy InventoryTransactionService inventoryTransactionService) {
         super(inventoryItemRepository);
         this.inventoryItemRepository = inventoryItemRepository;
+        this.inventoryBatchRepository = inventoryBatchRepository;
+        this.productRepository = productRepository;
         this.inventoryTransactionService = inventoryTransactionService;
     }
-
 
     @Override
     protected String getEntityName() {
@@ -56,84 +61,54 @@ public class InventoryItemService extends AbstractCrudService<InventoryItem, Inv
     }
 
     /**
-     * Atomsko kreiranje artikla sa opcionim početnim stanjem.
-     * Forsira quantityOnHand = 0 i, ako je initialQuantity > 0 i artikal NE prati lotove,
-     * kreira IN transakciju sa reason=OPENING_BALANCE (audit trail).
+     * Atomsko kreiranje per-lokacijskog artikla:
+     *  1) snimi inventory_item (RLS, audit),
+     *  2) kreiraj sistemski DEFAULT lot (nosi ne-batch stanje + preliv/minus),
+     *  3) opcioni OPENING_BALANCE (samo ne-batch artikli) → IN tx na DEFAULT lot.
      *
-     * Za trackBatches=true artikle, initialQuantity se ignoriše — zaliha se unosi
-     * kroz "Lotovi" tab (svaki lot je zaseban zapis sa batch_id).
+     * Za track_batches artikle initialQuantity se ignoriše — zaliha ide kroz realne lotove.
      */
     @Transactional
     public InventoryItem createWithInitialQuantity(InventoryItem entity, UUID clinicId, BigDecimal initialQuantity) {
-        // 1) Uvek forsiraj quantityOnHand = 0 pri kreiranju — jedini validan put
-        //    do zaliha je kroz inventory_transaction (audit trail)
-        entity.setQuantityOnHand(BigDecimal.ZERO);
-
-        // 2) Kreiraj artikal kroz standardni flow (RLS, validacije, audit)
         InventoryItem saved = super.create(entity, clinicId);
 
-        // 3) Opcioni OPENING_BALANCE — samo ako ima vrednost i artikal ne prati lotove
-        boolean tracksBatches = Boolean.TRUE.equals(saved.getTrackBatches());
+        InventoryBatch def = new InventoryBatch();
+        def.setClinicId(clinicId);
+        def.setInventoryItemId(saved.getId());
+        def.setBatchNumber("DEFAULT");
+        def.setExpiryDate(null);
+        def.setQuantityOnHand(BigDecimal.ZERO);
+        def.setReceivedAt(LocalDate.now());
+        def.setIsDefault(true);
+        def.setDeleted(false);
+        inventoryBatchRepository.save(def);
+
+        boolean tracksBatches = productRepository
+                .findByIdAndClinicIdAndDeletedFalse(saved.getProductId(), clinicId)
+                .map(p -> Boolean.TRUE.equals(p.getTrackBatches()))
+                .orElse(false);
+
         if (initialQuantity != null
                 && initialQuantity.compareTo(BigDecimal.ZERO) > 0
                 && !tracksBatches) {
-
             InventoryTransaction openingTx = new InventoryTransaction();
             openingTx.setInventoryItemId(saved.getId());
+            openingTx.setBatchId(def.getId());
             openingTx.setType(InventoryTransactionType.IN);
             openingTx.setQuantity(initialQuantity);
             openingTx.setReason(AdjustmentReason.OPENING_BALANCE);
             openingTx.setNote("Otvaranje kartice artikla");
-
-            // InventoryTransactionService.create automatski povećava quantityOnHand
-            // kroz postojeći switch (IN → add), pa ne moramo ručno
             inventoryTransactionService.create(openingTx, clinicId);
         }
 
         return saved;
     }
 
-    /**
-     * Override sa dve zaštite na postojećem artiklu:
-     *
-     * 1) quantityOnHand se NE sme menjati direktno kroz DTO — sve promene zaliha
-     *    MORAJU ići kroz inventory_transaction (audit trail). Vrednost iz DTO-a se
-     *    ignoriše i vraća na originalnu.
-     *
-     * 2) trackBatches (način praćenja) se NE sme menjati posle kreiranja — flip bi
-     *    pregazio quantityOnHand sa SUM(lotova) i tiho izgubio stanje. Pokušaj → 400.
-     */
-    @Override
-    @Transactional
-    public InventoryItem update(UUID id, UUID clinicId, Consumer<InventoryItem> updater) {
-        InventoryItem existing = findById(id, clinicId);
-        BigDecimal originalQty = existing.getQuantityOnHand();
-        Boolean originalTrackBatches = existing.getTrackBatches();
-
-        Consumer<InventoryItem> protectedUpdater = item -> {
-            updater.accept(item);
-
-            // R2: track_batches se NE sme menjati na postojećem artiklu.
-            // Flip bi pregazio quantity_on_hand sa SUM(lotova) -> tiha nula
-            // (vidi "TestFIFO" iz dijagnostike). Novi nacin pracenja = novi artikal.
-            if (!originalTrackBatches.equals(item.getTrackBatches())) {
-                throw new BadRequestException(
-                        "Praćenje po lotovima se ne može menjati na postojećem artiklu. "
-                        + "Napravite novi artikal sa željenim načinom praćenja.");
-            }
-
-            // Forsirano vraćanje — sve promene zaliha idu kroz inventory_transaction
-            item.setQuantityOnHand(originalQty);
-        };
-
-        return super.update(id, clinicId, protectedUpdater);
-    }
-
     @Transactional(readOnly = true)
     public List<InventoryItem> findByCategory(UUID clinicId, InventoryCategory category) {
-        return inventoryItemRepository.findByClinicIdAndCategoryAndActiveTrue(clinicId, category);
+        return inventoryItemRepository.findByClinicIdAndProductCategoryAndActiveTrue(clinicId, category);
     }
-    
+
     public Page<InventoryItem> searchAll(UUID clinicId, String search, InventoryCategory category, Pageable pageable) {
         if ((search == null || search.isBlank()) && category == null) {
             return findAllByClinicId(clinicId, pageable);
@@ -143,16 +118,14 @@ public class InventoryItemService extends AbstractCrudService<InventoryItem, Inv
                 category,
                 pageable);
     }
-    
+
     @Transactional(readOnly = true)
     public List<InventoryItem> findLowStock(UUID clinicId) {
-        return ((InventoryItemRepository) repository).findLowStock(clinicId);
+        return inventoryItemRepository.findLowStock(clinicId);
     }
 
     @Transactional(readOnly = true)
     public long countLowStock(UUID clinicId) {
-        return ((InventoryItemRepository) repository).countLowStock(clinicId);
+        return inventoryItemRepository.countLowStock(clinicId);
     }
-
-
 }

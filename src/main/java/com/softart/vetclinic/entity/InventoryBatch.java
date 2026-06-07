@@ -24,6 +24,9 @@ public class InventoryBatch extends BaseEntity {
 
     @Column(name = "quantity_on_hand", nullable = false, precision = 10, scale = 2)
     private BigDecimal quantityOnHand = BigDecimal.ZERO;
+    
+    @Column(name = "is_default", nullable = false)
+    private Boolean isDefault = false;
 
     @Column(name = "received_at", nullable = false)
     private LocalDate receivedAt;

@@ -29,7 +29,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 public abstract class IntegrationTestBase {
 
     static final PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:18-alpine")
-            .withDatabaseName("vetapp_test")
+            .withDatabaseName("vetapp")
             .withUsername("postgres")
             .withPassword("test");
 
@@ -79,7 +79,8 @@ public abstract class IntegrationTestBase {
 
     private void truncateAllTables() {
         jdbc.execute("TRUNCATE TABLE audit_log, document, notification, " +
-                "inventory_transaction, inventory_item, user_location, payment, invoice_item, invoice, " +
+                "inventory_transaction, inventory_batch, inventory_item, product, service_inventory_item, " +
+                "user_location, payment, invoice_item, invoice, " +
                 "prescription, vaccination, treatment, medical_record, appointment, pet, owner, " +
                 "breed, species, service, clinic_location, refresh_token, users, role, clinic CASCADE");
     }
@@ -248,10 +249,27 @@ public abstract class IntegrationTestBase {
         return id;
     }
 
-    protected UUID seedInventoryItem(UUID clinicId, String name, String category) {
+    protected UUID seedProduct(UUID clinicId, String name, String category) {
         UUID id = UUID.randomUUID();
-        jdbc.update("INSERT INTO inventory_item (id, clinic_id, name, category, quantity_on_hand, active, created_at, updated_at, deleted, version) " +
-                "VALUES (?, ?, ?, ?, 100, true, NOW(), NOW(), false, 0)", id, clinicId, name, category);
+        jdbc.update("INSERT INTO product (id, clinic_id, name, category, track_batches, active, created_at, updated_at, deleted, version) " +
+                "VALUES (?, ?, ?, ?, false, true, NOW(), NOW(), false, 0)", id, clinicId, name, category);
+        return id;
+    }
+
+    protected UUID defaultTaxRateId() {
+        return jdbc.queryForObject(
+                "SELECT id FROM tax_rate WHERE country_code='RS' AND label='Ђ' LIMIT 1", UUID.class);
+    }
+
+    protected UUID seedInventoryItem(UUID clinicId, String name, String category) {
+        UUID productId = seedProduct(clinicId, name, category);
+        UUID id = UUID.randomUUID();
+        jdbc.update("INSERT INTO inventory_item (id, clinic_id, product_id, tax_rate_id, active, created_at, updated_at, deleted, version) " +
+                "VALUES (?, ?, ?, (SELECT id FROM tax_rate WHERE country_code='RS' AND label='Ђ' LIMIT 1), true, NOW(), NOW(), false, 0)",
+                id, clinicId, productId);
+        jdbc.update("INSERT INTO inventory_batch (id, clinic_id, inventory_item_id, batch_number, quantity_on_hand, received_at, is_default, created_at, updated_at, deleted, version) " +
+                "VALUES (?, ?, ?, 'DEFAULT', 100, CURRENT_DATE, true, NOW(), NOW(), false, 0)",
+                UUID.randomUUID(), clinicId, id);
         return id;
     }
 }

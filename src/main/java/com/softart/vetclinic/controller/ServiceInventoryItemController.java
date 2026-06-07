@@ -4,7 +4,7 @@ import com.softart.vetclinic.dto.CreateServiceInventoryItemRequest;
 import com.softart.vetclinic.dto.ServiceInventoryItemResponse;
 import com.softart.vetclinic.dto.UpdateServiceInventoryItemRequest;
 import com.softart.vetclinic.mapper.ServiceInventoryItemMapper;
-import com.softart.vetclinic.repository.InventoryItemRepository;
+import com.softart.vetclinic.repository.ProductRepository;
 import com.softart.vetclinic.repository.ServiceRepository;
 import com.softart.vetclinic.service.ServiceInventoryItemService;
 import jakarta.validation.Valid;
@@ -25,7 +25,7 @@ public class ServiceInventoryItemController {
     private final ServiceInventoryItemService service;
     private final ServiceInventoryItemMapper mapper;
     private final ServiceRepository serviceRepository;
-    private final InventoryItemRepository inventoryItemRepository;
+    private final ProductRepository productRepository;
 
     @GetMapping("/by-service/{serviceId}")
     public List<ServiceInventoryItemResponse> getByService(
@@ -35,11 +35,11 @@ public class ServiceInventoryItemController {
         return resolveNames(items, clinicId);
     }
 
-    @GetMapping("/by-inventory-item/{inventoryItemId}")
-    public List<ServiceInventoryItemResponse> getByInventoryItem(
+    @GetMapping("/by-product/{productId}")
+    public List<ServiceInventoryItemResponse> getByProduct(
             @RequestHeader("X-Clinic-Id") UUID clinicId,
-            @PathVariable UUID inventoryItemId) {
-        var items = service.findByInventoryItem(clinicId, inventoryItemId);
+            @PathVariable UUID productId) {
+        var items = service.findByProduct(clinicId, productId);
         return resolveNames(items, clinicId);
     }
 
@@ -82,24 +82,24 @@ public class ServiceInventoryItemController {
                 .filter(s -> s != null)
                 .collect(Collectors.toMap(s -> s.getId(), s -> s));
 
-        var itemIds = items.stream().map(i -> i.getInventoryItemId()).distinct().toList();
-        Map<UUID, com.softart.vetclinic.entity.InventoryItem> invMap = itemIds.stream()
-                .map(iid -> inventoryItemRepository.findByIdAndClinicIdAndDeletedFalse(iid, clinicId).orElse(null))
-                .filter(i -> i != null)
-                .collect(Collectors.toMap(i -> i.getId(), i -> i));
+        var productIds = items.stream().map(i -> i.getProductId()).distinct().toList();
+        Map<UUID, com.softart.vetclinic.entity.Product> productMap = productIds.stream()
+                .map(pid -> productRepository.findByIdAndClinicIdAndDeletedFalse(pid, clinicId).orElse(null))
+                .filter(p -> p != null)
+                .collect(Collectors.toMap(p -> p.getId(), p -> p));
 
         return items.stream().map(item -> {
             var response = mapper.toResponse(item);
             var svc = serviceMap.get(item.getServiceId());
-            var inv = invMap.get(item.getInventoryItemId());
+            var prod = productMap.get(item.getProductId());
             return new ServiceInventoryItemResponse(
                 response.id(),
                 response.serviceId(),
                 svc != null ? svc.getName() : null,
-                response.inventoryItemId(),
-                inv != null ? inv.getName() : null,
+                response.productId(),
+                prod != null ? prod.getName() : null,
                 response.quantityPerUse(),
-                inv != null ? inv.getUnit() : null,
+                prod != null ? prod.getUnit() : null,
                 response.createdAt(),
                 response.updatedAt()
             );
@@ -111,16 +111,16 @@ public class ServiceInventoryItemController {
         var response = mapper.toResponse(item);
         String serviceName = serviceRepository.findByIdAndClinicIdAndDeletedFalse(item.getServiceId(), clinicId)
                 .map(s -> s.getName()).orElse(null);
-        var inv = inventoryItemRepository.findByIdAndClinicIdAndDeletedFalse(item.getInventoryItemId(), clinicId)
+        var prod = productRepository.findByIdAndClinicIdAndDeletedFalse(item.getProductId(), clinicId)
                 .orElse(null);
         return new ServiceInventoryItemResponse(
             response.id(),
             response.serviceId(),
             serviceName,
-            response.inventoryItemId(),
-            inv != null ? inv.getName() : null,
+            response.productId(),
+            prod != null ? prod.getName() : null,
             response.quantityPerUse(),
-            inv != null ? inv.getUnit() : null,
+            prod != null ? prod.getUnit() : null,
             response.createdAt(),
             response.updatedAt()
         );

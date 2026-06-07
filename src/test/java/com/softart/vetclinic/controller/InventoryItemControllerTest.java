@@ -2,7 +2,6 @@ package com.softart.vetclinic.controller;
 
 import com.softart.vetclinic.IntegrationTestBase;
 import com.softart.vetclinic.dto.CreateInventoryItemRequest;
-import com.softart.vetclinic.enums.InventoryCategory;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -17,33 +16,35 @@ class InventoryItemControllerTest extends IntegrationTestBase {
     @Test
     @DisplayName("POST /api/inventory-items - create success")
     void create_success() throws Exception {
-        var request = new CreateInventoryItemRequest(null, "Amoxicillin 500mg",
-                "AMX-500", InventoryCategory.MEDICATION, new BigDecimal("100"),
-                "tablets", new BigDecimal("20"), new BigDecimal("5.00"),
-                new BigDecimal("10.00"), null, true, false, null,null);
+        UUID productId = seedProduct(clinicAId, "Amoxicillin 500mg", "MEDICATION");
+        var request = new CreateInventoryItemRequest(
+                productId, null, new BigDecimal("20"), new BigDecimal("10.00"),
+                true, new BigDecimal("100"), defaultTaxRateId());
 
         performPost("/api/inventory-items", tokenA, clinicAId, request)
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").isNotEmpty())
                 .andExpect(jsonPath("$.name").value("Amoxicillin 500mg"))
-                .andExpect(jsonPath("$.category").value("MEDICATION"));
+                .andExpect(jsonPath("$.category").value("MEDICATION"))
+                .andExpect(jsonPath("$.quantityOnHand").value(100));
     }
 
     @Test
-    @DisplayName("POST /api/inventory-items - blank name returns 400")
-    void create_blankName() throws Exception {
-        var request = new CreateInventoryItemRequest(null, "",
-                null, InventoryCategory.SUPPLY, null, null, null, null, null, null, null, null, null,null);
+    @DisplayName("POST /api/inventory-items - null productId returns 400")
+    void create_nullProductId() throws Exception {
+        var request = new CreateInventoryItemRequest(
+                null, null, null, null, true, null, defaultTaxRateId());
 
         performPost("/api/inventory-items", tokenA, clinicAId, request)
                 .andExpect(status().isBadRequest());
     }
 
     @Test
-    @DisplayName("POST /api/inventory-items - null category returns 400")
-    void create_nullCategory() throws Exception {
-        var request = new CreateInventoryItemRequest(null, "Test Item",
-                null, null, null, null, null, null, null, null, null, null, null,null);
+    @DisplayName("POST /api/inventory-items - null taxRateId returns 400")
+    void create_nullTaxRateId() throws Exception {
+        UUID productId = seedProduct(clinicAId, "Test Item", "SUPPLY");
+        var request = new CreateInventoryItemRequest(
+                productId, null, null, null, true, null, null);
 
         performPost("/api/inventory-items", tokenA, clinicAId, request)
                 .andExpect(status().isBadRequest());

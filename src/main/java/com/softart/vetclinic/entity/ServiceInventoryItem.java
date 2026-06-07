@@ -15,8 +15,8 @@ public class ServiceInventoryItem extends BaseEntity {
     @Column(name = "service_id", nullable = false)
     private UUID serviceId;
 
-    @Column(name = "inventory_item_id", nullable = false)
-    private UUID inventoryItemId;
+    @Column(name = "product_id", nullable = false)
+    private UUID productId;
 
     @Column(name = "quantity_per_use", nullable = false, precision = 10, scale = 2)
     private BigDecimal quantityPerUse = BigDecimal.ONE;
@@ -26,8 +26,8 @@ public class ServiceInventoryItem extends BaseEntity {
     private Service service;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "inventory_item_id", insertable = false, updatable = false)
-    private InventoryItem inventoryItem;
+    @JoinColumn(name = "product_id", insertable = false, updatable = false)
+    private Product product;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "clinic_id", insertable = false, updatable = false)

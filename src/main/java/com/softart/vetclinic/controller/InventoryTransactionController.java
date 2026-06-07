@@ -29,6 +29,8 @@ import com.softart.vetclinic.entity.InventoryTransaction;
 import com.softart.vetclinic.enums.InventoryTransactionType;
 import com.softart.vetclinic.mapper.InventoryTransactionMapper;
 import com.softart.vetclinic.repository.InventoryBatchRepository;
+import com.softart.vetclinic.repository.InventoryItemRepository;
+import com.softart.vetclinic.repository.ProductRepository;
 import com.softart.vetclinic.service.InventoryTransactionService;
 
 import jakarta.validation.Valid;
@@ -42,6 +44,8 @@ public class InventoryTransactionController {
     private final InventoryTransactionService inventoryTransactionService;
     private final InventoryTransactionMapper inventoryTransactionMapper;
     private final InventoryBatchRepository inventoryBatchRepository;
+    private final InventoryItemRepository inventoryItemRepository;
+    private final ProductRepository productRepository;
 
     @GetMapping
     public Page<InventoryTransactionResponse> getAll(
@@ -108,7 +112,7 @@ public class InventoryTransactionController {
     	return toEnrichedResponses(inventoryTransactionService.findByItem(clinicId, inventoryItemId), clinicId);
     }
     
-    /** Batch-fetch status lotova i popuni batchDeleted flag. */
+    /** Batch-fetch status lotova (batchDeleted/batchNumber) + ime artikla (product.name). */
     private List<InventoryTransactionResponse> toEnrichedResponses(List<InventoryTransaction> txs, UUID clinicId) {
         Set<UUID> batchIds = txs.stream()
                 .map(InventoryTransaction::getBatchId)
@@ -128,24 +132,54 @@ public class InventoryTransactionController {
                             row -> (String) row[1]
                     ));
 
+        java.util.Map<UUID, String> itemNames = resolveItemNames(txs, clinicId);
+
         return txs.stream()
-                .map(tx -> enrich(tx, activeBatchIds, batchNumbers))
+                .map(tx -> enrich(tx, activeBatchIds, batchNumbers, itemNames))
                 .toList();
     }
 
-    private InventoryTransactionResponse enrich(InventoryTransaction tx, Set<UUID> activeBatchIds, java.util.Map<UUID, String> batchNumbers) {
+    /** Artikal → product.name (1–2 batch upita, bez lazy navigacije). */
+    private java.util.Map<UUID, String> resolveItemNames(List<InventoryTransaction> txs, UUID clinicId) {
+        Set<UUID> itemIds = txs.stream()
+                .map(InventoryTransaction::getInventoryItemId)
+                .filter(java.util.Objects::nonNull)
+                .collect(Collectors.toSet());
+        if (itemIds.isEmpty()) return java.util.Map.of();
+
+        java.util.Map<UUID, UUID> itemToProduct = new java.util.HashMap<>();
+        for (UUID itemId : itemIds) {
+            inventoryItemRepository.findByIdAndClinicIdAndDeletedFalse(itemId, clinicId)
+                    .ifPresent(i -> itemToProduct.put(itemId, i.getProductId()));
+        }
+        Set<UUID> productIds = new java.util.HashSet<>(itemToProduct.values());
+        java.util.Map<UUID, String> productNames = productIds.isEmpty()
+                ? java.util.Map.of()
+                : productRepository.findAllById(productIds).stream()
+                        .collect(Collectors.toMap(
+                                com.softart.vetclinic.entity.Product::getId,
+                                com.softart.vetclinic.entity.Product::getName));
+
+        java.util.Map<UUID, String> itemNames = new java.util.HashMap<>();
+        itemToProduct.forEach((itemId, prodId) -> itemNames.put(itemId, productNames.get(prodId)));
+        return itemNames;
+    }
+
+    private InventoryTransactionResponse enrich(InventoryTransaction tx, Set<UUID> activeBatchIds,
+            java.util.Map<UUID, String> batchNumbers, java.util.Map<UUID, String> itemNames) {
         InventoryTransactionResponse base = inventoryTransactionMapper.toResponse(tx);
         boolean batchDeleted = tx.getBatchId() != null && !activeBatchIds.contains(tx.getBatchId());
         String batchNumber = tx.getBatchId() != null ? batchNumbers.get(tx.getBatchId()) : null;
+        String inventoryItemName = tx.getInventoryItemId() != null
+                ? itemNames.get(tx.getInventoryItemId()) : null;
         return new InventoryTransactionResponse(
-                base.id(), base.inventoryItemId(), base.inventoryItemName(), base.batchId(),
+                base.id(), base.inventoryItemId(), inventoryItemName, base.batchId(),
                 base.type(), base.quantity(), base.referenceType(), base.referenceId(),
                 base.performedBy(), base.performedByName(), base.note(), base.reason(),
                 base.reversalOfTransactionId(), base.reversed(), batchNumber, batchDeleted,
                 base.createdAt(), base.updatedAt()
         );
     }
-
     
     @PostMapping("/{id}/reverse")
     @ResponseStatus(HttpStatus.CREATED)

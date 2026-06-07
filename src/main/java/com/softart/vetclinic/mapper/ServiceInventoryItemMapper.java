@@ -10,7 +10,7 @@ import org.mapstruct.*;
 public interface ServiceInventoryItemMapper {
 
     @Mapping(target = "serviceName", ignore = true)
-    @Mapping(target = "inventoryItemName", ignore = true)
+    @Mapping(target = "productName", ignore = true)
     @Mapping(target = "unit", ignore = true)
     ServiceInventoryItemResponse toResponse(ServiceInventoryItem entity);
 
@@ -23,7 +23,7 @@ public interface ServiceInventoryItemMapper {
     @Mapping(target = "version", ignore = true)
     @Mapping(target = "clinic", ignore = true)
     @Mapping(target = "service", ignore = true)
-    @Mapping(target = "inventoryItem", ignore = true)
+    @Mapping(target = "product", ignore = true)
     ServiceInventoryItem toEntity(CreateServiceInventoryItemRequest dto);
 
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
@@ -36,8 +36,8 @@ public interface ServiceInventoryItemMapper {
     @Mapping(target = "version", ignore = true)
     @Mapping(target = "clinic", ignore = true)
     @Mapping(target = "service", ignore = true)
-    @Mapping(target = "inventoryItem", ignore = true)
+    @Mapping(target = "product", ignore = true)
     @Mapping(target = "serviceId", ignore = true)
-    @Mapping(target = "inventoryItemId", ignore = true)
+    @Mapping(target = "productId", ignore = true)
     void updateEntity(UpdateServiceInventoryItemRequest dto, @MappingTarget ServiceInventoryItem entity);
 }

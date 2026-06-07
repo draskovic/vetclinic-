@@ -1,13 +1,10 @@
 package com.softart.vetclinic.service;
 
 import com.softart.vetclinic.entity.InventoryBatch;
-
-import com.softart.vetclinic.entity.InventoryItem;
 import com.softart.vetclinic.exception.BadRequestException;
 import com.softart.vetclinic.exception.DuplicateResourceException;
 import com.softart.vetclinic.repository.InventoryBatchRepository;
 import com.softart.vetclinic.repository.InventoryItemRepository;
-import com.softart.vetclinic.repository.InventoryTransactionRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -15,7 +12,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -24,15 +24,12 @@ public class InventoryBatchService extends AbstractCrudService<InventoryBatch, I
 
     private final InventoryBatchRepository batchRepository;
     private final InventoryItemRepository itemRepository;
-    private final InventoryTransactionRepository transactionRepository;
 
     public InventoryBatchService(InventoryBatchRepository batchRepository,
-                                 InventoryItemRepository itemRepository,
-                                 InventoryTransactionRepository transactionRepository) {
+                                 InventoryItemRepository itemRepository) {
         super(batchRepository);
         this.batchRepository = batchRepository;
         this.itemRepository = itemRepository;
-        this.transactionRepository = transactionRepository;
     }
 
     @Override
@@ -47,7 +44,6 @@ public class InventoryBatchService extends AbstractCrudService<InventoryBatch, I
 
     @Override
     protected Page<InventoryBatch> findAllByClinicId(UUID clinicId, Pageable pageable) {
-        // Nije podržano — koristi findByItem
         throw new UnsupportedOperationException("Use findByItem instead");
     }
 
@@ -74,19 +70,13 @@ public class InventoryBatchService extends AbstractCrudService<InventoryBatch, I
     }
 
     /**
-     * Kreira novi lot:
-     * 1) Validira da artikal postoji i pripada klinici
-     * 2) Validira da batchNumber nije duplikat za taj artikal
-     * 3) Snima lot
-     * 4) Sinhronizuje InventoryItem.quantityOnHand = SUM(lots.quantityOnHand)
+     * Kreira novi lot. Stanje artikla se NE sinhronizuje — računa se na čitanju kao SUM(lotova).
      */
     @Transactional
     public InventoryBatch createBatch(InventoryBatch batch, UUID clinicId) {
-        // PESSIMISTIC_WRITE lock — sprečava paralelan optimistic-lock konflikt
-        // sa drugim threads koji modifikuju item.quantityOnHand (deductForTreatment, itd.)
-        InventoryItem item = itemRepository
-                .findByIdAndClinicIdAndDeletedFalseForUpdate(batch.getInventoryItemId(), clinicId)
-                .orElseThrow(() -> new BadRequestException("Artikal ne postoji"));
+        if (!itemRepository.existsByIdAndClinicIdAndDeletedFalse(batch.getInventoryItemId(), clinicId)) {
+            throw new BadRequestException("Artikal ne postoji");
+        }
 
         Optional<InventoryBatch> existing = batchRepository
                 .findByClinicIdAndInventoryItemIdAndBatchNumberAndDeletedFalse(
@@ -104,10 +94,7 @@ public class InventoryBatchService extends AbstractCrudService<InventoryBatch, I
 
         batch.setClinicId(clinicId);
         batch.setDeleted(false);
-        InventoryBatch saved = batchRepository.save(batch);
-
-        syncItemQuantity(clinicId, item);
-        return saved;
+        return batchRepository.save(batch);
     }
 
     /**
@@ -120,31 +107,32 @@ public class InventoryBatchService extends AbstractCrudService<InventoryBatch, I
             throw new BadRequestException("Lot ima preostalu količinu — ne može se obrisati");
         }
         softDelete(id, clinicId);
-
-        InventoryItem item = itemRepository.findByIdAndClinicIdAndDeletedFalse(batch.getInventoryItemId(), clinicId)
-                .orElse(null);
-        if (item != null) {
-            syncItemQuantity(clinicId, item);
-        }
     }
 
     /**
-     * Rekalkuliše ukupnu količinu na artiklu kao:
-     *   SUM(aktivni lotovi) + neto(transakcije bez lota).
-     *
-     * Neto bez lota čuva manjak (orphan OUT iz FIFO dedukcije kad lotovi ne pokrivaju
-     * potražnju) i legacy opening IN — tako negativno stanje preživljava do reconciliation-a
-     * (veterinar uveče doda lot → stanje se automatski izravna).
-     *
-     * Poziva se iz createBatch, deleteBatch, FIFO dedukcije/reverzije i batch transakcija.
+     * Stanje artikla = SUM(quantityOnHand aktivnih lotova). Minus (na DEFAULT lotu) preživljava.
      */
-    @Transactional
-    public void syncItemQuantity(UUID clinicId, InventoryItem item) {
-        BigDecimal batchSum = batchRepository.sumQuantityByItem(clinicId, item.getId());
-        BigDecimal batchlessNet = transactionRepository.sumBatchlessNetByItem(clinicId, item.getId());
-        BigDecimal total = (batchSum != null ? batchSum : BigDecimal.ZERO)
-                .add(batchlessNet != null ? batchlessNet : BigDecimal.ZERO);
-        item.setQuantityOnHand(total);
-        itemRepository.save(item);
+    @Transactional(readOnly = true)
+    public BigDecimal getQuantityByItem(UUID clinicId, UUID itemId) {
+        BigDecimal qty = batchRepository.sumQuantityByItem(clinicId, itemId);
+        return qty != null ? qty : BigDecimal.ZERO;
+    }
+
+    /**
+     * Batch-fetch stanja za listu artikala (1 GROUP BY upit). Artikli bez reda → 0.
+     */
+    @Transactional(readOnly = true)
+    public Map<UUID, BigDecimal> getQuantitiesByItemIds(UUID clinicId, Collection<UUID> itemIds) {
+        if (itemIds == null || itemIds.isEmpty()) {
+            return Map.of();
+        }
+        Map<UUID, BigDecimal> result = new HashMap<>();
+        for (InventoryBatchRepository.ItemQuantity row : batchRepository.sumQuantityByItemIds(clinicId, itemIds)) {
+            result.put(row.getItemId(), row.getQty() != null ? row.getQty() : BigDecimal.ZERO);
+        }
+        for (UUID id : itemIds) {
+            result.putIfAbsent(id, BigDecimal.ZERO);
+        }
+        return result;
     }
 }

@@ -21,5 +21,5 @@ public interface ServiceInventoryItemRepository extends JpaRepository<ServiceInv
 
     List<ServiceInventoryItem> findByClinicIdAndServiceIdAndDeletedFalse(UUID clinicId, UUID serviceId);
 
-    List<ServiceInventoryItem> findByClinicIdAndInventoryItemIdAndDeletedFalse(UUID clinicId, UUID inventoryItemId);
+    List<ServiceInventoryItem> findByClinicIdAndProductIdAndDeletedFalse(UUID clinicId, UUID productId);
 }

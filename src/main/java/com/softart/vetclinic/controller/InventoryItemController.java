@@ -1,8 +1,7 @@
 package com.softart.vetclinic.controller;
 
+import java.math.BigDecimal;
 import java.util.List;
-
-
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -10,36 +9,30 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestHeader;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.ResponseStatus;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import com.softart.vetclinic.dto.CreateInventoryItemRequest;
 import com.softart.vetclinic.dto.InventoryItemResponse;
 import com.softart.vetclinic.dto.UpdateInventoryItemRequest;
 import com.softart.vetclinic.entity.ClinicLocation;
+import com.softart.vetclinic.entity.InventoryItem;
+import com.softart.vetclinic.entity.Product;
+import com.softart.vetclinic.entity.TaxRate;
 import com.softart.vetclinic.enums.InventoryCategory;
 import com.softart.vetclinic.mapper.InventoryItemMapper;
 import com.softart.vetclinic.repository.ClinicLocationRepository;
-import com.softart.vetclinic.service.InventoryItemService;
-import com.softart.vetclinic.entity.TaxRate;
+import com.softart.vetclinic.repository.ProductRepository;
 import com.softart.vetclinic.repository.TaxRateRepository;
+import com.softart.vetclinic.service.InventoryBatchService;
+import com.softart.vetclinic.service.InventoryItemService;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-
 
 @RestController
 @RequestMapping("/api/inventory-items")
@@ -48,6 +41,8 @@ public class InventoryItemController {
 
     private final InventoryItemService inventoryItemService;
     private final InventoryItemMapper inventoryItemMapper;
+    private final ProductRepository productRepository;
+    private final InventoryBatchService inventoryBatchService;
     private final ClinicLocationRepository clinicLocationRepository;
     private final TaxRateRepository taxRateRepository;
 
@@ -58,22 +53,19 @@ public class InventoryItemController {
             @RequestParam(required = false) InventoryCategory category,
             Pageable pageable) {
         if (pageable.getSort().isUnsorted()) {
-            pageable = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), Sort.by(Sort.Direction.ASC, "name"));
+            pageable = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(),
+                    Sort.by(Sort.Direction.ASC, "product.name"));
         }
-        Page<InventoryItemResponse> page = inventoryItemService.searchAll(clinicId, search, category, pageable)
-                .map(inventoryItemMapper::toResponse);
-        List<InventoryItemResponse> enriched = enrichMany(page.getContent());
-        return new org.springframework.data.domain.PageImpl<>(enriched, pageable, page.getTotalElements());
-
+        Page<InventoryItem> page = inventoryItemService.searchAll(clinicId, search, category, pageable);
+        List<InventoryItemResponse> enriched = enrichMany(clinicId, page.getContent());
+        return new PageImpl<>(enriched, pageable, page.getTotalElements());
     }
-
 
     @GetMapping("/{id}")
     public InventoryItemResponse getById(
             @RequestHeader("X-Clinic-Id") UUID clinicId,
             @PathVariable UUID id) {
-    	return enrichOne(inventoryItemMapper.toResponse(inventoryItemService.findById(id, clinicId)));
-
+        return enrichOne(clinicId, inventoryItemService.findById(id, clinicId));
     }
 
     @PostMapping
@@ -83,18 +75,16 @@ public class InventoryItemController {
             @Valid @RequestBody CreateInventoryItemRequest request) {
         var entity = inventoryItemMapper.toEntity(request);
         var saved = inventoryItemService.createWithInitialQuantity(entity, clinicId, request.initialQuantity());
-        return enrichOne(inventoryItemMapper.toResponse(saved));
+        return enrichOne(clinicId, saved);
     }
-
 
     @PutMapping("/{id}")
     public InventoryItemResponse update(
             @RequestHeader("X-Clinic-Id") UUID clinicId,
             @PathVariable UUID id,
             @Valid @RequestBody UpdateInventoryItemRequest request) {
-    	return enrichOne(inventoryItemMapper.toResponse(
-    	        inventoryItemService.update(id, clinicId, existing -> inventoryItemMapper.updateEntity(request, existing))));
-
+        return enrichOne(clinicId, inventoryItemService.update(id, clinicId,
+                existing -> inventoryItemMapper.updateEntity(request, existing)));
     }
 
     @DeleteMapping("/{id}")
@@ -104,13 +94,11 @@ public class InventoryItemController {
             @PathVariable UUID id) {
         inventoryItemService.softDelete(id, clinicId);
     }
-    
+
     @GetMapping("/low-stock")
     public List<InventoryItemResponse> getLowStock(
             @RequestHeader("X-Clinic-Id") UUID clinicId) {
-    	return enrichMany(inventoryItemService.findLowStock(clinicId).stream()
-    	        .map(inventoryItemMapper::toResponse).toList());
-
+        return enrichMany(clinicId, inventoryItemService.findLowStock(clinicId));
     }
 
     @GetMapping("/low-stock/count")
@@ -123,65 +111,64 @@ public class InventoryItemController {
     public List<InventoryItemResponse> getByCategory(
             @RequestHeader("X-Clinic-Id") UUID clinicId,
             @PathVariable InventoryCategory category) {
-    	return enrichMany(inventoryItemService.findByCategory(clinicId, category).stream()
-    	        .map(inventoryItemMapper::toResponse).toList());
-
+        return enrichMany(clinicId, inventoryItemService.findByCategory(clinicId, category));
     }
-    
-    
-    /**
-     * Batch-fetch locationName + taxRateLabel/Percent za listu InventoryItemResponse.
-     * Koristi se umesto MapStruct source="location.name" jer lazy load puca "no session" sa RLS.
-     */
-    private List<InventoryItemResponse> enrichMany(List<InventoryItemResponse> items) {
-        Set<UUID> locationIds = items.stream()
-                .map(InventoryItemResponse::locationId)
-                .filter(Objects::nonNull)
-                .collect(Collectors.toSet());
 
-        Map<UUID, String> locationNames = locationIds.isEmpty()
-                ? Map.of()
+    /**
+     * Batch-fetch product (name/sku/category/unit/trackBatches) + computed quantity (SUM lotova)
+     * + locationName + tax (label/percent). Bez lazy navigacije (RLS-safe).
+     */
+    private List<InventoryItemResponse> enrichMany(UUID clinicId, List<InventoryItem> items) {
+        if (items.isEmpty()) return List.of();
+
+        Set<UUID> productIds = items.stream().map(InventoryItem::getProductId)
+                .filter(Objects::nonNull).collect(Collectors.toSet());
+        Map<UUID, Product> products = productIds.isEmpty() ? Map.of()
+                : productRepository.findAllById(productIds).stream()
+                        .collect(Collectors.toMap(Product::getId, p -> p));
+
+        Set<UUID> locationIds = items.stream().map(InventoryItem::getLocationId)
+                .filter(Objects::nonNull).collect(Collectors.toSet());
+        Map<UUID, String> locationNames = locationIds.isEmpty() ? Map.of()
                 : clinicLocationRepository.findAllById(locationIds).stream()
                         .collect(Collectors.toMap(ClinicLocation::getId, ClinicLocation::getName));
 
-        Set<UUID> taxRateIds = items.stream()
-                .map(InventoryItemResponse::taxRateId)
-                .filter(Objects::nonNull)
-                .collect(Collectors.toSet());
-
-        Map<UUID, TaxRate> taxRates = taxRateIds.isEmpty()
-                ? Map.of()
+        Set<UUID> taxRateIds = items.stream().map(InventoryItem::getTaxRateId)
+                .filter(Objects::nonNull).collect(Collectors.toSet());
+        Map<UUID, TaxRate> taxRates = taxRateIds.isEmpty() ? Map.of()
                 : taxRateRepository.findAllById(taxRateIds).stream()
                         .collect(Collectors.toMap(TaxRate::getId, tr -> tr));
 
-        return items.stream().map(r -> {
-            TaxRate tr = r.taxRateId() != null ? taxRates.get(r.taxRateId()) : null;
+        Set<UUID> itemIds = items.stream().map(InventoryItem::getId).collect(Collectors.toSet());
+        Map<UUID, BigDecimal> quantities = inventoryBatchService.getQuantitiesByItemIds(clinicId, itemIds);
+
+        return items.stream().map(i -> {
+            Product p = i.getProductId() != null ? products.get(i.getProductId()) : null;
+            TaxRate tr = i.getTaxRateId() != null ? taxRates.get(i.getTaxRateId()) : null;
             return new InventoryItemResponse(
-                    r.id(),
-                    r.locationId(),
-                    r.locationId() != null ? locationNames.get(r.locationId()) : null,
-                    r.name(),
-                    r.sku(),
-                    r.category(),
-                    r.quantityOnHand(),
-                    r.unit(),
-                    r.reorderLevel(),
-                    r.costPrice(),
-                    r.sellPrice(),
-                    r.expiryDate(),
-                    r.active(),
-                    r.trackBatches(),
-                    r.taxRateId(),
+                    i.getId(),
+                    i.getProductId(),
+                    i.getLocationId(),
+                    i.getLocationId() != null ? locationNames.get(i.getLocationId()) : null,
+                    p != null ? p.getName() : null,
+                    p != null ? p.getSku() : null,
+                    p != null ? p.getCategory() : null,
+                    quantities.getOrDefault(i.getId(), BigDecimal.ZERO),
+                    p != null ? p.getUnit() : null,
+                    i.getReorderLevel(),
+                    i.getSellPrice(),
+                    i.getActive(),
+                    p != null ? p.getTrackBatches() : null,
+                    i.getTaxRateId(),
                     tr != null ? tr.getLabel() : null,
                     tr != null ? tr.getPercent() : null,
-                    r.createdAt(),
-                    r.updatedAt()
+                    i.getCreatedAt(),
+                    i.getUpdatedAt()
             );
         }).toList();
     }
 
-    private InventoryItemResponse enrichOne(InventoryItemResponse response) {
-        return enrichMany(List.of(response)).get(0);
+    private InventoryItemResponse enrichOne(UUID clinicId, InventoryItem item) {
+        return enrichMany(clinicId, List.of(item)).get(0);
     }
-
 }

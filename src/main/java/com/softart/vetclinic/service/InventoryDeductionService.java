@@ -3,7 +3,6 @@ package com.softart.vetclinic.service;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 
 import org.springframework.stereotype.Service;
@@ -32,12 +31,13 @@ public class InventoryDeductionService {
     private final InventoryTransactionRepository txRepo;
     private final InventoryBatchRepository batchRepo;
     private final InventoryStockApplier stockApplier;
-    private final InventoryBatchService inventoryBatchService;
+
+    // ===================== DEDUKCIJA =====================
 
     /**
-     * Auto-dedukcija inventara pri kreiranju usluge na intervenciji.
-     * Ako artikal ima trackBatches=true → FIFO dedukcija po lotovima.
-     * Inače → stari flow iz 1A (direktno sa quantityOnHand).
+     * BOM dedukcija pri kreiranju usluge na intervenciji.
+     * service_inventory_item nosi product_id + quantity_per_use → razreši inventory_item
+     * po lokaciji (ZA SADA: jedini/glavni; multi-lokacija → Faza 2E) → FEFO + preliv na DEFAULT.
      */
     @Transactional
     public void deductForTreatment(UUID clinicId, UUID serviceId, UUID treatmentId, UUID performedBy) {
@@ -46,133 +46,92 @@ public class InventoryDeductionService {
         if (mappings.isEmpty()) return;
 
         for (ServiceInventoryItem mapping : mappings) {
-        	Optional<InventoryItem> itemOpt = itemRepo.findByIdAndClinicIdAndDeletedFalseForUpdate(
-        	        mapping.getInventoryItemId(), clinicId);
-            if (itemOpt.isEmpty()) continue;
-
-            InventoryItem item = itemOpt.get();
-            BigDecimal needed = mapping.getQuantityPerUse();
-
-            if (Boolean.TRUE.equals(item.getTrackBatches())) {
-                deductFromBatches(clinicId, item, needed, "TREATMENT", treatmentId, performedBy);
-            } else {
-                deductDirectly(clinicId, item, needed, "TREATMENT", treatmentId, performedBy);
+            InventoryItem item = resolveItemForProduct(clinicId, mapping.getProductId());
+            if (item == null) {
+                log.warn("BOM: nema inventory_item za product {} (klinika {}) — preskačem dedukciju",
+                        mapping.getProductId(), clinicId);
+                continue;
             }
+            deductFromItem(clinicId, item, mapping.getQuantityPerUse(), "TREATMENT", treatmentId, performedBy);
         }
-
         log.info("Auto-dedukcija inventara za treatment {} — {} mappings", treatmentId, mappings.size());
     }
-    
+
     /**
-     * Auto-dedukcija inventara pri kreiranju invoice item-a za direktnu prodaju artikla
-     * (Quick Sale POS ili manuelno dodavanje artikla u fakturu).
-     * Ako artikal ima trackBatches=true → FIFO po lotovima, inače direktno sa item.quantityOnHand.
+     * Dedukcija pri direktnoj prodaji artikla (Quick Sale POS / ručna fakturna stavka).
+     * Prima već razrešen per-lokacijski inventory_item id.
      */
     @Transactional
     public void deductForInvoiceItem(UUID clinicId, UUID inventoryItemId,
             BigDecimal quantity, UUID invoiceItemId, UUID performedBy) {
-        Optional<InventoryItem> itemOpt = itemRepo.findByIdAndClinicIdAndDeletedFalseForUpdate(
-                inventoryItemId, clinicId);
-        if (itemOpt.isEmpty()) return;
-
-        InventoryItem item = itemOpt.get();
-
-        if (Boolean.TRUE.equals(item.getTrackBatches())) {
-            deductFromBatches(clinicId, item, quantity, "INVOICE_ITEM", invoiceItemId, performedBy);
-        } else {
-            deductDirectly(clinicId, item, quantity, "INVOICE_ITEM", invoiceItemId, performedBy);
-        }
-
+        InventoryItem item = itemRepo.findByIdAndClinicIdAndDeletedFalse(inventoryItemId, clinicId).orElse(null);
+        if (item == null) return;
+        deductFromItem(clinicId, item, quantity, "INVOICE_ITEM", invoiceItemId, performedBy);
         log.info("Auto-dedukcija inventara za invoice_item {} — količina {}", invoiceItemId, quantity);
     }
 
     /**
-     * Stari flow iz Faze 1A — direktna dedukcija sa quantityOnHand.
+     * Jezgro: FEFO troši realne (ne-DEFAULT) lotove (expiry ASC, NULLS LAST),
+     * a ostatak/preliv pada na DEFAULT lot (sme u minus — preživljava do reconciliation-a).
+     * Ne grana se po track_batches: ne-batch artikal nema realne lotove → sve ide na DEFAULT.
+     * Pozvati unutar @Transactional; lotovi se hvataju PESSIMISTIC_WRITE lock-om.
      */
-    private void deductDirectly(UUID clinicId, InventoryItem item, BigDecimal needed,
+    private void deductFromItem(UUID clinicId, InventoryItem item, BigDecimal needed,
             String referenceType, UUID referenceId, UUID performedBy) {
-        // Atomska provera — pošto je item dohvaćen sa PESSIMISTIC_WRITE lockom,
-        // drugi thread-ovi čekaju do commit-a ove transakcije.
-        if (item.getQuantityOnHand().compareTo(needed) < 0) {
-            log.warn("Negativan lager za {}: ima {}, traži se {} — dozvoljeno",
-                    item.getName(), item.getQuantityOnHand(), needed);
+        BigDecimal remaining = needed;
+
+        List<InventoryBatch> batches = batchRepo.findActiveNonDefaultByItemFifoForUpdate(clinicId, item.getId());
+        for (InventoryBatch batch : batches) {
+            if (remaining.compareTo(BigDecimal.ZERO) <= 0) break;
+            BigDecimal take = remaining.min(batch.getQuantityOnHand());
+            stockApplier.applyToBatch(batch, InventoryTransactionType.OUT, take);
+            batchRepo.save(batch);
+            saveOutTx(clinicId, item.getId(), batch.getId(), take, referenceType, referenceId, performedBy,
+                    "Auto-dedukcija (FEFO) — lot " + batch.getBatchNumber());
+            remaining = remaining.subtract(take);
         }
 
+        if (remaining.compareTo(BigDecimal.ZERO) > 0) {
+            InventoryBatch def = batchRepo.findDefaultByItemForUpdate(clinicId, item.getId())
+                    .orElseThrow(() -> new IllegalStateException(
+                            "DEFAULT lot ne postoji za artikal " + item.getId()));
+            stockApplier.applyToBatch(def, InventoryTransactionType.OUT, remaining);
+            batchRepo.save(def);
+            saveOutTx(clinicId, item.getId(), def.getId(), remaining, referenceType, referenceId, performedBy,
+                    "Auto-dedukcija — preliv na DEFAULT lot");
+            if (def.getQuantityOnHand().compareTo(BigDecimal.ZERO) < 0) {
+                log.warn("Negativan lager (DEFAULT lot) za artikal {} — stanje {}",
+                        item.getId(), def.getQuantityOnHand());
+            }
+        }
+    }
+
+    private void saveOutTx(UUID clinicId, UUID itemId, UUID batchId, BigDecimal qty,
+            String referenceType, UUID referenceId, UUID performedBy, String note) {
         InventoryTransaction tx = new InventoryTransaction();
         tx.setClinicId(clinicId);
-        tx.setInventoryItemId(item.getId());
+        tx.setInventoryItemId(itemId);
+        tx.setBatchId(batchId);
         tx.setType(InventoryTransactionType.OUT);
-        tx.setQuantity(needed);
+        tx.setQuantity(qty);
         tx.setReferenceType(referenceType);
         tx.setReferenceId(referenceId);
         tx.setPerformedBy(performedBy);
-        tx.setNote("Auto-dedukcija za uslugu");
+        tx.setNote(note);
         txRepo.save(tx);
-
-        stockApplier.applyToItem(item, InventoryTransactionType.OUT, needed);
-        itemRepo.save(item);
     }
 
     /**
-     * FIFO dedukcija po lotovima — najpre se troše lotovi sa najbližim rokom.
-     * Kreira po jednu OUT transakciju po svakom lotu iz koga se uzima.
-     * Posle svih izmena, sinhroniše item.quantityOnHand kao SUM(lots.quantityOnHand).
+     * ZA SADA jedan inventory_item po product-u (1:1 posle migracije).
+     * Multi-lokacija (izbor reda po lokaciji pružanja usluge) → Faza 2E.
      */
-    private void deductFromBatches(UUID clinicId, InventoryItem item, BigDecimal needed,
-    	String referenceType, UUID referenceId, UUID performedBy) {
-		// PESSIMISTIC_WRITE lock — sprečava paralelno skidanje sa istih lotova
-		List<InventoryBatch> batches = batchRepo.findActiveByItemFifoForUpdate(clinicId, item.getId());
-		
-		BigDecimal remaining = needed;
-		for (InventoryBatch batch : batches) {
-			if (remaining.compareTo(BigDecimal.ZERO) <= 0) break;
-			
-			BigDecimal takeFromBatch = remaining.min(batch.getQuantityOnHand());
-			stockApplier.applyToBatch(batch, InventoryTransactionType.OUT, takeFromBatch);
-			batchRepo.save(batch);
-			
-			InventoryTransaction tx = new InventoryTransaction();
-			tx.setClinicId(clinicId);
-			tx.setInventoryItemId(item.getId());
-			tx.setBatchId(batch.getId());
-			tx.setType(InventoryTransactionType.OUT);
-			tx.setQuantity(takeFromBatch);
-	        tx.setReferenceType(referenceType);
-	        tx.setReferenceId(referenceId);
-			tx.setPerformedBy(performedBy);
-			tx.setNote("Auto-dedukcija (FIFO) — lot " + batch.getBatchNumber());
-			txRepo.save(tx);
-			
-			remaining = remaining.subtract(takeFromBatch);
-		}
-		
-		if (remaining.compareTo(BigDecimal.ZERO) > 0) {
-			// Nedostatak u lotovima — kreiraj OUT bez batch_id za ostatak (negativna potrošnja na item-u)
-			InventoryTransaction tx = new InventoryTransaction();
-			tx.setClinicId(clinicId);
-			tx.setInventoryItemId(item.getId());
-			tx.setType(InventoryTransactionType.OUT);
-			tx.setQuantity(remaining);
-	        tx.setReferenceType(referenceType);
-	        tx.setReferenceId(referenceId);
-			tx.setPerformedBy(performedBy);
-			tx.setNote("Auto-dedukcija — nedostatak u lotovima");
-			txRepo.save(tx);
-			log.warn("Nedovoljno zaliha u lotovima za {}, nedostaje {}", item.getName(), remaining);
-		}
-		
-		// Sinhronizuj stanje: SUM(lotova) + neto(bez lota) — minus iz manjka preživljava
-		inventoryBatchService.syncItemQuantity(clinicId, item);
-	}
-    
-    /**
-     * Reverzija auto-dedukcije pri brisanju usluge sa intervencije.
-     * Soft-delete-uje OUT transakcije i vraća količine u lotove (ako batchId postoji)
-     * ili direktno na artikal (stari flow).
-     *
-     * Koristi PESSIMISTIC_WRITE lock na svim mutiranim entitetima — sprečava
-     * lost-update kad paralelno teku reverzija i dedukcija nad istim artiklom/lotom.
-     */
+    private InventoryItem resolveItemForProduct(UUID clinicId, UUID productId) {
+        List<InventoryItem> items = itemRepo.findByClinicIdAndProductIdAndDeletedFalse(clinicId, productId);
+        return items.isEmpty() ? null : items.get(0);
+    }
+
+    // ===================== REVERZIJA =====================
+
     @Transactional
     public void reverseForTreatment(UUID clinicId, UUID treatmentId) {
         reverseByReference(clinicId, "TREATMENT", treatmentId);
@@ -184,14 +143,12 @@ public class InventoryDeductionService {
     }
 
     /**
-     * Reverzija auto-dedukcije po referenceType+referenceId. Soft-delete-uje OUT
-     * transakcije i vraća količine u lotove (ako batchId postoji) ili direktno na
-     * artikal. Koristi PESSIMISTIC_WRITE lock na svim mutiranim entitetima.
+     * Poništava sve OUT transakcije po referenci i vraća količine na njihove lotove.
+     * Posle splita tx UVEK ima batch_id → reverzija je isključivo batch-level.
      */
     private void reverseByReference(UUID clinicId, String referenceType, UUID referenceId) {
         List<InventoryTransaction> txs = txRepo
                 .findByClinicIdAndReferenceTypeAndReferenceIdAndDeletedFalse(clinicId, referenceType, referenceId);
-
         if (txs.isEmpty()) return;
 
         for (InventoryTransaction tx : txs) {
@@ -200,30 +157,14 @@ public class InventoryDeductionService {
             txRepo.save(tx);
 
             if (tx.getBatchId() != null) {
-                // Batch tx — vrati količinu na lot, pa rekalkuliši stanje artikla
                 batchRepo.findByIdAndClinicIdAndDeletedFalseForUpdate(tx.getBatchId(), clinicId)
                         .ifPresent(batch -> {
                             stockApplier.reverseOnBatch(batch, tx.getType(), tx.getQuantity());
                             batchRepo.save(batch);
                         });
-                itemRepo.findByIdAndClinicIdAndDeletedFalseForUpdate(tx.getInventoryItemId(), clinicId)
-                        .ifPresent(item -> inventoryBatchService.syncItemQuantity(clinicId, item));
-            } else {
-                itemRepo.findByIdAndClinicIdAndDeletedFalseForUpdate(tx.getInventoryItemId(), clinicId)
-                        .ifPresent(item -> {
-                            if (Boolean.TRUE.equals(item.getTrackBatches())) {
-                                // Manjak (orphan OUT) na batch artiklu — tx je već soft-deleted,
-                                // syncItemQuantity ga isključuje iz neta i ispravno vraća stanje.
-                                inventoryBatchService.syncItemQuantity(clinicId, item);
-                            } else {
-                                // Ne-batch artikal: vrati delta direktno (ADJUSTMENT-safe running value)
-                                stockApplier.reverseOnItem(item, tx.getType(), tx.getQuantity());
-                                itemRepo.save(item);
-                            }
-                        });
             }
+            // tx bez batch_id ne postoji posle splita (defanzivno: nema šta da se vrati na lot)
         }
-
         log.info("Reverzija inventara za {} {} — {} transakcija poništeno",
                 referenceType, referenceId, txs.size());
     }
