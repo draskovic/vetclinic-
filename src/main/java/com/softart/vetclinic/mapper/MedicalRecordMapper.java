@@ -15,6 +15,8 @@ public interface MedicalRecordMapper {
     @Mapping(target = "ownerId", ignore = true)
     @Mapping(target = "ownerName", ignore = true)
     @Mapping(target = "diagnoses", ignore = true)
+    @Mapping(target = "invoiceTotal", ignore = true)
+    @Mapping(target = "invoiceStatus", ignore = true)
     MedicalRecordResponse toResponse(MedicalRecord entity);
 
     @Mapping(target = "id", ignore = true)

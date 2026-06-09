@@ -64,5 +64,6 @@ public interface InvoiceRepository extends JpaRepository<Invoice, UUID> {
 
 
     Optional<Invoice> findByMedicalRecordIdAndDeletedFalse(UUID medicalRecordId);
+    List<Invoice> findByMedicalRecordIdInAndDeletedFalse(java.util.Collection<UUID> medicalRecordIds);
 
 }

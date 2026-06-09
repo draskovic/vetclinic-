@@ -1,20 +1,12 @@
 package com.softart.vetclinic.controller;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
-
-import java.util.ArrayList;
-import com.softart.vetclinic.dto.DiagnosisResponse;
-import com.softart.vetclinic.entity.Diagnosis;
-import com.softart.vetclinic.entity.MedicalRecordDiagnosis;
-import com.softart.vetclinic.mapper.DiagnosisMapper;
-import com.softart.vetclinic.repository.DiagnosisRepository;
-import com.softart.vetclinic.repository.MedicalRecordDiagnosisRepository;
-import org.springframework.transaction.annotation.Transactional;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -24,6 +16,8 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -35,21 +29,29 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.security.access.prepost.PreAuthorize;
 
 import com.softart.vetclinic.dto.CreateMedicalRecordRequest;
+import com.softart.vetclinic.dto.DiagnosisResponse;
 import com.softart.vetclinic.dto.MedicalRecordResponse;
 import com.softart.vetclinic.dto.UpdateMedicalRecordRequest;
+import com.softart.vetclinic.entity.Diagnosis;
+import com.softart.vetclinic.entity.Invoice;
 import com.softart.vetclinic.entity.MedicalRecord;
+import com.softart.vetclinic.entity.MedicalRecordDiagnosis;
 import com.softart.vetclinic.enums.AppointmentStatus;
 import com.softart.vetclinic.exception.ResourceNotFoundException;
+import com.softart.vetclinic.mapper.DiagnosisMapper;
 import com.softart.vetclinic.mapper.MedicalRecordMapper;
+import com.softart.vetclinic.repository.DiagnosisRepository;
+import com.softart.vetclinic.repository.InvoiceRepository;
+import com.softart.vetclinic.repository.MedicalRecordDiagnosisRepository;
 import com.softart.vetclinic.repository.OwnerRepository;
 import com.softart.vetclinic.repository.PetRepository;
 import com.softart.vetclinic.repository.UserRepository;
 import com.softart.vetclinic.service.AppointmentService;
 import com.softart.vetclinic.service.MedicalRecordPdfService;
 import com.softart.vetclinic.service.MedicalRecordService;
+import com.softart.vetclinic.service.PetHealthAlertService;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -69,7 +71,8 @@ public class MedicalRecordController {
     private final MedicalRecordDiagnosisRepository medicalRecordDiagnosisRepository;
     private final DiagnosisRepository diagnosisRepository;
     private final DiagnosisMapper diagnosisMapper;
-    private final com.softart.vetclinic.service.PetHealthAlertService petHealthAlertService;
+    private final PetHealthAlertService petHealthAlertService;
+    private final InvoiceRepository invoiceRepository;
 
     @GetMapping("/{id}")
     public MedicalRecordResponse getById(
@@ -465,28 +468,37 @@ public class MedicalRecordController {
         Map<UUID, List<DiagnosisResponse>> diagnosesMap = resolveDiagnosesBatch(clinicId, recordIds);
         Set<UUID> petsWithAlerts = petHealthAlertService.findPetIdsWithActiveAlerts(clinicId, petIds);
         
-        return page.map(r -> new MedicalRecordResponse(
-                r.getId(),
-                r.getAppointmentId(),
-                r.getRecordCode(),
-                r.getPetId(),
-                petNames.getOrDefault(r.getPetId(), ""),
-                petOwnerMap.get(r.getPetId()),
-                ownerNames.getOrDefault(petOwnerMap.get(r.getPetId()), ""),
-                r.getVetId(),
-                vetNames.getOrDefault(r.getVetId(), ""),
-                r.getSymptoms(),
-                diagnosesMap.getOrDefault(r.getId(), List.of()),
-                r.getExaminationNotes(),
-                r.getWeightKg(),
-                r.getTemperatureC(),
-                r.getHeartRate(),
-                r.getFollowUpRecommended(),
-                r.getFollowUpDate(),
-                r.getCreatedAt(),
-                r.getUpdatedAt(),
-                petsWithAlerts.contains(r.getPetId())
-        ));
+        Map<UUID, Invoice> invoiceByRecord = recordIds.isEmpty() ? Map.of()
+                : invoiceRepository.findByMedicalRecordIdInAndDeletedFalse(recordIds).stream()
+                        .collect(Collectors.toMap(Invoice::getMedicalRecordId, inv -> inv, (a, b) -> a));
+        
+        return page.map(r -> {
+            Invoice inv = invoiceByRecord.get(r.getId());
+            return new MedicalRecordResponse(
+                    r.getId(),
+                    r.getAppointmentId(),
+                    r.getRecordCode(),
+                    r.getPetId(),
+                    petNames.getOrDefault(r.getPetId(), ""),
+                    petOwnerMap.get(r.getPetId()),
+                    ownerNames.getOrDefault(petOwnerMap.get(r.getPetId()), ""),
+                    r.getVetId(),
+                    vetNames.getOrDefault(r.getVetId(), ""),
+                    r.getSymptoms(),
+                    diagnosesMap.getOrDefault(r.getId(), List.of()),
+                    r.getExaminationNotes(),
+                    r.getWeightKg(),
+                    r.getTemperatureC(),
+                    r.getHeartRate(),
+                    r.getFollowUpRecommended(),
+                    r.getFollowUpDate(),
+                    r.getCreatedAt(),
+                    r.getUpdatedAt(),
+                    petsWithAlerts.contains(r.getPetId()),
+                    inv != null ? inv.getTotal() : null,
+                    inv != null ? inv.getStatus() : null
+            );
+        });
     }
 
     private List<DiagnosisResponse> resolveDiagnoses(UUID clinicId, UUID medicalRecordId) {

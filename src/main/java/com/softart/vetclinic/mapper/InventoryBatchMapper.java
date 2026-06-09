@@ -24,6 +24,7 @@ public interface InventoryBatchMapper {
     @Mapping(target = "version", ignore = true)
     @Mapping(target = "clinic", ignore = true)
     @Mapping(target = "inventoryItem", ignore = true)
+    @Mapping(target = "isDefault", ignore = true)
     InventoryBatch toEntity(CreateInventoryBatchRequest dto);
 
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
@@ -38,5 +39,6 @@ public interface InventoryBatchMapper {
     @Mapping(target = "version", ignore = true)
     @Mapping(target = "clinic", ignore = true)
     @Mapping(target = "inventoryItem", ignore = true)
+    @Mapping(target = "isDefault", ignore = true)
     void updateEntity(UpdateInventoryBatchRequest dto, @MappingTarget InventoryBatch entity);
 }
