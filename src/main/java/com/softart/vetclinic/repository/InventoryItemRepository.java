@@ -33,6 +33,16 @@ public interface InventoryItemRepository extends JpaRepository<InventoryItem, UU
 
     List<InventoryItem> findByClinicIdAndProductIdAndDeletedFalse(UUID clinicId, UUID productId);
     
+    @Query("SELECT COUNT(i) > 0 FROM InventoryItem i " +
+            "WHERE i.clinicId = :clinicId AND i.productId = :productId AND i.deleted = false " +
+            "AND ((:locationId IS NULL AND i.locationId IS NULL) OR i.locationId = :locationId) " +
+            "AND (:excludeId IS NULL OR i.id <> :excludeId)")
+    boolean existsDuplicateProductLocation(
+            @Param("clinicId") UUID clinicId,
+            @Param("productId") UUID productId,
+            @Param("locationId") UUID locationId,
+            @Param("excludeId") UUID excludeId);
+    
     @EntityGraph(attributePaths = {"location"})
     Page<InventoryItem> findByClinicIdAndDeletedFalse(UUID clinicId, Pageable pageable);
 

@@ -22,5 +22,7 @@ public interface ClinicLocationRepository extends JpaRepository<ClinicLocation, 
     boolean existsByIdAndClinicIdAndDeletedFalse(UUID id, UUID clinicId);
     
     List<ClinicLocation> findByClinicIdAndDeletedFalseAndActiveTrue(UUID clinicId);
+    
+    Optional<ClinicLocation> findFirstByClinicIdAndIsMainTrueAndDeletedFalseOrderByCreatedAtAsc(UUID clinicId);
 
 }

@@ -21,6 +21,9 @@ public class MedicalRecord extends BaseEntity {
 
     @Column(name = "vet_id", nullable = false)
     private UUID vetId;
+    
+    @Column(name = "location_id")
+    private UUID locationId;
 
     @Column(columnDefinition = "TEXT")
     private String symptoms;

@@ -17,6 +17,7 @@ public interface MedicalRecordMapper {
     @Mapping(target = "diagnoses", ignore = true)
     @Mapping(target = "invoiceTotal", ignore = true)
     @Mapping(target = "invoiceStatus", ignore = true)
+    @Mapping(target = "hasActiveAlerts", ignore = true)
     MedicalRecordResponse toResponse(MedicalRecord entity);
 
     @Mapping(target = "id", ignore = true)
@@ -31,6 +32,7 @@ public interface MedicalRecordMapper {
     @Mapping(target = "pet", ignore = true)
     @Mapping(target = "vet", ignore = true)
     @Mapping(target = "recordCode", ignore = true)
+    @Mapping(target = "locationId", ignore = true)
     MedicalRecord toEntity(CreateMedicalRecordRequest dto);
 
     @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
@@ -47,5 +49,6 @@ public interface MedicalRecordMapper {
     @Mapping(target = "pet", ignore = true)
     @Mapping(target = "vet", ignore = true)
     @Mapping(target = "recordCode", ignore = true)
+    @Mapping(target = "locationId", ignore = true)
     void updateEntity(UpdateMedicalRecordRequest dto, @MappingTarget MedicalRecord entity);
 }

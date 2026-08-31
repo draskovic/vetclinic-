@@ -1,6 +1,7 @@
 package com.softart.vetclinic.service;
 
 import java.math.BigDecimal;
+
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -17,6 +18,10 @@ import com.softart.vetclinic.repository.InventoryBatchRepository;
 import com.softart.vetclinic.repository.InventoryItemRepository;
 import com.softart.vetclinic.repository.InventoryTransactionRepository;
 import com.softart.vetclinic.repository.ServiceInventoryItemRepository;
+import com.softart.vetclinic.entity.ClinicLocation;
+import com.softart.vetclinic.entity.UserLocation;
+import com.softart.vetclinic.repository.ClinicLocationRepository;
+import com.softart.vetclinic.repository.UserLocationRepository;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -31,6 +36,8 @@ public class InventoryDeductionService {
     private final InventoryTransactionRepository txRepo;
     private final InventoryBatchRepository batchRepo;
     private final InventoryStockApplier stockApplier;
+    private final UserLocationRepository userLocationRepo;
+    private final ClinicLocationRepository clinicLocationRepo;
 
     // ===================== DEDUKCIJA =====================
 
@@ -40,13 +47,16 @@ public class InventoryDeductionService {
      * po lokaciji (ZA SADA: jedini/glavni; multi-lokacija → Faza 2E) → FEFO + preliv na DEFAULT.
      */
     @Transactional
-    public void deductForTreatment(UUID clinicId, UUID serviceId, UUID treatmentId, UUID performedBy) {
+    public void deductForTreatment(UUID clinicId, UUID serviceId, UUID treatmentId,
+            UUID performedBy, UUID locationId) {
         List<ServiceInventoryItem> mappings = serviceInventoryItemRepo
                 .findByClinicIdAndServiceIdAndDeletedFalse(clinicId, serviceId);
         if (mappings.isEmpty()) return;
 
+        UUID effectiveLocation = resolveDeductionLocation(clinicId, locationId, performedBy);
+
         for (ServiceInventoryItem mapping : mappings) {
-            InventoryItem item = resolveItemForProduct(clinicId, mapping.getProductId());
+            InventoryItem item = resolveItemForProduct(clinicId, mapping.getProductId(), effectiveLocation);
             if (item == null) {
                 log.warn("BOM: nema inventory_item za product {} (klinika {}) — preskačem dedukciju",
                         mapping.getProductId(), clinicId);
@@ -121,13 +131,43 @@ public class InventoryDeductionService {
         txRepo.save(tx);
     }
 
+    
     /**
-     * ZA SADA jedan inventory_item po product-u (1:1 posle migracije).
-     * Multi-lokacija (izbor reda po lokaciji pružanja usluge) → Faza 2E.
+     * Razrešava per-lokacijski inventory_item za (product, lokacija pružanja usluge).
+     * 1 red → taj; više redova → poklapanje po lokaciji; bez poklapanja → get(0)
+     * (puna multi-loc tačnost = 2E proper, ovde samo seme razrešavanja).
      */
-    private InventoryItem resolveItemForProduct(UUID clinicId, UUID productId) {
+    private InventoryItem resolveItemForProduct(UUID clinicId, UUID productId, UUID locationId) {
         List<InventoryItem> items = itemRepo.findByClinicIdAndProductIdAndDeletedFalse(clinicId, productId);
-        return items.isEmpty() ? null : items.get(0);
+        if (items.isEmpty()) return null;
+        if (items.size() == 1) return items.get(0);
+        if (locationId != null) {
+            for (InventoryItem it : items) {
+                if (locationId.equals(it.getLocationId())) return it;
+            }
+        }
+        log.warn("BOM: proizvod {} ima {} inventory_item redova, nema poklapanja sa lokacijom {} — fallback get(0)",
+                productId, items.size(), locationId);
+        return items.get(0);
+    }
+
+    /**
+     * Lokacija dedukcije: lokacija intervencije (MR) → vet primarna (user_location) → glavna lokacija klinike.
+     * MR.location_id je praktično uvek popunjen (V37 backfill + createWithRecordCode), pa su donje
+     * karike defanzivne (klinika bez glavne lokacije + intervencija bez termina).
+     */
+    private UUID resolveDeductionLocation(UUID clinicId, UUID mrLocationId, UUID vetId) {
+        if (mrLocationId != null) return mrLocationId;
+        if (vetId != null) {
+            UUID vetPrimary = userLocationRepo.findByClinicIdAndUserIdAndDeletedFalse(clinicId, vetId).stream()
+                    .filter(ul -> Boolean.TRUE.equals(ul.getIsPrimary()))
+                    .map(UserLocation::getLocationId)
+                    .findFirst().orElse(null);
+            if (vetPrimary != null) return vetPrimary;
+        }
+        return clinicLocationRepo
+                .findFirstByClinicIdAndIsMainTrueAndDeletedFalseOrderByCreatedAtAsc(clinicId)
+                .map(ClinicLocation::getId).orElse(null);
     }
 
     // ===================== REVERZIJA =====================

@@ -9,6 +9,7 @@ import com.softart.vetclinic.enums.InventoryTransactionType;
 import com.softart.vetclinic.repository.InventoryBatchRepository;
 import com.softart.vetclinic.repository.InventoryItemRepository;
 import com.softart.vetclinic.repository.ProductRepository;
+import com.softart.vetclinic.exception.DuplicateResourceException;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -58,6 +59,33 @@ public class InventoryItemService extends AbstractCrudService<InventoryItem, Inv
     @Override
     protected boolean existsByIdAndClinicId(UUID id, UUID clinicId) {
         return inventoryItemRepository.existsByIdAndClinicIdAndDeletedFalse(id, clinicId);
+    }
+    
+    @Override
+    protected void validateForCreate(InventoryItem entity) {
+        requireUniqueProductLocation(entity, null);
+    }
+
+    @Override
+    protected void validateForUpdate(InventoryItem existing, InventoryItem updated) {
+        requireUniqueProductLocation(updated, updated.getId());
+    }
+
+    private void requireUniqueProductLocation(InventoryItem entity, UUID excludeId) {
+        boolean dup = inventoryItemRepository.existsDuplicateProductLocation(
+                entity.getClinicId(), entity.getProductId(), entity.getLocationId(), excludeId);
+        if (dup) {
+            String productName = productRepository
+                    .findByIdAndClinicIdAndDeletedFalse(entity.getProductId(), entity.getClinicId())
+                    .map(p -> "\"" + p.getName() + "\"")
+                    .orElse("Izabrani proizvod");
+            String where = entity.getLocationId() != null
+                    ? "na izabranoj lokaciji"
+                    : "bez lokacije";
+            throw new DuplicateResourceException(
+                    productName + " je već zaveden " + where
+                            + ". Izaberite drugu lokaciju ili izmenite postojeći artikal.");
+        }
     }
 
     /**

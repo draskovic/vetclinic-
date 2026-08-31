@@ -2,6 +2,7 @@ package com.softart.vetclinic.controller;
 
 import java.math.BigDecimal;
 
+
 import java.util.List;
 import java.util.UUID;
 
@@ -31,10 +32,13 @@ import com.softart.vetclinic.service.InvoiceTotalsRecalculationService;
 import com.softart.vetclinic.service.TaxRateSnapshotApplier;
 import com.softart.vetclinic.service.TreatmentService;
 import com.softart.vetclinic.util.InvoiceItemTotals;
+import com.softart.vetclinic.entity.MedicalRecord;
+import com.softart.vetclinic.repository.MedicalRecordRepository;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+
 
 @RestController
 @RequestMapping("/api/treatments")
@@ -50,6 +54,7 @@ public class TreatmentController {
     private final InventoryDeductionService inventoryDeductionService;
     private final InvoiceTotalsRecalculationService invoiceTotalsRecalculationService;
     private final TaxRateSnapshotApplier taxRateSnapshotApplier;
+    private final MedicalRecordRepository medicalRecordRepository;
 
     @GetMapping
     public Page<TreatmentResponse> getAll(
@@ -122,11 +127,14 @@ public class TreatmentController {
             e.printStackTrace();
         }
 
-        // Auto-dedukcija inventara
+        // Auto-dedukcija inventara (location-aware: skida sa lokacije intervencije)
         try {
             if (result.getServiceId() != null) {
+                UUID mrLoc = medicalRecordRepository
+                        .findByIdAndClinicIdAndDeletedFalse(result.getMedicalRecordId(), clinicId)
+                        .map(MedicalRecord::getLocationId).orElse(null);
                 inventoryDeductionService.deductForTreatment(
-                        clinicId, result.getServiceId(), result.getId(), entity.getVetId());
+                        clinicId, result.getServiceId(), result.getId(), entity.getVetId(), mrLoc);
             }
         } catch (Exception ex) {
             log.error("Auto-dedukcija inventara za treatment {} (clinic {}) nije uspela",
@@ -134,6 +142,7 @@ public class TreatmentController {
         }
 
         return treatmentMapper.toResponse(result);
+
     }
 
 
@@ -156,8 +165,11 @@ public class TreatmentController {
                     inventoryDeductionService.reverseForTreatment(clinicId, id);
                 }
                 if (result.getServiceId() != null) {
+                    UUID mrLoc = medicalRecordRepository
+                            .findByIdAndClinicIdAndDeletedFalse(result.getMedicalRecordId(), clinicId)
+                            .map(MedicalRecord::getLocationId).orElse(null);
                     inventoryDeductionService.deductForTreatment(
-                            clinicId, result.getServiceId(), id, result.getVetId());
+                            clinicId, result.getServiceId(), id, result.getVetId(), mrLoc);
                 }
             } catch (Exception ex) {
                 log.error("Korekcija inventara pri izmeni treatment {} (clinic {}) nije uspela",

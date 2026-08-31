@@ -14,6 +14,17 @@ public class DuplicateResourceException extends RuntimeException {
         this.fieldValue = fieldValue;
     }
 
+    /**
+     * Poruka namenjena krajnjem korisniku (prikazuje se direktno u UI-ju).
+     * Koristiti kada tehnicki opis (entitet + polje + UUID) ne pomaze korisniku.
+     */
+    public DuplicateResourceException(String userMessage) {
+        super(userMessage);
+        this.entityName = null;
+        this.fieldName = null;
+        this.fieldValue = null;
+    }
+
     public String getEntityName() {
         return entityName;
     }

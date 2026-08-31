@@ -15,6 +15,7 @@ import com.softart.vetclinic.repository.AppointmentRepository;
 import com.softart.vetclinic.repository.MedicalRecordRepository;
 import com.softart.vetclinic.repository.PetRepository;
 import com.softart.vetclinic.repository.UserRepository;
+import com.softart.vetclinic.repository.ClinicLocationRepository;
 import org.springframework.data.jpa.domain.Specification;
 import static com.softart.vetclinic.repository.specifications.MedicalRecordSpecifications.*;
 
@@ -26,16 +27,19 @@ public class MedicalRecordService extends AbstractCrudService<MedicalRecord, Med
     private final PetRepository petRepository;
     private final UserRepository userRepository;
     private final AppointmentRepository appointmentRepository;
+    private final ClinicLocationRepository clinicLocationRepository;
 
     public MedicalRecordService(MedicalRecordRepository medicalRecordRepository,
                                 PetRepository petRepository,
                                 UserRepository userRepository,
-                                AppointmentRepository appointmentRepository) {
+                                AppointmentRepository appointmentRepository,
+                                ClinicLocationRepository clinicLocationRepository) {
         super(medicalRecordRepository);
         this.medicalRecordRepository = medicalRecordRepository;
         this.petRepository = petRepository;
         this.userRepository = userRepository;
         this.appointmentRepository = appointmentRepository;
+        this.clinicLocationRepository = clinicLocationRepository;
     }
 
     @Override
@@ -95,13 +99,17 @@ public class MedicalRecordService extends AbstractCrudService<MedicalRecord, Med
     public Page<MedicalRecord> searchAll(UUID clinicId, String search,
             OffsetDateTime dateFrom, OffsetDateTime dateTo, UUID vetId, UUID ownerId, Pageable pageable) {
 
-        Specification<MedicalRecord> spec = Specification.where(inClinic(clinicId))
-                .and(notDeleted())
-                .and(withEagerLoading())
-                .and(textSearch(search))
-                .and(dateBetween(dateFrom, dateTo))
-                .and(vetId(vetId))
-                .and(ownerId(ownerId));
+//        Specification<MedicalRecord> spec1 = Specification.where(inClinic(clinicId))
+//                .and(notDeleted())
+//                .and(withEagerLoading())
+//                .and(textSearch(search))
+//                .and(dateBetween(dateFrom, dateTo))
+//                .and(vetId(vetId))
+//                .and(ownerId(ownerId));
+     // umesto Specification.where(inClinic(clinicId)).and(...)
+        Specification<MedicalRecord> spec = Specification.allOf(
+                inClinic(clinicId), notDeleted(), withEagerLoading(),
+                textSearch(search), dateBetween(dateFrom, dateTo), vetId(vetId), ownerId(ownerId));
 
         return medicalRecordRepository.findAll(spec, pageable);
     }
@@ -109,7 +117,28 @@ public class MedicalRecordService extends AbstractCrudService<MedicalRecord, Med
     @Transactional
     public MedicalRecord createWithRecordCode(MedicalRecord entity, UUID clinicId) {
         entity.setRecordCode(generateNextRecordCode(clinicId));
+        if (entity.getLocationId() == null) {
+            entity.setLocationId(resolveLocationId(entity, clinicId));
+        }
         return create(entity, clinicId);
+    }
+
+    /**
+     * Lokacija intervencije: termin (appointment.location_id) → glavna lokacija klinike.
+     * Vraća null samo ako klinika nema glavnu lokaciju (dedukcija ima dalji fallback — Korak 5).
+     */
+    private UUID resolveLocationId(MedicalRecord entity, UUID clinicId) {
+        if (entity.getAppointmentId() != null) {
+            UUID fromAppointment = appointmentRepository
+                    .findByIdAndClinicIdAndDeletedFalse(entity.getAppointmentId(), clinicId)
+                    .map(a -> a.getLocationId())
+                    .orElse(null);
+            if (fromAppointment != null) return fromAppointment;
+        }
+        return clinicLocationRepository
+                .findFirstByClinicIdAndIsMainTrueAndDeletedFalseOrderByCreatedAtAsc(clinicId)
+                .map(loc -> loc.getId())
+                .orElse(null);
     }
 
     private String generateNextRecordCode(UUID clinicId) {

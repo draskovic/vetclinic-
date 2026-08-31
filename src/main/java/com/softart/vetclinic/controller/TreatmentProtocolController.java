@@ -47,6 +47,8 @@ import com.softart.vetclinic.service.TreatmentProtocolItemService;
 import com.softart.vetclinic.service.TreatmentProtocolService;
 import com.softart.vetclinic.service.TreatmentService;
 import com.softart.vetclinic.util.InvoiceItemTotals;
+import com.softart.vetclinic.entity.MedicalRecord;
+import com.softart.vetclinic.repository.MedicalRecordRepository;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -69,6 +71,7 @@ public class TreatmentProtocolController {
     private final InventoryDeductionService inventoryDeductionService;
     private final InvoiceTotalsRecalculationService invoiceTotalsRecalculationService;
     private final TaxRateSnapshotApplier taxRateSnapshotApplier;
+    private final MedicalRecordRepository medicalRecordRepository;
 
 
     @GetMapping
@@ -220,12 +223,15 @@ public class TreatmentProtocolController {
             e.printStackTrace();
         }
 
-        // Auto-dedukcija inventara
+        // Auto-dedukcija inventara (location-aware; MR lokacija dohvaćena JEDNOM pre petlje)
         try {
+            UUID mrLoc = medicalRecordRepository
+                    .findByIdAndClinicIdAndDeletedFalse(request.medicalRecordId(), clinicId)
+                    .map(MedicalRecord::getLocationId).orElse(null);
             for (var t : createdTreatments) {
                 if (t.getServiceId() != null) {
                     inventoryDeductionService.deductForTreatment(
-                            clinicId, t.getServiceId(), t.getId(), request.vetId());
+                            clinicId, t.getServiceId(), t.getId(), request.vetId(), mrLoc);
                 }
             }
         } catch (Exception e) {
